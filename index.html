@@ -1,59 +1,48 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Control de Stock - RECTIFREN</title>
-    <link rel="stylesheet" href="styles.css" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>RECTIFREN — Control de Stock</title>
+<link rel="stylesheet" href="styles.css">
+<!-- SheetJS para exportar Excel -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
-    <header class="topbar">
-        <div class="brand">
-            <!-- Si subís un logo llamado logo.png al repo, se mostrará aquí -->
-            <img id="logo" src="logo.png" alt="RECTIFREN" onerror="this.style.display='none'">
-            <h1>Control de Stock — RECTIFREN</h1>
-        </div>
-        <div class="actions">
-            <input id="searchInput" type="search" placeholder="Buscar por código o marca..." aria-label="Buscar" />
-            <button id="refreshBtn" title="Actualizar tabla">🔄</button>
-        </div>
-    </header>
 
-    <main>
-        <div id="status" class="status hidden">Cargando...</div>
+<header>
+  <div class="brand">
+    <div class="logo-box">
+      <img src="logo.png" alt="RECTIFREN logo" id="logo" onerror="this.style.opacity=0.3">
+    </div>
+    <h2>RECTIFREN — Stock</h2>
+  </div>
 
-        <div class="table-wrap">
-            <table id="stockTable" aria-describedby="status">
-                <thead>
-                    <tr>
-                        <th>Código</th>
-                        <th>Marca</th>
-                        <th>Stock</th>
-                        <th>Acción</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
+  <div class="controls">
+    <input id="search" type="search" placeholder="Buscar código o marca...">
+    <button id="saveAll" class="btn btn-main">Guardar cambios</button>
+    <button id="downloadExcel" class="btn btn-grey">Descargar Excel</button>
+    <button id="refresh" class="btn btn-grey" title="Refrescar tabla">🔄</button>
+  </div>
+</header>
 
-        <div class="footer-note">
-            <small>Colores: verde (&gt;5) — naranja (=2) — rojo (0 o 1 / vacío)</small>
-        </div>
-    </main>
+<main>
+  <table id="tabla" aria-label="Tabla de stock">
+    <thead>
+      <tr>
+        <th>Código</th>
+        <th>Marca</th>
+        <th>Stock</th>
+        <th>Ajustar</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
-    <template id="row-template">
-        <tr>
-            <td class="td-codigo"></td>
-            <td class="td-marca"></td>
-            <td class="td-stock">
-                <input type="number" min="0" class="input-stock" />
-            </td>
-            <td class="td-action">
-                <button class="btn-save">Actualizar</button>
-            </td>
-        </tr>
-    </template>
+  <div id="status" class="status" aria-live="polite"></div>
+  <div class="footer-note">Verde: &gt;5 — Naranja: 4 a 2 — Rojo: 1 o 0</div>
+</main>
 
-    <script src="app.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
