@@ -1,137 +1,229 @@
-// URL de la Web App (tu Apps Script)
+/* app.js - integración Google Sheets (via Apps Script) */
 const apiURL = "https://script.google.com/macros/s/AKfycbx2nkwjTykAYoQ3k4hGQLchwgQI_YKyuil-v2rHW7TIW5H-TRASMHUsnngcAyBMEtHc8w/exec";
 
-const $ = sel => document.querySelector(sel);
-const $all = sel => Array.from(document.querySelectorAll(sel));
-const statusEl = $("#status");
-const tbody = document.querySelector("#stockTable tbody");
-const tpl = document.getElementById("row-template");
-const searchInput = $("#searchInput");
-const refreshBtn = $("#refreshBtn");
+const tbody = document.querySelector("#tabla tbody");
+const statusEl = document.getElementById("status");
+const searchInput = document.getElementById("search");
+const saveAllBtn = document.getElementById("saveAll");
+const downloadBtn = document.getElementById("downloadExcel");
+const refreshBtn = document.getElementById("refresh");
 
-let ITEMS = []; // cache local de la respuesta
+let ITEMS = [];      // datos originales traídos de la API
+let VISIBLE = [];    // items actualmente renderizados (post-filtrado)
 
-function showStatus(text, autoHide = false) {
-  statusEl.textContent = text;
-  statusEl.classList.remove("hidden");
-  if (autoHide) setTimeout(()=> statusEl.classList.add("hidden"), 2500);
+// mostrar estado
+function showStatus(msg, persist=false){
+  statusEl.style.display = "block";
+  statusEl.textContent = msg;
+  if(!persist){
+    setTimeout(()=> { statusEl.style.display = "none"; }, 2500);
+  }
 }
 
-function hideStatus(){ statusEl.classList.add("hidden"); }
-
-function colorClassForStock(s){
-  if (s === null || s === undefined || s === "") return "stock-rojo";
-  const n = Number(s);
-  if (isNaN(n)) return "stock-rojo";
-  if (n > 5) return "stock-verde";
-  if (n === 2) return "stock-naranja";
-  if (n <= 1) return "stock-rojo";
-  return "";
+// detectar clase de color para la celda stock
+function colorClass(stock){
+  if (stock === "" || stock === null || stock === undefined) return "stock-cell-red";
+  const n = Number(stock);
+  if (isNaN(n)) return "stock-cell-red";
+  if (n > 5) return "stock-cell-green";
+  if (n >= 2 && n <= 4) return "stock-cell-orange";
+  return "stock-cell-red";
 }
 
+/* --- limpiar y normalizar la respuesta de la API --- */
+function normalize(raw){
+  // raw es array de objetos {codigo, marca, stock, row}
+  const out = [];
+  for (const it of raw){
+    const codigo = (it.codigo || "").toString().trim();
+    if (!codigo) continue; // ignorar sin código
+
+    let marca = (it.marca || "").toString().trim();
+    // normalizar stock: null/"" -> ""
+    let stock = it.stock;
+    if (stock === null || stock === undefined) stock = "";
+    else {
+      const n = Number(stock);
+      stock = isNaN(n) ? "" : n;
+    }
+
+    out.push({
+      codigo: codigo,
+      marca: marca,
+      stock: stock,
+      row: it.row || null
+    });
+  }
+  return out;
+}
+
+/* --- fetch ALL from API --- */
 async function fetchAll(){
   showStatus("Cargando stock...");
   try {
-    const res = await fetch(apiURL, {cache: "no-store"});
+    const res = await fetch(apiURL, { cache: "no-store" });
     if(!res.ok) throw new Error("HTTP " + res.status);
     const json = await res.json();
-    if(!Array.isArray(json)) throw new Error("Respuesta inesperada");
-    ITEMS = json;
-    renderTable(ITEMS);
-    showStatus(`Items recibidos: ${ITEMS.length}`, true);
-  } catch (err) {
-    console.error(err);
-    showStatus("Error cargando datos. Revise consola.", false);
+    ITEMS = normalize(json);
+    VISIBLE = ITEMS.slice(); // copia
+    render(VISIBLE);
+    showStatus(`Items recibidos: ${ITEMS.length}`);
+    console.log("Items recibidos:", ITEMS.length);
+  } catch (err){
+    console.error("fetchAll error:", err);
+    showStatus("Error cargando datos (ver consola)", true);
   }
 }
 
-function renderTable(items){
+/* --- render de tabla --- */
+function render(items){
   tbody.innerHTML = "";
-  const frag = document.createDocumentFragment();
+  items.forEach((it, idx) => {
+    const tr = document.createElement("tr");
 
-  for (let item of items){
-    // proteger campos
-    const codigo = item.codigo ?? "";
-    const marca  = item.marca ?? "";
-    const stock  = (item.stock === null || item.stock === undefined) ? "" : item.stock;
-    const rowNum = item.row; // número de fila en la hoja
+    // td codigo
+    const tdCodigo = document.createElement("td");
+    tdCodigo.textContent = it.codigo;
+    // td marca
+    const tdMarca = document.createElement("td");
+    tdMarca.textContent = it.marca;
 
-    const tr = tpl.content.firstElementChild.cloneNode(true);
-    tr.className = colorClassForStock(item.stock);
+    // td stock (solo la celda tendrá clase)
+    const tdStock = document.createElement("td");
+    tdStock.className = colorClass(it.stock);
+    const input = document.createElement("input");
+    input.type = "number";
+    input.className = "stock-input";
+    input.value = (it.stock === "" ? "" : it.stock);
+    input.min = 0;
+    input.dataset.row = it.row;      // fila real en Google Sheets
+    input.dataset.index = idx;      // índice en VISIBLE
+    // detectar cambio localmente
+    input.addEventListener("input", (e)=>{
+      const i = Number(e.target.dataset.index);
+      VISIBLE[i].stock = e.target.value === "" ? "" : Number(e.target.value);
+      tdStock.className = colorClass(VISIBLE[i].stock);
+    });
 
-    tr.querySelector(".td-codigo").textContent = codigo;
-    tr.querySelector(".td-marca").textContent = marca;
+    tdStock.appendChild(input);
 
-    const input = tr.querySelector(".input-stock");
-    input.value = stock;
-    input.setAttribute("data-row", rowNum);
-    input.setAttribute("aria-label", `Stock ${codigo}`);
+    // td ajustar (+ / -)
+    const tdAdj = document.createElement("td");
+    const btnPlus = document.createElement("button");
+    btnPlus.className = "btn-small";
+    btnPlus.textContent = "+";
+    btnPlus.onclick = ()=> {
+      const i = Number(input.dataset.index);
+      const cur = VISIBLE[i].stock === "" ? 0 : Number(VISIBLE[i].stock);
+      VISIBLE[i].stock = cur + 1;
+      renderRowUpdate(i, VISIBLE[i], tr);
+    };
+    const btnMinus = document.createElement("button");
+    btnMinus.className = "btn-small";
+    btnMinus.textContent = "−";
+    btnMinus.onclick = ()=> {
+      const i = Number(input.dataset.index);
+      const cur = VISIBLE[i].stock === "" ? 0 : Number(VISIBLE[i].stock);
+      VISIBLE[i].stock = Math.max(0, cur - 1);
+      renderRowUpdate(i, VISIBLE[i], tr);
+    };
+    tdAdj.appendChild(btnPlus);
+    tdAdj.appendChild(btnMinus);
 
-    const btn = tr.querySelector(".btn-save");
-    btn.addEventListener("click", () => updateStock(rowNum, input.value, btn));
+    tr.appendChild(tdCodigo);
+    tr.appendChild(tdMarca);
+    tr.appendChild(tdStock);
+    tr.appendChild(tdAdj);
 
-    frag.appendChild(tr);
-  }
-
-  tbody.appendChild(frag);
-}
-
-// evita múltiples requests al tipear
-function debounce(fn, wait=250){
-  let t;
-  return (...args)=> { clearTimeout(t); t = setTimeout(()=>fn(...args), wait); };
-}
-
-function applyFilter(text){
-  const q = (text || "").trim().toLowerCase();
-  if (!q) {
-    $all("#stockTable tbody tr").forEach(r => r.style.display = "");
-    return;
-  }
-  $all("#stockTable tbody tr").forEach(tr=>{
-    const txt = tr.innerText.toLowerCase();
-    tr.style.display = txt.includes(q) ? "" : "none";
+    tbody.appendChild(tr);
   });
 }
 
-const debouncedFilter = debounce((e)=> applyFilter(e.target.value), 200);
-
-searchInput.addEventListener("input", debouncedFilter);
-refreshBtn.addEventListener("click", ()=> fetchAll());
-
-// actualización individual
-async function updateStock(row, value, btn){
-  btn.disabled = true;
-  const oldText = btn.textContent;
-  btn.textContent = "Guardando...";
-
-  try {
-    const payload = { row: row, stock: value === "" ? "" : value };
-    const res = await fetch(apiURL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    const j = await res.json();
-    if (j && j.status && j.status === "OK") {
-      showStatus("Actualizado correctamente", true);
-      await fetchAll();
-    } else {
-      console.warn("Respuesta update:", j);
-      showStatus("Error en la actualización (ver consola)", false);
-    }
-  } catch (err) {
-    console.error("updateStock error:", err);
-    showStatus("No se pudo actualizar. Revise la consola.", false);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = oldText;
-  }
+// actualizar visual de fila sin volver a renderizar todo
+function renderRowUpdate(index, item, tr){
+  const input = tr.querySelector(".stock-input");
+  input.value = (item.stock === "" ? "" : item.stock);
+  input.dataset.index = index;
+  tr.querySelector("td:nth-child(3)").className = colorClass(item.stock);
 }
 
-// escape HTML (para seguridad adicional, aunque no usamos innerHTML)
-function escapeHtml(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+/* --- Guardar TODOS: iterar y enviar POST por fila --- */
+async function saveAll(){
+  // determinar cambios: comparo ITEMS (original) con VISIBLE (puede estar filtrado)
+  // mejor: tomar valores actuales del DOM y enviarlos por fila si tienen row
+  const rows = Array.from(document.querySelectorAll(".stock-input")).map(inp=>{
+    return {
+      row: inp.dataset.row ? Number(inp.dataset.row) : null,
+      stock: inp.value === "" ? "" : Number(inp.value)
+    };
+  });
 
-// inicio
+  // filtrar solo los que tengan row (para que se actualicen en Sheets)
+  const toSend = rows.filter(r => r.row !== null);
+  if (toSend.length === 0){
+    alert("No hay filas con 'row' (no se puede guardar).");
+    return;
+  }
+
+  saveAllBtn.disabled = true;
+  showStatus(`Guardando ${toSend.length} filas...`, true);
+
+  let success = 0;
+  for (let i = 0; i < toSend.length; i++){
+    const p = toSend[i];
+    try {
+      const res = await fetch(apiURL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ row: p.row, stock: p.stock })
+      });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const j = await res.json();
+      if (j && j.status && j.status.toUpperCase() === "OK") success++;
+      else console.warn("Fila no OK", p, j);
+    } catch (err){
+      console.error("Error guardando fila", p, err);
+    }
+    showStatus(`Guardadas ${i+1}/${toSend.length}`, true);
+  }
+
+  saveAllBtn.disabled = false;
+  showStatus(`Guardado finalizado: ${success}/${toSend.length}`, true);
+  // refrescar para asegurar consistencia con la hoja
+  await fetchAll();
+}
+
+/* --- Descargar Excel (current visible state) --- */
+function downloadExcel(){
+  const rows = [["Código","Marca","Stock"]];
+  const trs = Array.from(document.querySelectorAll("#tabla tbody tr"));
+  trs.forEach(tr => {
+    const codigo = tr.children[0].innerText.trim();
+    const marca = tr.children[1].innerText.trim();
+    const stockInput = tr.querySelector("input.stock-input");
+    const stockVal = stockInput ? stockInput.value : "";
+    rows.push([codigo, marca, stockVal]);
+  });
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  XLSX.utils.book_append_sheet(wb, ws, "Stock");
+  XLSX.writeFile(wb, "stock_rectifren.xlsx");
+}
+
+/* --- Buscador (filtra ITEMS y actualiza VISIBLE) --- */
+function applyFilter(q){
+  const t = (q||"").trim().toLowerCase();
+  if (!t){ VISIBLE = ITEMS.slice(); render(VISIBLE); return; }
+  VISIBLE = ITEMS.filter(it => (it.codigo||"").toLowerCase().includes(t) || (it.marca||"").toLowerCase().includes(t));
+  render(VISIBLE);
+}
+
+/* --- Eventos UI --- */
+saveAllBtn.addEventListener("click", saveAll);
+downloadBtn.addEventListener("click", downloadExcel);
+refreshBtn.addEventListener("click", ()=> { searchInput.value = ""; fetchAll(); });
+searchInput.addEventListener("input", (e)=> applyFilter(e.target.value) );
+
+/* Inicial */
 fetchAll();
