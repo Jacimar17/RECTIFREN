@@ -1,34 +1,58 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Control de Stock - RECTIFREN</title>
     <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-
-    <header>
-        <h1>Control de Stock - RECTIFREN</h1>
+    <header class="topbar">
+        <div class="brand">
+            <!-- Si subís un logo llamado logo.png al repo, se mostrará aquí -->
+            <img id="logo" src="logo.png" alt="RECTIFREN" onerror="this.style.display='none'">
+            <h1>Control de Stock — RECTIFREN</h1>
+        </div>
+        <div class="actions">
+            <input id="searchInput" type="search" placeholder="Buscar por código o marca..." aria-label="Buscar" />
+            <button id="refreshBtn" title="Actualizar tabla">🔄</button>
+        </div>
     </header>
 
-    <section class="buscador">
-        <input id="searchInput" type="text" placeholder="Buscar por código o marca...">
-    </section>
+    <main>
+        <div id="status" class="status hidden">Cargando...</div>
 
-    <section>
-        <table id="tablaStock">
-            <thead>
-                <tr>
-                    <th>Código</th>
-                    <th>Marca</th>
-                    <th>Stock</th>
-                    <th>Acción</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-    </section>
+        <div class="table-wrap">
+            <table id="stockTable" aria-describedby="status">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Marca</th>
+                        <th>Stock</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div class="footer-note">
+            <small>Colores: verde (&gt;5) — naranja (=2) — rojo (0 o 1 / vacío)</small>
+        </div>
+    </main>
+
+    <template id="row-template">
+        <tr>
+            <td class="td-codigo"></td>
+            <td class="td-marca"></td>
+            <td class="td-stock">
+                <input type="number" min="0" class="input-stock" />
+            </td>
+            <td class="td-action">
+                <button class="btn-save">Actualizar</button>
+            </td>
+        </tr>
+    </template>
 
     <script src="app.js"></script>
 </body>
