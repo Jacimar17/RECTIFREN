@@ -1,0 +1,28 @@
+/* ================================
+   PALETA DE COLORES RECTIFREN
+   ================================ */
+
+:root {
+  /* Colores principales */
+  --color-primary: #0059b3;
+  --color-primary-hover: #003d80;
+  --color-bg: #f7f7f7;
+  --color-card: #ffffff;
+
+  /* Colores texto */
+  --color-text: #222222;
+  --color-muted: #777777;
+
+  /* Colores tabla stock */
+  --stock-alto: #1dbd1d;     /* verde fuerte */
+  --stock-medio: #ff9800;    /* naranja */
+  --stock-bajo: #ff3b3b;     /* rojo fuerte */
+
+  /* Bordes */
+  --border-radius: 8px;
+  --border-light: #dddddd;
+
+  /* Barra superior */
+  --topbar-bg: #ffffff;
+  --topbar-border: #cccccc;
+}
