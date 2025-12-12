@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>RECTIFREN — Registro de Vehículos</title>
+
+  <!-- Estilos globales -->
+  <link rel="stylesheet" href="../css/colors.css">
+  <link rel="stylesheet" href="../css/layout.css">
+  <link rel="stylesheet" href="../css/styles.css">
+
+  <!-- SheetJS para futuras descargas Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
+</head>
+
+<body>
+  <!-- Barra superior fija -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="logo-box">
+        <img src="../img/logo.png" alt="RECTIFREN logo" id="logo" onerror="this.style.opacity=0.35">
+      </div>
+      <div class="brand-title">
+        <h1>RECTIFREN</h1>
+        <p class="subtitle">Registro de Vehículos</p>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <input id="searchVeh" type="search" placeholder="Buscar por patente, marca o modelo..." aria-label="Buscar vehículo">
+      <button id="btnSaveVeh" class="btn btn-primary">Guardar cambios</button>
+      <a class="nav-link" href="../index.html">Volver al Stock</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="container">
+
+      <div id="statusVeh" class="status" aria-live="polite" hidden></div>
+
+      <!-- FORMULARIO DE REGISTRO -->
+      <div class="card">
+        <h2>Nuevo ingreso</h2>
+
+        <form id="vehForm" class="veh-form">
+
+          <div class="form-row">
+            <label>Patente:</label>
+            <input type="text" id="patente" required>
+          </div>
+
+          <div class="form-row">
+            <label>Marca:</label>
+            <input type="text" id="marca">
+          </div>
+
+          <div class="form-row">
+            <label>Vehículo / Modelo:</label>
+            <input type="text" id="vehiculo">
+          </div>
+
+          <div class="form-row">
+            <label>Kilometraje:</label>
+            <input type="number" id="km" min="0">
+          </div>
+
+          <div class="form-row">
+            <label>Fecha ingreso:</label>
+            <input type="date" id="fechaIngreso">
+          </div>
+
+          <div class="form-row">
+            <label>Trabajo:</label>
+            <textarea id="trabajo" rows="2"></textarea>
+          </div>
+
+          <div class="form-row">
+            <label>Observaciones:</label>
+            <textarea id="observaciones" rows="2"></textarea>
+          </div>
+
+          <div class="form-row">
+            <label>Teléfono (opcional):</label>
+            <input type="text" id="telefono">
+          </div>
+
+          <button id="btnAddVeh" class="btn btn-primary" type="submit">Registrar vehículo</button>
+        </form>
+      </div>
+
+      <!-- TABLA DE RESULTADOS -->
+      <div class="card">
+        <h2>Historial de vehículos</h2>
+
+        <div class="table-wrapper">
+          <table id="vehTable" class="table">
+            <thead>
+              <tr>
+                <th>Patente</th>
+                <th>Marca</th>
+                <th>Vehículo</th>
+                <th>KM</th>
+                <th>Fecha</th>
+                <th>Trabajo</th>
+                <th>Obs</th>
+                <th>Teléfono</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Filas generadas dinámicamente -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Scripts modulares -->
+  <script src="../js/api.js" defer></script>
+  <script src="../js/ui.js" defer></script>
+  <script src="../js/vehiculos.js" defer></script>
+
+</body>
+</html>
