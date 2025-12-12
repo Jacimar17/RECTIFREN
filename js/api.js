@@ -1,73 +1,71 @@
 // ===========================================================
-//                RECTIFREN – API CLIENT JS
-//   Conexión directa con Google Apps Script (stock + autos)
+//                RECTIFREN – API CLIENT JS (ES MODULE)
 // ===========================================================
 
-// Tu nueva URL oficial de API:
-const API_URL = "https://script.google.com/macros/s/AKfycbx2vkMRiGtQ0s9OIjq6ICYbb3qQlL8vFtD5BIbyRk9BT7N9c8hQdxrT1cy2H-bawtk5IQ/exec";
+export const API_URL = "https://script.google.com/macros/s/AKfycbx2vkMRiGtQ0s9OIjq6ICYbb3qQlL8vFtD5BIbyRk9BT7N9c8hQdxrT1cy2H-bawtk5IQ/exec";
 
 
 // ===========================================================
-//                      GET STOCK
+//                      GET STOCK  (getStock)
 // ===========================================================
-async function apiGetStock() {
+export async function getStock() {
     try {
         const response = await fetch(API_URL);
         return await response.json();
     } catch (err) {
-        console.error("ERROR en apiGetStock():", err);
+        console.error("ERROR en getStock():", err);
         return [];
     }
 }
 
 
 // ===========================================================
-//               GUARDAR STOCK (BULK POST)
+//               GUARDAR STOCK (bulkUpdateStock)
 // ===========================================================
-async function apiBulkUpdateStock(updatesArray) {
+export async function bulkUpdateStock(updatesArray) {
     try {
         const response = await fetch(API_URL, {
             method: "POST",
-            contentType: "application/json",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ updates: updatesArray })
         });
 
         return await response.json();
     } catch (err) {
-        console.error("ERROR en apiBulkUpdateStock():", err);
+        console.error("ERROR en bulkUpdateStock():", err);
         return { status: "ERROR" };
     }
 }
 
 
 // ===========================================================
-//                GET AUTOS (Hoja: autos)
+//                  GET AUTOS  (getAutos)
 // ===========================================================
-async function apiGetAutos() {
+export async function getAutos() {
     try {
         const response = await fetch(API_URL + "?sheet=autos");
         return await response.json();
     } catch (err) {
-        console.error("ERROR en apiGetAutos():", err);
+        console.error("ERROR en getAutos():", err);
         return [];
     }
 }
 
 
 // ===========================================================
-//          REGISTRO DE VEHÍCULO NUEVO (addAuto)
+//                 AGREGAR AUTO (addAuto)
 // ===========================================================
-async function apiAddAuto(autoData) {
+export async function addAuto(autoData) {
     try {
         const response = await fetch(API_URL + "?addAuto=1", {
             method: "POST",
-            contentType: "application/json",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(autoData)
         });
 
         return await response.json();
     } catch (err) {
-        console.error("ERROR en apiAddAuto():", err);
+        console.error("ERROR en addAuto():", err);
         return { status: "ERROR" };
     }
 }
