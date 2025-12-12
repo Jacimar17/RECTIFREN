@@ -2,7 +2,7 @@
    STOCK.JS — Control de Stock
    ========================================================= */
 
-import { getStock, saveBulkStock } from "./api.js";
+import { getStock, bulkUpdateStock } from "./api.js";   // ← CORREGIDO
 import { showStatus, clearTable, el } from "./ui.js";
 
 let stockData = [];
@@ -120,7 +120,7 @@ btnSaveAll.addEventListener("click", async () => {
 
   showStatus(statusBox, "Guardando cambios...");
 
-  const result = await saveBulkStock(pendingUpdates);
+  const result = await bulkUpdateStock(pendingUpdates); // ← CORREGIDO
   pendingUpdates = [];
 
   showStatus(statusBox, "Cambios guardados.");
