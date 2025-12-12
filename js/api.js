@@ -6,7 +6,7 @@ export const API_URL = "https://script.google.com/macros/s/AKfycbx2vkMRiGtQ0s9OI
 
 
 // ===========================================================
-//                      GET STOCK  (getStock)
+//                      GET STOCK
 // ===========================================================
 export async function getStock() {
     try {
@@ -20,7 +20,7 @@ export async function getStock() {
 
 
 // ===========================================================
-//               GUARDAR STOCK (bulkUpdateStock)
+//              BULK UPDATE STOCK
 // ===========================================================
 export async function bulkUpdateStock(updatesArray) {
     try {
@@ -39,7 +39,7 @@ export async function bulkUpdateStock(updatesArray) {
 
 
 // ===========================================================
-//                  GET AUTOS  (getAutos)
+//                       GET AUTOS
 // ===========================================================
 export async function getAutos() {
     try {
@@ -53,7 +53,7 @@ export async function getAutos() {
 
 
 // ===========================================================
-//                 AGREGAR AUTO (addAuto)
+//                     ADD AUTO
 // ===========================================================
 export async function addAuto(autoData) {
     try {
