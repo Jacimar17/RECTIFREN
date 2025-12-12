@@ -2,8 +2,9 @@
    STOCK.JS — Control de Stock
    ========================================================= */
 
-import { getStock, bulkUpdateStock } from "./api.js";   // ← CORREGIDO
-import { showStatus, clearTable, el } from "./ui.js";
+// IMPORTS CORREGIDOS
+import { getStock, bulkUpdateStock as saveBulkStock } from "../js/api.js";
+import { showStatus, clearTable, el } from "../js/ui.js";
 
 let stockData = [];
 let pendingUpdates = [];
@@ -81,13 +82,11 @@ function renderTable(data) {
    ================================ */
 function colorStockCell(input, value) {
   const cell = input.parentElement;
-
   cell.classList.remove("stock-high", "stock-mid", "stock-low");
 
   const v = Number(value);
 
   if (isNaN(v)) return;
-
   if (v > 5) cell.classList.add("stock-high");
   else if (v >= 2 && v <= 4) cell.classList.add("stock-mid");
   else cell.classList.add("stock-low");
@@ -102,10 +101,7 @@ function registerUpdate(row, newValue) {
   if (exists) {
     exists.stock = Number(newValue);
   } else {
-    pendingUpdates.push({
-      row,
-      stock: Number(newValue)
-    });
+    pendingUpdates.push({ row, stock: Number(newValue) });
   }
 }
 
@@ -120,7 +116,7 @@ btnSaveAll.addEventListener("click", async () => {
 
   showStatus(statusBox, "Guardando cambios...");
 
-  const result = await bulkUpdateStock(pendingUpdates); // ← CORREGIDO
+  await saveBulkStock(pendingUpdates);
   pendingUpdates = [];
 
   showStatus(statusBox, "Cambios guardados.");
