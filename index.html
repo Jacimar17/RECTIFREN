@@ -3,68 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RECTIFREN - Control de Stock</title>
+    <title>RECTIFREN</title>
 
-    <!-- CSS (rutas corregidas) -->
-    <link rel="stylesheet" href="../css/layout.css">
-    <link rel="stylesheet" href="../css/colors.css">
-    <link rel="stylesheet" href="../css/styles.css">
-
-    <!-- Librería XLSX (descargar Excel) -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <!-- Estilos generales -->
+    <link rel="stylesheet" href="./css/layout.css">
+    <link rel="stylesheet" href="./css/colors.css">
+    <link rel="stylesheet" href="./css/styles.css">
 </head>
 
 <body>
 
-    <!-- Barra superior fija -->
-    <header class="topbar">
-        <img src="../img/logo.png" class="logo">
+    <div class="home-container">
 
-        <input id="search" type="text" placeholder="Buscar..." class="search">
+        <img src="./img/logo.png" class="home-logo">
 
-        <button id="btnRefresh" class="btn">Refrescar</button>
-        <button id="btnSaveAll" class="btn save">Guardar cambios</button>
-        <button id="btnDownload" class="btn excel">Descargar Excel</button>
+        <h1 class="home-title">RECTIFREN</h1>
+        <h2 class="home-subtitle">Sistema de Gestión</h2>
 
-        <a href="./vehiculos.html" class="btn link">Vehículos</a>
-    </header>
+        <div class="home-buttons">
+            <a href="./pages/index.html" class="btn big-btn">Control de Stock</a>
+            <a href="./pages/vehiculos.html" class="btn big-btn">Registro de Vehículos</a>
+        </div>
 
-    <!-- Contenedor principal -->
-    <main>
-        <div id="status" class="status" hidden></div>
-
-        <table id="stockTable" class="tabla">
-            <thead>
-                <tr>
-                    <th>Código</th>
-                    <th>Marca</th>
-                    <th>Stock</th>
-                    <th>Acción</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-    </main>
-
-    <!-- Template de filas -->
-    <template id="row-template">
-        <tr>
-            <td class="td-codigo"></td>
-            <td class="td-marca"></td>
-
-            <td class="td-stock">
-                <input class="input-stock" type="number" min="0">
-            </td>
-
-            <td class="td-accion">
-                <button class="btn-plus">+</button>
-                <button class="btn-minus">−</button>
-            </td>
-        </tr>
-    </template>
-
-    <!-- JS principal (MÓDULO) -->
-    <script type="module" src="../js/stock.js"></script>
+    </div>
 
 </body>
 </html>
