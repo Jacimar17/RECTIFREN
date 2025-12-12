@@ -1,84 +1,69 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>RECTIFREN — Control de Stock</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RECTIFREN - Control de Stock</title>
 
-  <!-- Estilos modulares -->
-  <link rel="stylesheet" href="css/colors.css">
-  <link rel="stylesheet" href="css/layout.css">
-  <link rel="stylesheet" href="css/styles.css">
+    <!-- CSS -->
+    <link rel="stylesheet" href="./css/layout.css">
+    <link rel="stylesheet" href="./css/colors.css">
+    <link rel="stylesheet" href="./css/styles.css">
 
-  <!-- SheetJS para exportar Excel (se usa desde stock.js) -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
+    <!-- Librería XLSX (descargar Excel) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 </head>
+
 <body>
-  <!-- BARRA SUPERIOR (sticky) -->
-  <header class="topbar" role="banner">
-    <div class="topbar-left">
-      <div class="logo-box" aria-hidden="false">
-        <img src="img/logo.png" alt="RECTIFREN logo" id="logo" onerror="this.style.opacity=0.35">
-      </div>
-      <div class="brand-title">
-        <h1>RECTIFREN</h1>
-        <p class="subtitle">Control de Stock</p>
-      </div>
-    </div>
 
-    <div class="topbar-right" role="navigation" aria-label="Controles principales">
-      <input id="search" type="search" placeholder="Buscar por código o marca..." aria-label="Buscar">
-      <button id="btnSaveAll" class="btn btn-primary" title="Guardar todos los cambios">Guardar cambios</button>
-      <button id="btnDownload" class="btn btn-ghost" title="Descargar Excel">Descargar Excel</button>
-      <button id="btnRefresh" class="btn btn-ghost" title="Refrescar">🔄</button>
-      <a class="nav-link" href="pages/vehiculos.html" title="Registro de Vehículos">Registro Vehículos</a>
-    </div>
-  </header>
+    <!-- Barra superior fija -->
+    <header class="topbar">
+        <img src="./img/logo.png" class="logo">
 
-  <main id="main" role="main">
-    <section class="container">
-      <div id="status" class="status" aria-live="polite" hidden></div>
+        <input id="search" type="text" placeholder="Buscar..." class="search">
 
-      <div class="card">
-        <div class="table-wrapper" role="region" aria-label="Tabla de stock">
-          <table id="stockTable" class="table" summary="Tabla de control de stock">
+        <button id="btnRefresh" class="btn">Refrescar</button>
+        <button id="btnSaveAll" class="btn save">Guardar cambios</button>
+        <button id="btnDownload" class="btn excel">Descargar Excel</button>
+
+        <a href="./pages/vehiculos.html" class="btn link">Vehículos</a>
+    </header>
+
+    <!-- Contenedor principal -->
+    <main>
+        <div id="status" class="status" hidden></div>
+
+        <table id="stockTable" class="tabla">
             <thead>
-              <tr>
-                <th scope="col">Código</th>
-                <th scope="col">Marca</th>
-                <th scope="col">Stock</th>
-                <th scope="col">Ajustar</th>
-              </tr>
+                <tr>
+                    <th>Código</th>
+                    <th>Marca</th>
+                    <th>Stock</th>
+                    <th>Acción</th>
+                </tr>
             </thead>
-            <tbody>
-              <!-- Filas generadas dinámicamente por /js/stock.js -->
-            </tbody>
-          </table>
-        </div>
-      </div>
+            <tbody></tbody>
+        </table>
+    </main>
 
-      <div class="footer-note">Colores: verde (&gt;5) — naranja (4 a 2) — rojo (1, 0 o vacío).</div>
-    </section>
-  </main>
+    <!-- Template de filas -->
+    <template id="row-template">
+        <tr>
+            <td class="td-codigo"></td>
+            <td class="td-marca"></td>
 
-  <!-- Plantilla de fila (opcional, usada por stock.js) -->
-  <template id="row-template">
-    <tr>
-      <td class="td-codigo"></td>
-      <td class="td-marca"></td>
-      <td class="td-stock">
-        <input type="number" class="input-stock" min="0" />
-      </td>
-      <td class="td-actions">
-        <button class="btn-small btn-plus" aria-label="Sumar">+</button>
-        <button class="btn-small btn-minus" aria-label="Restar">−</button>
-      </td>
-    </tr>
-  </template>
+            <td class="td-stock">
+                <input class="input-stock" type="number" min="0">
+            </td>
 
-  <!-- Scripts modulares (defer para cargar al final) -->
-  <script src="js/api.js" defer></script>
-  <script src="js/ui.js" defer></script>
-  <script src="js/stock.js" defer></script>
+            <td class="td-accion">
+                <button class="btn-plus">+</button>
+                <button class="btn-minus">−</button>
+            </td>
+        </tr>
+    </template>
+
+    <!-- JS principal (MÓDULO) -->
+    <script type="module" src="./js/stock.js"></script>
 </body>
 </html>
