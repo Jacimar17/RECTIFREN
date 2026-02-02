@@ -13,7 +13,6 @@
       --muted:#64748b;
       --line:#e2e8f0;
       --accent:#2563eb;
-      --accent2:#0b1220;
       --shadow: 0 10px 25px rgba(2,6,23,.08);
       --radius: 16px;
     }
@@ -44,7 +43,7 @@
       display:flex;
       gap:14px;
       align-items:center;
-      margin-bottom: 16px;
+      margin-bottom: 10px;
     }
 
     header img{
@@ -60,19 +59,28 @@
     h1{ margin:0; font-size: 28px; letter-spacing: .2px; }
     .muted{ color: var(--muted); font-size: 13px; margin-top: 3px; }
 
+    /* Toolbar sticky */
     .toolbar{
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--card);
+      border-bottom: 1px solid var(--line);
+      padding: 12px 0;
+      margin: 12px 0 12px;
+
       display:flex;
       gap:10px;
       align-items:center;
       flex-wrap: wrap;
-      margin: 12px 0 12px;
     }
 
     .search{
-      flex: 1 1 320px;
+      flex: 1 1 360px;
       display:flex;
       gap:10px;
       align-items:center;
+      min-width: 280px;
     }
 
     input{
@@ -85,7 +93,7 @@
       font-size: 14px;
     }
 
-    button, a.btn{
+    button{
       padding: 10px 12px;
       border-radius: 12px;
       border: 1px solid var(--line);
@@ -93,20 +101,19 @@
       cursor: pointer;
       font-weight: 600;
       font-size: 14px;
-      text-decoration: none;
       color: var(--text);
       display:inline-flex;
       align-items:center;
       gap:8px;
     }
 
-    button.primary, a.btn.primary{
+    button.primary{
       background: var(--accent);
       color:#fff;
       border-color: transparent;
     }
 
-    button:hover, a.btn:hover{ filter: brightness(0.98); }
+    button:hover{ filter: brightness(0.98); }
 
     .tableWrap{
       overflow:auto;
@@ -118,16 +125,17 @@
     table{
       width:100%;
       border-collapse: collapse;
-      table-layout: fixed; /* clave para controlar anchos */
-      min-width: 760px;    /* evita que se rompa en pantallas chicas */
+      table-layout: fixed;
+      min-width: 760px;
     }
 
     thead th{
       position: sticky;
-      top: 0;
+      top: 58px; /* para que quede debajo de la toolbar sticky */
       background: #f8fafc;
-      z-index: 1;
+      z-index: 5;
       border-bottom: 1px solid var(--line);
+      text-align: center; /* Encabezados centrados */
     }
 
     th, td{
@@ -137,20 +145,87 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      text-align: center; /* Columnas centradas */
     }
 
-    /* Anchos y alineación */
-    th.col-codigo, td.col-codigo{ width: 140px; text-align:center; }
-    th.col-marca,  td.col-marca { width: 260px; text-align:center; }
-    th.col-stock,  td.col-stock { width: 120px; text-align:center; }
+    /* Anchos (ajustables) */
+    th.col-codigo, td.col-codigo{ width: 150px; }
+    th.col-marca,  td.col-marca { width: 300px; }
+    th.col-stock,  td.col-stock { width: 140px; }
 
-    /* En desktop queda centrado, en móvil se mantiene legible */
+    #status{ margin: 10px 0 0; }
+
+    /* ---------- Modal Login ---------- */
+    .modalOverlay{
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      z-index: 50;
+    }
+
+    .modal{
+      width: 100%;
+      max-width: 440px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+
+    .modalHeader{
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .modalTitle{
+      margin: 0;
+      font-size: 16px;
+    }
+
+    .modalClose{
+      border-radius: 10px;
+      padding: 8px 10px;
+    }
+
+    .modalBody{
+      display: grid;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .row2{
+      display:grid;
+      gap: 10px;
+      grid-template-columns: 1fr;
+    }
+
+    .modalActions{
+      display:flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 12px;
+    }
+
+    .hint{
+      margin: 8px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
     @media (max-width: 600px){
       h1{ font-size: 22px; }
       header img{ width: 60px; height: 60px; }
+      thead th{ top: 108px; } /* toolbar en móvil puede ocupar más alto */
     }
-
-    #status{ margin: 10px 0 0; }
   </style>
 </head>
 
@@ -171,8 +246,7 @@
           <button id="refresh">Actualizar</button>
         </div>
 
-        <!-- Botón para ir al panel admin (lo creamos en el Paso 2) -->
-        <a class="btn primary" href="admin.html">Administrador</a>
+        <button id="btnAdmin" class="primary">Administrador</button>
       </div>
 
       <div class="tableWrap">
@@ -192,6 +266,86 @@
     </div>
   </div>
 
+  <!-- Modal Login -->
+  <div id="modalOverlay" class="modalOverlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modalHeader">
+        <h2 id="modalTitle" class="modalTitle">Acceso Administrador</h2>
+        <button id="btnCloseModal" class="modalClose" title="Cerrar">✕</button>
+      </div>
+
+      <div class="modalBody">
+        <div class="row2">
+          <input id="adminUser" placeholder="Usuario" autocomplete="username" />
+          <input id="adminPass" type="password" placeholder="Contraseña" autocomplete="current-password" />
+        </div>
+
+        <div class="hint">
+          En el Paso 2, al iniciar sesión se habilitarán: <strong>+</strong> / <strong>−</strong> / <strong>✏️</strong>, guardado automático y últimos movimientos.
+        </div>
+
+        <div class="modalActions">
+          <button id="btnCancel">Cancelar</button>
+          <button id="btnLogin" class="primary">Ingresar</button>
+        </div>
+
+        <p id="loginStatus" class="muted"></p>
+      </div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
+
+  <script>
+    // Modal UI (en Paso 2 lo conectamos al backend real)
+    const modalOverlay = document.getElementById("modalOverlay");
+    const btnAdmin = document.getElementById("btnAdmin");
+    const btnCloseModal = document.getElementById("btnCloseModal");
+    const btnCancel = document.getElementById("btnCancel");
+    const btnLogin = document.getElementById("btnLogin");
+    const loginStatus = document.getElementById("loginStatus");
+
+    function openModal(){
+      loginStatus.textContent = "";
+      modalOverlay.style.display = "flex";
+      modalOverlay.setAttribute("aria-hidden", "false");
+      document.getElementById("adminUser").focus();
+    }
+
+    function closeModal(){
+      modalOverlay.style.display = "none";
+      modalOverlay.setAttribute("aria-hidden", "true");
+    }
+
+    btnAdmin.addEventListener("click", openModal);
+    btnCloseModal.addEventListener("click", closeModal);
+    btnCancel.addEventListener("click", closeModal);
+
+    modalOverlay.addEventListener("click", (e) => {
+      if (e.target === modalOverlay) closeModal();
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && modalOverlay.style.display === "flex") closeModal();
+    });
+
+    // Login placeholder (Paso 2: validación real + habilitar edición)
+    btnLogin.addEventListener("click", () => {
+      const u = document.getElementById("adminUser").value.trim();
+      const p = document.getElementById("adminPass").value;
+
+      if (!u || !p) {
+        loginStatus.textContent = "Complete usuario y contraseña.";
+        return;
+      }
+
+      // Guardamos temporalmente (Paso 2: se reemplaza por autenticación real)
+      sessionStorage.setItem("rectifren_admin_user", u);
+      sessionStorage.setItem("rectifren_admin_pass", p);
+
+      loginStatus.textContent = "Credenciales ingresadas. En el Paso 2 se validarán y se habilitará la edición.";
+      // closeModal(); // si quiere cerrar automáticamente, descomente esta línea
+    });
+  </script>
 </body>
 </html>
