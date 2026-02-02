@@ -15,6 +15,9 @@
       --accent:#2563eb;
       --shadow: 0 10px 25px rgba(2,6,23,.08);
       --radius: 16px;
+
+      /* Se setea por JS con la altura real de la toolbar */
+      --toolbar-h: 72px;
     }
 
     *{ box-sizing: border-box; }
@@ -63,7 +66,7 @@
     .toolbar{
       position: sticky;
       top: 0;
-      z-index: 10;
+      z-index: 20;
       background: var(--card);
       border-bottom: 1px solid var(--line);
       padding: 12px 0;
@@ -129,13 +132,14 @@
       min-width: 760px;
     }
 
+    /* Encabezado sticky correcto: top = altura real de la toolbar */
     thead th{
       position: sticky;
-      top: 58px; /* para que quede debajo de la toolbar sticky */
+      top: var(--toolbar-h);
       background: #f8fafc;
-      z-index: 5;
+      z-index: 10;
       border-bottom: 1px solid var(--line);
-      text-align: center; /* Encabezados centrados */
+      text-align: center;
     }
 
     th, td{
@@ -145,7 +149,7 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      text-align: center; /* Columnas centradas */
+      text-align: center;
     }
 
     /* Anchos (ajustables) */
@@ -201,12 +205,6 @@
       margin-top: 10px;
     }
 
-    .row2{
-      display:grid;
-      gap: 10px;
-      grid-template-columns: 1fr;
-    }
-
     .modalActions{
       display:flex;
       gap: 10px;
@@ -219,12 +217,6 @@
       font-size: 12px;
       color: var(--muted);
       line-height: 1.4;
-    }
-
-    @media (max-width: 600px){
-      h1{ font-size: 22px; }
-      header img{ width: 60px; height: 60px; }
-      thead th{ top: 108px; } /* toolbar en móvil puede ocupar más alto */
     }
   </style>
 </head>
@@ -240,7 +232,7 @@
         </div>
       </header>
 
-      <div class="toolbar">
+      <div class="toolbar" id="toolbar">
         <div class="search">
           <input id="search" placeholder="Buscar por CODIGO o MARCA..." />
           <button id="refresh">Actualizar</button>
@@ -275,13 +267,11 @@
       </div>
 
       <div class="modalBody">
-        <div class="row2">
-          <input id="adminUser" placeholder="Usuario" autocomplete="username" />
-          <input id="adminPass" type="password" placeholder="Contraseña" autocomplete="current-password" />
-        </div>
+        <input id="adminUser" placeholder="Usuario" autocomplete="username" />
+        <input id="adminPass" type="password" placeholder="Contraseña" autocomplete="current-password" />
 
         <div class="hint">
-          En el Paso 2, al iniciar sesión se habilitarán: <strong>+</strong> / <strong>−</strong> / <strong>✏️</strong>, guardado automático y últimos movimientos.
+          En el Paso 2 se validarán credenciales y se habilitarán: <strong>+</strong> / <strong>−</strong> / <strong>✏️</strong>, guardado automático y últimos movimientos.
         </div>
 
         <div class="modalActions">
@@ -297,7 +287,17 @@
   <script src="app.js"></script>
 
   <script>
-    // Modal UI (en Paso 2 lo conectamos al backend real)
+    // Ajuste dinámico del top del encabezado sticky (evita el bug)
+    function setToolbarHeightVar(){
+      const tb = document.getElementById("toolbar");
+      if (!tb) return;
+      const h = Math.ceil(tb.getBoundingClientRect().height);
+      document.documentElement.style.setProperty("--toolbar-h", h + "px");
+    }
+    window.addEventListener("load", setToolbarHeightVar);
+    window.addEventListener("resize", setToolbarHeightVar);
+
+    // Modal UI
     const modalOverlay = document.getElementById("modalOverlay");
     const btnAdmin = document.getElementById("btnAdmin");
     const btnCloseModal = document.getElementById("btnCloseModal");
@@ -339,12 +339,11 @@
         return;
       }
 
-      // Guardamos temporalmente (Paso 2: se reemplaza por autenticación real)
       sessionStorage.setItem("rectifren_admin_user", u);
       sessionStorage.setItem("rectifren_admin_pass", p);
 
       loginStatus.textContent = "Credenciales ingresadas. En el Paso 2 se validarán y se habilitará la edición.";
-      // closeModal(); // si quiere cerrar automáticamente, descomente esta línea
+      // closeModal();
     });
   </script>
 </body>
