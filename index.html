@@ -3,35 +3,90 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>RECTIFREN | Stock</title>
+  <title>RECTIFREN | Inventario</title>
+
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    header { display:flex; gap:12px; align-items:center; }
-    img { width:70px; height:70px; object-fit:contain; }
-    input { padding:8px; width: 320px; max-width: 100%; }
-    button { padding:8px 10px; cursor:pointer; }
-    table { width:100%; border-collapse:collapse; margin-top:12px; }
-    th, td { border:1px solid #ccc; padding:8px; text-align:left; }
-    th { background:#f2f2f2; }
-    .right { text-align:right; }
-    .muted { color:#666; font-size:13px; }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #ffffff;
+      color: #222;
+    }
+
+    header {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    header img {
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+    }
+
+    h1 {
+      margin: 0;
+    }
+
+    .muted {
+      color: #666;
+      font-size: 13px;
+    }
+
+    input {
+      padding: 8px;
+      width: 320px;
+      max-width: 100%;
+      margin-right: 6px;
+    }
+
+    button {
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 14px;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+
+    th {
+      background: #f2f2f2;
+    }
+
+    .right {
+      text-align: right;
+    }
   </style>
 </head>
+
 <body>
+
+  <!-- CABECERA CON LOGO -->
   <header>
-    <!-- El logo lo agregaremos luego -->
-    <!-- <img src="assets/logo_rectifren.png" alt="RECTIFREN" /> -->
+    <img src="assets/logo_rectifren.png" alt="RECTIFREN" />
     <div>
       <h1>Inventario RECTIFREN</h1>
       <div class="muted">Visualización pública del stock</div>
     </div>
   </header>
 
-  <div style="margin-top:14px;">
+  <!-- BUSCADOR -->
+  <div>
     <input id="search" placeholder="Buscar por CODIGO o MARCA..." />
     <button id="refresh">Actualizar</button>
   </div>
 
+  <!-- TABLA -->
   <table>
     <thead>
       <tr>
@@ -43,8 +98,11 @@
     <tbody id="tbody"></tbody>
   </table>
 
+  <!-- ESTADO -->
   <p id="status" class="muted"></p>
 
+  <!-- SCRIPT -->
   <script src="app.js"></script>
+
 </body>
 </html>
