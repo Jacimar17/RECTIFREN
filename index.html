@@ -15,8 +15,6 @@
       --accent:#2563eb;
       --shadow: 0 10px 25px rgba(2,6,23,.08);
       --radius: 16px;
-
-      /* Se setea por JS con la altura real de la toolbar */
       --toolbar-h: 72px;
     }
 
@@ -118,11 +116,13 @@
 
     button:hover{ filter: brightness(0.98); }
 
+    /* IMPORTANTE: NO overflow:auto acá (evita el bug del sticky) */
     .tableWrap{
-      overflow:auto;
       border-radius: 14px;
       border: 1px solid var(--line);
       background: #fff;
+      overflow-x: auto; /* solo horizontal si hace falta */
+      overflow-y: visible;
     }
 
     table{
@@ -130,16 +130,25 @@
       border-collapse: collapse;
       table-layout: fixed;
       min-width: 760px;
+      background: #fff;
     }
 
-    /* Encabezado sticky correcto: top = altura real de la toolbar */
+    thead{
+      display: table-header-group; /* ayuda a evitar “cortes” */
+    }
+
+    /* Encabezado sticky respecto del scroll de página */
     thead th{
       position: sticky;
       top: var(--toolbar-h);
-      background: #f8fafc;
       z-index: 10;
+      background: #f8fafc;
+      background-clip: padding-box;
       border-bottom: 1px solid var(--line);
       text-align: center;
+
+      /* Esto evita que parezca “cortado” */
+      box-shadow: 0 6px 10px rgba(2,6,23,.06);
     }
 
     th, td{
@@ -152,7 +161,6 @@
       text-align: center;
     }
 
-    /* Anchos (ajustables) */
     th.col-codigo, td.col-codigo{ width: 150px; }
     th.col-marca,  td.col-marca { width: 300px; }
     th.col-stock,  td.col-stock { width: 140px; }
@@ -287,7 +295,7 @@
   <script src="app.js"></script>
 
   <script>
-    // Ajuste dinámico del top del encabezado sticky (evita el bug)
+    // Ajuste dinámico del top del encabezado sticky
     function setToolbarHeightVar(){
       const tb = document.getElementById("toolbar");
       if (!tb) return;
@@ -343,7 +351,6 @@
       sessionStorage.setItem("rectifren_admin_pass", p);
 
       loginStatus.textContent = "Credenciales ingresadas. En el Paso 2 se validarán y se habilitará la edición.";
-      // closeModal();
     });
   </script>
 </body>
