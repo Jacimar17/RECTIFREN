@@ -152,15 +152,16 @@ async function handleAction(act, codigo, marca, currentStock) {
     if (act === "in" || act === "out") {
       setBusyState(true, "Aplicando cambio…");
       const cantidad = 1;
-      const nota = act === "in" ? "+1 (botón)" : "-1 (botón)";
-      const res = await apiPostForm({ action: act, user, pass, codigo, marca, cantidad, nota });
+
+      // ✅ SIN nota
+      const res = await apiPostForm({ action: act, user, pass, codigo, marca, cantidad });
       if (!res.ok) {
         alert(`Error: ${res.error || "No se pudo operar."}`);
         return;
       }
     }
 
-    // ✏️: pide nuevo stock
+    // ✏️: pide nuevo stock (sin pedir nota)
     if (act === "set") {
       // se libera el overlay para que el prompt sea utilizable
       setBusyState(false);
@@ -177,10 +178,10 @@ async function handleAction(act, codigo, marca, currentStock) {
         return;
       }
 
-      const nota = prompt("Nota (opcional):", "Ajuste") || "Ajuste";
-
       setBusyState(true, "Guardando edición…");
-      const res = await apiPostForm({ action: "set", user, pass, codigo, marca, nuevoStock, nota });
+
+      // ✅ SIN nota
+      const res = await apiPostForm({ action: "set", user, pass, codigo, marca, nuevoStock });
       if (!res.ok) {
         alert(`Error: ${res.error || "No se pudo guardar."}`);
         return;
@@ -200,7 +201,9 @@ async function handleAction(act, codigo, marca, currentStock) {
 
 function bindEvents() {
   $("refresh").addEventListener("click", () => { if (!busy) loadStock(); });
-  $("search").addEventListener("input", () => renderStock({ list: cache, isAdmin, viewFilter, query: $("search").value }));
+  $("search").addEventListener("input", () => {
+    renderStock({ list: cache, isAdmin, viewFilter, query: $("search").value });
+  });
 
   $("btnAdmin").addEventListener("click", () => { if (!busy) openModal(); });
   $("btnCloseModal").addEventListener("click", () => { if (!busy) closeModal(); });
