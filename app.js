@@ -19,17 +19,30 @@ async function apiGet(params) {
   return await res.json();
 }
 
-// POST SIN JSON (evita preflight CORS)
-async function apiPostForm(bodyObj) {
+// POST urlencoded + timeout + parse robusto
+async function apiPostForm(bodyObj, timeoutMs = 12000) {
   const form = new URLSearchParams();
   Object.entries(bodyObj).forEach(([k, v]) => form.set(k, String(v)));
 
-  const res = await fetch(API_URL, {
-    method: "POST",
-    body: form
-  });
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), timeoutMs);
 
-  return await res.json();
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      body: form,
+      signal: controller.signal
+    });
+
+    const text = await res.text(); // puede ser JSON o HTML
+    try {
+      return JSON.parse(text);
+    } catch {
+      return { ok: false, error: "Respuesta no JSON del servidor.", raw: text.slice(0, 200) };
+    }
+  } finally {
+    clearTimeout(t);
+  }
 }
 
 function fmtDate(iso) {
@@ -174,8 +187,8 @@ function closeModal() {
 async function adminLogin() {
   const user = el("adminUser").value.trim();
   const pass = el("adminPass").value;
-
   const ls = el("loginStatus");
+
   ls.textContent = "Validando credenciales...";
 
   if (!user || !pass) {
@@ -186,9 +199,15 @@ async function adminLogin() {
   try {
     const res = await apiPostForm({ action: "login", user, pass });
 
-    if (!res.ok) {
+    if (!res || !res.ok) {
       isAdmin = false;
-      ls.textContent = `Error: ${res.error || "Login inválido"}`;
+
+      // Si trajo un fragmento raw, lo mostramos acotado para diagnóstico
+      if (res && res.raw) {
+        ls.textContent = `Error: ${res.error} (resp: ${res.raw})`;
+      } else {
+        ls.textContent = `Error: ${(res && res.error) ? res.error : "Login inválido / sin respuesta."}`;
+      }
       return;
     }
 
@@ -196,13 +215,16 @@ async function adminLogin() {
     sessionStorage.setItem("rectifren_admin_pass", pass);
 
     isAdmin = true;
-    ls.textContent = "Login correcto. Edición habilitada.";
     closeModal();
 
     render(cache);
     await loadMovs();
   } catch (err) {
-    ls.textContent = `Error de conexión: ${String(err)}`;
+    if (String(err).includes("AbortError")) {
+      ls.textContent = "Error: el servidor tardó demasiado (timeout).";
+    } else {
+      ls.textContent = `Error de conexión: ${String(err)}`;
+    }
   }
 }
 
