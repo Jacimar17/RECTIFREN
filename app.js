@@ -34,7 +34,7 @@ async function apiPostForm(bodyObj, timeoutMs = 12000) {
       signal: controller.signal
     });
 
-    const text = await res.text(); // puede ser JSON o HTML
+    const text = await res.text();
     try {
       return JSON.parse(text);
     } catch {
@@ -92,9 +92,9 @@ function render(list) {
     const acciones = isAdmin
       ? `
         <td class="col-acciones">
-          <button class="mini" data-act="in"  data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${Number(item.stock || 0)}">+</button>
-          <button class="mini danger" data-act="out" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${Number(item.stock || 0)}">−</button>
-          <button class="mini" data-act="set" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${Number(item.stock || 0)}">✏️</button>
+          <button class="mini success" data-act="in"  data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}">+</button>
+          <button class="mini danger"  data-act="out" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}">−</button>
+          <button class="mini"         data-act="set" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${Number(item.stock || 0)}">✏️</button>
         </td>
       `
       : "";
@@ -201,13 +201,7 @@ async function adminLogin() {
 
     if (!res || !res.ok) {
       isAdmin = false;
-
-      // Si trajo un fragmento raw, lo mostramos acotado para diagnóstico
-      if (res && res.raw) {
-        ls.textContent = `Error: ${res.error} (resp: ${res.raw})`;
-      } else {
-        ls.textContent = `Error: ${(res && res.error) ? res.error : "Login inválido / sin respuesta."}`;
-      }
+      ls.textContent = `Error: ${(res && res.error) ? res.error : "Login inválido / sin respuesta."}`;
       return;
     }
 
@@ -220,11 +214,9 @@ async function adminLogin() {
     render(cache);
     await loadMovs();
   } catch (err) {
-    if (String(err).includes("AbortError")) {
-      ls.textContent = "Error: el servidor tardó demasiado (timeout).";
-    } else {
-      ls.textContent = `Error de conexión: ${String(err)}`;
-    }
+    ls.textContent = String(err).includes("AbortError")
+      ? "Error: el servidor tardó demasiado (timeout)."
+      : `Error de conexión: ${String(err)}`;
   }
 }
 
@@ -238,6 +230,11 @@ function adminLogout() {
   alert("Sesión de administrador cerrada.");
 }
 
+/**
+ * Acciones:
+ * - in/out: SUMA/RESTA automática de 1 (sin prompt)
+ * - set: prompt para nuevo stock (edición)
+ */
 async function handleAction(act, codigo, marca, currentStock) {
   const { user, pass } = getCreds();
   if (!user || !pass) {
@@ -246,20 +243,10 @@ async function handleAction(act, codigo, marca, currentStock) {
   }
 
   try {
+    // + y - automáticos (1 unidad)
     if (act === "in" || act === "out") {
-      const raw = prompt(
-        `Ingrese cantidad para ${act === "in" ? "SUMAR (ENTRADA)" : "RESTAR (SALIDA)"}\n${codigo} - ${marca}`,
-        "1"
-      );
-      if (raw === null) return;
-
-      const cantidad = Number(raw);
-      if (!Number.isFinite(cantidad) || cantidad <= 0) {
-        alert("Cantidad inválida.");
-        return;
-      }
-
-      const nota = prompt("Nota (opcional):", "") || "";
+      const cantidad = 1;
+      const nota = act === "in" ? "+1 (botón)" : "-1 (botón)";
 
       const res = await apiPostForm({ action: act, user, pass, codigo, marca, cantidad, nota });
       if (!res.ok) {
@@ -268,9 +255,10 @@ async function handleAction(act, codigo, marca, currentStock) {
       }
     }
 
+    // Lápiz: pedir nuevo stock
     if (act === "set") {
       const raw = prompt(
-        `Nuevo STOCK para:\n${codigo} - ${marca}\n(Stock actual: ${currentStock})`,
+        `Editar STOCK (nuevo valor)\n${codigo} - ${marca}\nStock actual: ${currentStock}`,
         String(currentStock)
       );
       if (raw === null) return;
@@ -281,7 +269,7 @@ async function handleAction(act, codigo, marca, currentStock) {
         return;
       }
 
-      const nota = prompt("Nota (opcional):", "Ajuste") || "";
+      const nota = prompt("Nota (opcional):", "Ajuste") || "Ajuste";
 
       const res = await apiPostForm({ action: "set", user, pass, codigo, marca, nuevoStock, nota });
       if (!res.ok) {
@@ -290,8 +278,10 @@ async function handleAction(act, codigo, marca, currentStock) {
       }
     }
 
+    // Guardado automático: recarga vista y movimientos
     await loadStock();
     await loadMovs();
+
   } catch (err) {
     alert(`Error de conexión: ${String(err)}`);
   }
@@ -319,6 +309,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   el("movRange").addEventListener("change", loadMovs);
 
+  // Delegación para + / − / ✏️
   el("tbody").addEventListener("click", async (ev) => {
     const btn = ev.target.closest("button[data-act]");
     if (!btn) return;
