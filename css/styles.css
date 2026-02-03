@@ -13,6 +13,7 @@
 }
 
 *{ box-sizing: border-box; }
+
 body{
   margin:0;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
@@ -115,6 +116,7 @@ button:hover{ filter: brightness(0.98); }
   flex-wrap: wrap;
   margin: 0 0 12px;
 }
+
 .chip{
   padding: 8px 10px;
   border-radius: 999px;
@@ -124,6 +126,7 @@ button:hover{ filter: brightness(0.98); }
   font-size: 13px;
   cursor: pointer;
 }
+
 .chip.active{
   background: #0f172a;
   color: #fff;
@@ -202,11 +205,13 @@ tr.row-low{ background: rgba(245, 158, 11, 0.12); }
   background: #fff;
   margin-left: 8px;
 }
+
 .badge.out{
   border-color: rgba(239, 68, 68, .35);
   color: #b91c1c;
   background: rgba(239, 68, 68, 0.08);
 }
+
 .badge.low{
   border-color: rgba(245, 158, 11, .35);
   color: #92400e;
@@ -223,6 +228,7 @@ tr.row-low{ background: rgba(245, 158, 11, 0.12); }
   flex-wrap:wrap;
   margin-bottom:10px;
 }
+
 .select{
   padding:10px 12px;
   border-radius:12px;
@@ -267,12 +273,14 @@ tr.row-low{ background: rgba(245, 158, 11, 0.12); }
   gap: 10px;
   margin-top: 10px;
 }
+
 .modalActions{
   display:flex;
   gap: 10px;
   justify-content: flex-end;
   margin-top: 12px;
 }
+
 .hint{
   margin: 8px 0 0;
   font-size: 12px;
@@ -280,36 +288,67 @@ tr.row-low{ background: rgba(245, 158, 11, 0.12); }
   line-height: 1.4;
 }
 
-/* Overlay de carga */
+/* =========================
+   Overlay de carga (ESTÉTICO)
+   ========================= */
 .busyOverlay{
   position: fixed;
   inset: 0;
-  background: rgba(255,255,255,.65);
   display: none;
   align-items: center;
   justify-content: center;
   z-index: 80;
-  backdrop-filter: blur(2px);
+
+  background: rgba(2, 6, 23, 0.35);
+  backdrop-filter: blur(6px);
 }
+
 .busyCard{
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  box-shadow: var(--shadow);
-  padding: 16px 18px;
+  width: min(520px, calc(100% - 36px));
+  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(226,232,240,0.9);
+  border-radius: 18px;
+  box-shadow: 0 18px 45px rgba(2,6,23,.22);
+  padding: 16px 16px;
+
   display:flex;
-  align-items:center;
-  gap: 12px;
-  min-width: 280px;
+  align-items: center;
+  gap: 14px;
+
+  transform: translateY(8px);
+  opacity: 0;
+  animation: popIn .18s ease-out forwards;
 }
+
+@keyframes popIn {
+  to { transform: translateY(0); opacity: 1; }
+}
+
 .spinner{
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 3px solid rgba(15,23,42,.15);
-  border-top-color: rgba(15,23,42,.75);
-  animation: spin .9s linear infinite;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 4px solid rgba(15,23,42,.12);
+  border-top-color: rgba(37,99,235,.95);
+  animation: spin .85s linear infinite;
+  flex: 0 0 auto;
 }
+
 @keyframes spin { to { transform: rotate(360deg); } }
-.busyText{ font-weight: 800; font-size: 14px; }
-.busySub{ font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+.busyText{
+  font-weight: 900;
+  font-size: 15px;
+  letter-spacing: .2px;
+}
+
+.busySub{
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+  line-height: 1.35;
+}
+
+.busyOverlay, .busyCard{
+  user-select: none;
+}
