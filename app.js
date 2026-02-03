@@ -1,4 +1,4 @@
-const API_URL = "https://script.google.com/macros/s/AKfycbzFSQtb-uD43OWt6VVmrzgGuq-deTeViiPsYVdOa7HQz17hqiuDQyxgDVLYbnmQ166EPQ/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwQxJSgyBZMRd3O--H6YixMuW9q8W_oYAHU_fiHK8VzFg_hRgn-GOqgDlZ5zfbi_R6ZyA/exec";
 
 const el = (id) => document.getElementById(id);
 
@@ -19,21 +19,31 @@ async function apiGet(params) {
   return await res.json();
 }
 
-async function apiPost(body) {
+// POST SIN JSON (evita preflight CORS)
+async function apiPostForm(bodyObj) {
+  const form = new URLSearchParams();
+  Object.entries(bodyObj).forEach(([k, v]) => form.set(k, String(v)));
+
   const res = await fetch(API_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
+    body: form
   });
+
   return await res.json();
 }
 
 function fmtDate(iso) {
-  try {
-    return new Date(iso).toLocaleString("es-AR");
-  } catch {
-    return iso;
-  }
+  try { return new Date(iso).toLocaleString("es-AR"); }
+  catch { return iso; }
+}
+
+function escapeHtml(str) {
+  return String(str ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 function ensureAccionesHeader() {
@@ -48,9 +58,7 @@ function ensureAccionesHeader() {
     th.textContent = "ACCIONES";
     theadRow.appendChild(th);
   }
-  if (!isAdmin && existing) {
-    existing.remove();
-  }
+  if (!isAdmin && existing) existing.remove();
 }
 
 function render(list) {
@@ -84,20 +92,10 @@ function render(list) {
       <td class="col-stock">${Number(item.stock || 0)}</td>
       ${acciones}
     `;
-
     tbody.appendChild(tr);
   }
 
   el("status").textContent = `Mostrando ${filtered.length} de ${list.length} registros.`;
-}
-
-function escapeHtml(str) {
-  return String(str ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
 }
 
 async function loadStock() {
@@ -130,32 +128,47 @@ async function loadMovs() {
   const status = el("movStatus");
   status.textContent = "Cargando movimientos...";
 
-  const data = await apiGet({ action: "movements", range });
+  try {
+    const data = await apiGet({ action: "movements", range });
+    if (!data.ok) {
+      status.textContent = `Error: ${data.error || "No se pudo cargar."}`;
+      return;
+    }
 
-  if (!data.ok) {
-    status.textContent = `Error: ${data.error || "No se pudo cargar."}`;
-    return;
+    const tbody = el("movTbody");
+    tbody.innerHTML = "";
+
+    for (const m of (data.data || [])) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${escapeHtml(fmtDate(m.fecha))}</td>
+        <td>${escapeHtml(m.accion)}</td>
+        <td>${escapeHtml(m.codigo)}</td>
+        <td>${escapeHtml(m.marca)}</td>
+        <td class="center">${Number(m.cantidad || 0)}</td>
+        <td class="center">${Number(m.stock_anterior || 0)}</td>
+        <td class="center">${Number(m.stock_nuevo || 0)}</td>
+        <td>${escapeHtml(m.nota || "")}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    status.textContent = `Movimientos: ${(data.data || []).length}`;
+  } catch (err) {
+    status.textContent = `Error: ${String(err)}`;
   }
+}
 
-  const tbody = el("movTbody");
-  tbody.innerHTML = "";
+function openModal() {
+  el("loginStatus").textContent = "";
+  el("modalOverlay").style.display = "flex";
+  el("modalOverlay").setAttribute("aria-hidden", "false");
+  el("adminUser").focus();
+}
 
-  for (const m of (data.data || [])) {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${escapeHtml(fmtDate(m.fecha))}</td>
-      <td>${escapeHtml(m.accion)}</td>
-      <td>${escapeHtml(m.codigo)}</td>
-      <td>${escapeHtml(m.marca)}</td>
-      <td class="center">${Number(m.cantidad || 0)}</td>
-      <td class="center">${Number(m.stock_anterior || 0)}</td>
-      <td class="center">${Number(m.stock_nuevo || 0)}</td>
-      <td>${escapeHtml(m.nota || "")}</td>
-    `;
-    tbody.appendChild(tr);
-  }
-
-  status.textContent = `Movimientos: ${(data.data || []).length}`;
+function closeModal() {
+  el("modalOverlay").style.display = "none";
+  el("modalOverlay").setAttribute("aria-hidden", "true");
 }
 
 async function adminLogin() {
@@ -170,23 +183,27 @@ async function adminLogin() {
     return;
   }
 
-  const res = await apiPost({ action: "login", user, pass });
+  try {
+    const res = await apiPostForm({ action: "login", user, pass });
 
-  if (!res.ok) {
-    isAdmin = false;
-    ls.textContent = `Error: ${res.error || "Login inválido"}`;
-    return;
+    if (!res.ok) {
+      isAdmin = false;
+      ls.textContent = `Error: ${res.error || "Login inválido"}`;
+      return;
+    }
+
+    sessionStorage.setItem("rectifren_admin_user", user);
+    sessionStorage.setItem("rectifren_admin_pass", pass);
+
+    isAdmin = true;
+    ls.textContent = "Login correcto. Edición habilitada.";
+    closeModal();
+
+    render(cache);
+    await loadMovs();
+  } catch (err) {
+    ls.textContent = `Error de conexión: ${String(err)}`;
   }
-
-  sessionStorage.setItem("rectifren_admin_user", user);
-  sessionStorage.setItem("rectifren_admin_pass", pass);
-
-  isAdmin = true;
-  ls.textContent = "Login correcto. Edición habilitada.";
-
-  closeModal();
-  render(cache);
-  await loadMovs();
 }
 
 function adminLogout() {
@@ -201,83 +218,68 @@ function adminLogout() {
 
 async function handleAction(act, codigo, marca, currentStock) {
   const { user, pass } = getCreds();
-
   if (!user || !pass) {
     alert("No está autenticado como administrador.");
     return;
   }
 
-  if (act === "in" || act === "out") {
-    const raw = prompt(
-      `Ingrese cantidad para ${act === "in" ? "SUMAR (ENTRADA)" : "RESTAR (SALIDA)"}\n${codigo} - ${marca}`,
-      "1"
-    );
-    if (raw === null) return;
+  try {
+    if (act === "in" || act === "out") {
+      const raw = prompt(
+        `Ingrese cantidad para ${act === "in" ? "SUMAR (ENTRADA)" : "RESTAR (SALIDA)"}\n${codigo} - ${marca}`,
+        "1"
+      );
+      if (raw === null) return;
 
-    const cantidad = Number(raw);
-    if (!Number.isFinite(cantidad) || cantidad <= 0) {
-      alert("Cantidad inválida.");
-      return;
+      const cantidad = Number(raw);
+      if (!Number.isFinite(cantidad) || cantidad <= 0) {
+        alert("Cantidad inválida.");
+        return;
+      }
+
+      const nota = prompt("Nota (opcional):", "") || "";
+
+      const res = await apiPostForm({ action: act, user, pass, codigo, marca, cantidad, nota });
+      if (!res.ok) {
+        alert(`Error: ${res.error || "No se pudo operar."}`);
+        return;
+      }
     }
 
-    const nota = prompt("Nota (opcional):", "") || "";
+    if (act === "set") {
+      const raw = prompt(
+        `Nuevo STOCK para:\n${codigo} - ${marca}\n(Stock actual: ${currentStock})`,
+        String(currentStock)
+      );
+      if (raw === null) return;
 
-    const res = await apiPost({ action: act, user, pass, codigo, marca, cantidad, nota });
-    if (!res.ok) {
-      alert(`Error: ${res.error || "No se pudo operar."}`);
-      return;
+      const nuevoStock = Number(raw);
+      if (!Number.isFinite(nuevoStock) || nuevoStock < 0) {
+        alert("Stock inválido.");
+        return;
+      }
+
+      const nota = prompt("Nota (opcional):", "Ajuste") || "";
+
+      const res = await apiPostForm({ action: "set", user, pass, codigo, marca, nuevoStock, nota });
+      if (!res.ok) {
+        alert(`Error: ${res.error || "No se pudo guardar."}`);
+        return;
+      }
     }
+
+    await loadStock();
+    await loadMovs();
+  } catch (err) {
+    alert(`Error de conexión: ${String(err)}`);
   }
-
-  if (act === "set") {
-    const raw = prompt(
-      `Nuevo STOCK para:\n${codigo} - ${marca}\n(Stock actual: ${currentStock})`,
-      String(currentStock)
-    );
-    if (raw === null) return;
-
-    const nuevoStock = Number(raw);
-    if (!Number.isFinite(nuevoStock) || nuevoStock < 0) {
-      alert("Stock inválido.");
-      return;
-    }
-
-    const nota = prompt("Nota (opcional):", "Ajuste") || "";
-
-    const res = await apiPost({ action: "set", user, pass, codigo, marca, nuevoStock, nota });
-    if (!res.ok) {
-      alert(`Error: ${res.error || "No se pudo guardar."}`);
-      return;
-    }
-  }
-
-  // “Guardado automático”: la operación guarda, y luego refrescamos vista y movimientos.
-  await loadStock();
-  await loadMovs();
 }
 
-// ---------------- Modal (control en app.js) ----------------
-
-function openModal() {
-  el("loginStatus").textContent = "";
-  el("modalOverlay").style.display = "flex";
-  el("modalOverlay").setAttribute("aria-hidden", "false");
-  el("adminUser").focus();
-}
-
-function closeModal() {
-  el("modalOverlay").style.display = "none";
-  el("modalOverlay").setAttribute("aria-hidden", "true");
-}
-
-// ---------------- Init ----------------
-
+// Init
 document.addEventListener("DOMContentLoaded", () => {
-  // Eventos stock
   el("refresh").addEventListener("click", loadStock);
   el("search").addEventListener("input", () => render(cache));
 
-  // Modal eventos
   el("btnAdmin").addEventListener("click", openModal);
   el("btnCloseModal").addEventListener("click", closeModal);
   el("btnCancel").addEventListener("click", closeModal);
@@ -290,16 +292,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.key === "Escape" && el("modalOverlay").style.display === "flex") closeModal();
   });
 
-  // Login real
   el("btnLogin").addEventListener("click", adminLogin);
-
-  // Movimientos
-  el("movRange").addEventListener("change", loadMovs);
-
-  // Botón cerrar sesión
   el("btnLogout").addEventListener("click", adminLogout);
 
-  // Delegación de eventos para botones +/−/✏️
+  el("movRange").addEventListener("change", loadMovs);
+
   el("tbody").addEventListener("click", async (ev) => {
     const btn = ev.target.closest("button[data-act]");
     if (!btn) return;
@@ -312,9 +309,7 @@ document.addEventListener("DOMContentLoaded", () => {
     await handleAction(act, codigo, marca, s);
   });
 
-  // Estado inicial: NO admin hasta que valide login
   isAdmin = false;
-
   loadStock();
   loadMovs();
 });
