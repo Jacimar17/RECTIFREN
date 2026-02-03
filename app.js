@@ -5,6 +5,25 @@ const el = (id) => document.getElementById(id);
 let cache = [];
 let isAdmin = false;
 
+// Filtros de vista
+// all | out | low
+let viewFilter = "all";
+
+// ====== CONFIG DE UMBRALES (sin tocar Google Sheets) ======
+// Regla general: stock <= MIN_DEFAULT => "Bajo stock"
+const MIN_DEFAULT = 3;
+
+// Regla por código (para los que “se usan mucho”)
+// Usted puede agregar más: "XXXX": 10, etc.
+const MIN_BY_CODE = {
+  "528": 6  // ejemplo: el 528 avisa antes (más exigente)
+};
+
+function getMinForCode(codigo) {
+  const c = String(codigo || "").trim();
+  return Number.isFinite(MIN_BY_CODE[c]) ? MIN_BY_CODE[c] : MIN_DEFAULT;
+}
+
 function getCreds() {
   return {
     user: sessionStorage.getItem("rectifren_admin_user") || "",
@@ -74,6 +93,32 @@ function ensureAccionesHeader() {
   if (!isAdmin && existing) existing.remove();
 }
 
+function getStockState(item) {
+  const stock = Number(item.stock || 0);
+  const min = getMinForCode(item.codigo);
+
+  if (stock <= 0) return { state: "out", min };
+  if (stock <= min) return { state: "low", min };
+  return { state: "ok", min };
+}
+
+function applyFilter(list) {
+  if (viewFilter === "all") return list;
+
+  if (viewFilter === "out") {
+    return list.filter(it => Number(it.stock || 0) <= 0);
+  }
+
+  if (viewFilter === "low") {
+    return list.filter(it => {
+      const st = getStockState(it);
+      return st.state === "low";
+    });
+  }
+
+  return list;
+}
+
 function render(list) {
   ensureAccionesHeader();
 
@@ -81,20 +126,44 @@ function render(list) {
   const tbody = el("tbody");
   tbody.innerHTML = "";
 
-  const filtered = list.filter(x => {
+  // 1) búsqueda
+  let filtered = list.filter(x => {
     if (!q) return true;
     return (x.codigo || "").toLowerCase().includes(q) || (x.marca || "").toLowerCase().includes(q);
   });
 
+  // 2) filtro de vista (todos/faltantes/bajo stock)
+  filtered = applyFilter(filtered);
+
   for (const item of filtered) {
+    const stockNum = Number(item.stock || 0);
+    const st = getStockState(item);
+
     const tr = document.createElement("tr");
+    if (st.state === "out") tr.classList.add("row-out");
+    if (st.state === "low") tr.classList.add("row-low");
+
+    let badge = "";
+    if (st.state === "out") badge = `<span class="badge out">SIN STOCK</span>`;
+    if (st.state === "low") badge = `<span class="badge low">BAJO STOCK</span>`;
+
+    // Botones admin:
+    // + verde: suma 1 sin diálogo
+    // - rojo: resta 1 sin diálogo (si stock=0 lo deshabilitamos)
+    // lápiz: pide nuevo stock
+    const minusDisabled = (st.state === "out") ? "disabled" : "";
 
     const acciones = isAdmin
       ? `
         <td class="col-acciones">
-          <button class="mini success" data-act="in"  data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}">+</button>
-          <button class="mini danger"  data-act="out" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}">−</button>
-          <button class="mini"         data-act="set" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${Number(item.stock || 0)}">✏️</button>
+          <button class="mini success" data-act="in"
+            data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}">+</button>
+
+          <button class="mini danger" data-act="out" ${minusDisabled}
+            data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}">−</button>
+
+          <button class="mini" data-act="set"
+            data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${stockNum}">✏️</button>
         </td>
       `
       : "";
@@ -102,9 +171,10 @@ function render(list) {
     tr.innerHTML = `
       <td class="col-codigo">${escapeHtml(item.codigo || "")}</td>
       <td class="col-marca">${escapeHtml(item.marca || "")}</td>
-      <td class="col-stock">${Number(item.stock || 0)}</td>
+      <td class="col-stock">${stockNum}${badge}</td>
       ${acciones}
     `;
+
     tbody.appendChild(tr);
   }
 
@@ -230,11 +300,6 @@ function adminLogout() {
   alert("Sesión de administrador cerrada.");
 }
 
-/**
- * Acciones:
- * - in/out: SUMA/RESTA automática de 1 (sin prompt)
- * - set: prompt para nuevo stock (edición)
- */
 async function handleAction(act, codigo, marca, currentStock) {
   const { user, pass } = getCreds();
   if (!user || !pass) {
@@ -243,7 +308,7 @@ async function handleAction(act, codigo, marca, currentStock) {
   }
 
   try {
-    // + y - automáticos (1 unidad)
+    // + y - automáticos (1 unidad), sin prompts
     if (act === "in" || act === "out") {
       const cantidad = 1;
       const nota = act === "in" ? "+1 (botón)" : "-1 (botón)";
@@ -278,13 +343,17 @@ async function handleAction(act, codigo, marca, currentStock) {
       }
     }
 
-    // Guardado automático: recarga vista y movimientos
     await loadStock();
     await loadMovs();
 
   } catch (err) {
     alert(`Error de conexión: ${String(err)}`);
   }
+}
+
+function setActiveChip(id) {
+  ["fAll","fOut","fLow"].forEach(x => el(x).classList.remove("active"));
+  el(id).classList.add("active");
 }
 
 // Init
@@ -309,10 +378,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
   el("movRange").addEventListener("change", loadMovs);
 
+  // Filtros
+  el("fAll").addEventListener("click", () => { viewFilter = "all"; setActiveChip("fAll"); render(cache); });
+  el("fOut").addEventListener("click", () => { viewFilter = "out"; setActiveChip("fOut"); render(cache); });
+  el("fLow").addEventListener("click", () => { viewFilter = "low"; setActiveChip("fLow"); render(cache); });
+
   // Delegación para + / − / ✏️
   el("tbody").addEventListener("click", async (ev) => {
     const btn = ev.target.closest("button[data-act]");
     if (!btn) return;
+
+    if (btn.disabled) return;
 
     const act = btn.getAttribute("data-act");
     const codigo = btn.getAttribute("data-c");
