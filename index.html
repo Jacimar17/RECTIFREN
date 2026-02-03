@@ -15,7 +15,6 @@
       --accent:#2563eb;
       --shadow: 0 10px 25px rgba(2,6,23,.08);
       --radius: 16px;
-      --toolbar-h: 72px;
     }
 
     *{ box-sizing: border-box; }
@@ -64,7 +63,7 @@
     .toolbar{
       position: sticky;
       top: 0;
-      z-index: 20;
+      z-index: 30;
       background: var(--card);
       border-bottom: 1px solid var(--line);
       padding: 12px 0;
@@ -116,13 +115,11 @@
 
     button:hover{ filter: brightness(0.98); }
 
-    /* IMPORTANTE: NO overflow:auto acá (evita el bug del sticky) */
     .tableWrap{
       border-radius: 14px;
       border: 1px solid var(--line);
       background: #fff;
-      overflow-x: auto; /* solo horizontal si hace falta */
-      overflow-y: visible;
+      overflow-x: auto;
     }
 
     table{
@@ -131,24 +128,6 @@
       table-layout: fixed;
       min-width: 760px;
       background: #fff;
-    }
-
-    thead{
-      display: table-header-group; /* ayuda a evitar “cortes” */
-    }
-
-    /* Encabezado sticky respecto del scroll de página */
-    thead th{
-      position: sticky;
-      top: var(--toolbar-h);
-      z-index: 10;
-      background: #f8fafc;
-      background-clip: padding-box;
-      border-bottom: 1px solid var(--line);
-      text-align: center;
-
-      /* Esto evita que parezca “cortado” */
-      box-shadow: 0 6px 10px rgba(2,6,23,.06);
     }
 
     th, td{
@@ -161,11 +140,34 @@
       text-align: center;
     }
 
+    thead th{
+      background: #f8fafc;
+      border-bottom: 1px solid var(--line);
+      text-align: center;
+    }
+
     th.col-codigo, td.col-codigo{ width: 150px; }
     th.col-marca,  td.col-marca { width: 300px; }
     th.col-stock,  td.col-stock { width: 140px; }
+    th.col-acciones, td.col-acciones{ width: 190px; }
 
     #status{ margin: 10px 0 0; }
+
+    /* Botones mini para acciones admin */
+    button.mini{
+      padding: 6px 10px;
+      border-radius: 10px;
+      font-weight: 900;
+      line-height: 1;
+      margin: 0 3px;
+    }
+    button.mini.danger{
+      background: #ef4444;
+      color: #fff;
+      border-color: transparent;
+    }
+
+    .center{ text-align:center; }
 
     /* ---------- Modal Login ---------- */
     .modalOverlay{
@@ -246,20 +248,52 @@
           <button id="refresh">Actualizar</button>
         </div>
 
+        <button id="btnLogout" title="Cerrar sesión de administrador">Cerrar sesión</button>
         <button id="btnAdmin" class="primary">Administrador</button>
       </div>
 
       <div class="tableWrap">
-        <table>
+        <table id="stockTable">
           <thead>
             <tr>
               <th class="col-codigo">CODIGO</th>
               <th class="col-marca">MARCA</th>
               <th class="col-stock">STOCK</th>
+              <!-- La columna ACCIONES se agrega automáticamente al loguear -->
             </tr>
           </thead>
           <tbody id="tbody"></tbody>
         </table>
+      </div>
+
+      <!-- Panel admin: Movimientos -->
+      <div id="movPanel" style="display:none; margin-top:14px;">
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
+          <strong>Últimos movimientos</strong>
+          <select id="movRange" style="padding:10px 12px; border-radius:12px; border:1px solid var(--line);">
+            <option value="week">7 días</option>
+            <option value="month">30 días</option>
+          </select>
+          <span id="movStatus" class="muted"></span>
+        </div>
+
+        <div class="tableWrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Acción</th>
+                <th>CODIGO</th>
+                <th>MARCA</th>
+                <th>Cant.</th>
+                <th>Antes</th>
+                <th>Después</th>
+                <th>Nota</th>
+              </tr>
+            </thead>
+            <tbody id="movTbody"></tbody>
+          </table>
+        </div>
       </div>
 
       <p id="status" class="muted"></p>
@@ -279,7 +313,7 @@
         <input id="adminPass" type="password" placeholder="Contraseña" autocomplete="current-password" />
 
         <div class="hint">
-          En el Paso 2 se validarán credenciales y se habilitarán: <strong>+</strong> / <strong>−</strong> / <strong>✏️</strong>, guardado automático y últimos movimientos.
+          Si el login es correcto, se habilitan: <strong>+</strong> / <strong>−</strong> / <strong>✏️</strong>, guardado automático y últimos movimientos.
         </div>
 
         <div class="modalActions">
@@ -293,65 +327,5 @@
   </div>
 
   <script src="app.js"></script>
-
-  <script>
-    // Ajuste dinámico del top del encabezado sticky
-    function setToolbarHeightVar(){
-      const tb = document.getElementById("toolbar");
-      if (!tb) return;
-      const h = Math.ceil(tb.getBoundingClientRect().height);
-      document.documentElement.style.setProperty("--toolbar-h", h + "px");
-    }
-    window.addEventListener("load", setToolbarHeightVar);
-    window.addEventListener("resize", setToolbarHeightVar);
-
-    // Modal UI
-    const modalOverlay = document.getElementById("modalOverlay");
-    const btnAdmin = document.getElementById("btnAdmin");
-    const btnCloseModal = document.getElementById("btnCloseModal");
-    const btnCancel = document.getElementById("btnCancel");
-    const btnLogin = document.getElementById("btnLogin");
-    const loginStatus = document.getElementById("loginStatus");
-
-    function openModal(){
-      loginStatus.textContent = "";
-      modalOverlay.style.display = "flex";
-      modalOverlay.setAttribute("aria-hidden", "false");
-      document.getElementById("adminUser").focus();
-    }
-
-    function closeModal(){
-      modalOverlay.style.display = "none";
-      modalOverlay.setAttribute("aria-hidden", "true");
-    }
-
-    btnAdmin.addEventListener("click", openModal);
-    btnCloseModal.addEventListener("click", closeModal);
-    btnCancel.addEventListener("click", closeModal);
-
-    modalOverlay.addEventListener("click", (e) => {
-      if (e.target === modalOverlay) closeModal();
-    });
-
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && modalOverlay.style.display === "flex") closeModal();
-    });
-
-    // Login placeholder (Paso 2: validación real + habilitar edición)
-    btnLogin.addEventListener("click", () => {
-      const u = document.getElementById("adminUser").value.trim();
-      const p = document.getElementById("adminPass").value;
-
-      if (!u || !p) {
-        loginStatus.textContent = "Complete usuario y contraseña.";
-        return;
-      }
-
-      sessionStorage.setItem("rectifren_admin_user", u);
-      sessionStorage.setItem("rectifren_admin_pass", p);
-
-      loginStatus.textContent = "Credenciales ingresadas. En el Paso 2 se validarán y se habilitará la edición.";
-    });
-  </script>
 </body>
 </html>
