@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RECTIFREN | Inventario</title>
-  <link rel="stylesheet" href="css/styles.css?v=20260203_5">
+  <link rel="stylesheet" href="css/styles.css?v=20260203_7">
 </head>
 
 <body>
@@ -41,7 +41,6 @@
               <th class="col-codigo">CODIGO</th>
               <th class="col-marca">MARCA</th>
               <th class="col-stock">STOCK</th>
-              <!-- ACCIONES se agrega al loguear -->
             </tr>
           </thead>
           <tbody id="tbody"></tbody>
@@ -107,6 +106,38 @@
     </div>
   </div>
 
+  <!-- ✅ Modal Editar stock (nuevo, estilo login) -->
+  <div id="editOverlay" class="modalOverlay" aria-hidden="true">
+    <div class="modal modalWide" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+      <div class="modalHeader">
+        <h2 id="editTitle" class="modalTitle">Editar stock</h2>
+        <button id="btnCloseEdit" class="modalClose" title="Cerrar">✕</button>
+      </div>
+
+      <div class="modalBody">
+        <div class="editInfo">
+          <div><span class="muted">Código</span><div id="editCodigo" class="editValue">-</div></div>
+          <div><span class="muted">Marca</span><div id="editMarca" class="editValue">-</div></div>
+          <div><span class="muted">Stock actual</span><div id="editActual" class="editValue">-</div></div>
+        </div>
+
+        <label class="muted" for="editNuevo">Nuevo stock</label>
+        <input id="editNuevo" type="number" min="0" step="1" placeholder="Ingrese el nuevo stock" />
+
+        <div class="hint">
+          Se guardará el nuevo stock y se registrará el movimiento como <strong>AJUSTE</strong>.
+        </div>
+
+        <div class="modalActions">
+          <button id="btnCancelEdit">Cancelar</button>
+          <button id="btnSaveEdit" class="primary">Guardar</button>
+        </div>
+
+        <p id="editStatus" class="muted"></p>
+      </div>
+    </div>
+  </div>
+
   <!-- Overlay de carga -->
   <div id="busyOverlay" class="busyOverlay" aria-hidden="true">
     <div class="busyCard">
@@ -118,7 +149,6 @@
     </div>
   </div>
 
-  <!-- JS modular -->
-  <script type="module" src="js/main.js?v=20260203_5"></script>
+  <script type="module" src="js/main.js?v=20260203_7"></script>
 </body>
 </html>
