@@ -1,9 +1,13 @@
 import { apiGet, apiPostForm } from "./api.js";
-import { $, fmtDate, escapeHtml, renderStock, setBusy, setActiveChip } from "./ui.js";
+import {
+  $, fmtDate, escapeHtml,
+  renderStock, setBusy, setActiveChip,
+  openEditModal, closeEditModal, getEditModalData
+} from "./ui.js";
 
 let cache = [];
 let isAdmin = false;
-let viewFilter = "all"; // all | out | low
+let viewFilter = "all";
 let busy = false;
 
 function getCreds() {
@@ -11,6 +15,11 @@ function getCreds() {
     user: sessionStorage.getItem("rectifren_admin_user") || "",
     pass: sessionStorage.getItem("rectifren_admin_pass") || ""
   };
+}
+
+function setBusyState(on, text) {
+  busy = on;
+  setBusy(on, text);
 }
 
 async function loadStock() {
@@ -62,7 +71,7 @@ async function loadMovs() {
         <td class="center">${Number(m.cantidad || 0)}</td>
         <td class="center">${Number(m.stock_anterior || 0)}</td>
         <td class="center">${Number(m.stock_nuevo || 0)}</td>
-        <td>${escapeHtml(m.nota || "")}</td>
+        <td></td>
       `;
       tbody.appendChild(tr);
     }
@@ -73,21 +82,18 @@ async function loadMovs() {
   }
 }
 
-function openModal() {
+/* ===== Login modal ===== */
+
+function openLoginModal() {
   $("loginStatus").textContent = "";
   $("modalOverlay").style.display = "flex";
   $("modalOverlay").setAttribute("aria-hidden", "false");
   $("adminUser").focus();
 }
 
-function closeModal() {
+function closeLoginModal() {
   $("modalOverlay").style.display = "none";
   $("modalOverlay").setAttribute("aria-hidden", "true");
-}
-
-function setBusyState(on, text) {
-  busy = on;
-  setBusy(on, text);
 }
 
 async function adminLogin() {
@@ -115,7 +121,7 @@ async function adminLogin() {
     sessionStorage.setItem("rectifren_admin_pass", pass);
 
     isAdmin = true;
-    closeModal();
+    closeLoginModal();
 
     renderStock({ list: cache, isAdmin, viewFilter, query: $("search").value });
     await loadMovs();
@@ -138,66 +144,81 @@ function adminLogout() {
   alert("Sesión de administrador cerrada.");
 }
 
-async function handleAction(act, codigo, marca, currentStock) {
-  if (busy) return;
+/* ===== Acciones ===== */
 
+async function doInOut(act, codigo, marca) {
   const { user, pass } = getCreds();
   if (!user || !pass) {
     alert("No está autenticado como administrador.");
     return;
   }
 
+  setBusyState(true, "Aplicando cambio…");
   try {
-    // + / − automáticos: 1 unidad sin diálogo
-    if (act === "in" || act === "out") {
-      setBusyState(true, "Aplicando cambio…");
-      const cantidad = 1;
+    const cantidad = 1;
 
-      // ✅ SIN nota
-      const res = await apiPostForm({ action: act, user, pass, codigo, marca, cantidad });
-      if (!res.ok) {
-        alert(`Error: ${res.error || "No se pudo operar."}`);
-        return;
-      }
+    // ✅ SIN nota
+    const res = await apiPostForm({ action: act, user, pass, codigo, marca, cantidad });
+    if (!res.ok) {
+      alert(`Error: ${res.error || "No se pudo operar."}`);
+      return;
     }
 
-    // ✏️: pide nuevo stock (sin pedir nota)
-    if (act === "set") {
-      // se libera el overlay para que el prompt sea utilizable
-      setBusyState(false);
-
-      const raw = prompt(
-        `Editar STOCK (nuevo valor)\n${codigo} - ${marca}\nStock actual: ${currentStock}`,
-        String(currentStock)
-      );
-      if (raw === null) return;
-
-      const nuevoStock = Number(raw);
-      if (!Number.isFinite(nuevoStock) || nuevoStock < 0) {
-        alert("Stock inválido.");
-        return;
-      }
-
-      setBusyState(true, "Guardando edición…");
-
-      // ✅ SIN nota
-      const res = await apiPostForm({ action: "set", user, pass, codigo, marca, nuevoStock });
-      if (!res.ok) {
-        alert(`Error: ${res.error || "No se pudo guardar."}`);
-        return;
-      }
-    }
-
-    // refresco automático
     await loadStock();
     await loadMovs();
-
-  } catch (err) {
-    alert(`Error de conexión: ${String(err)}`);
   } finally {
     setBusyState(false);
   }
 }
+
+function openEditForRow(codigo, marca, stockActual) {
+  openEditModal({ codigo, marca, actual: stockActual });
+}
+
+async function saveEdit() {
+  const { user, pass } = getCreds();
+  if (!user || !pass) {
+    alert("No está autenticado como administrador.");
+    return;
+  }
+
+  const data = getEditModalData();
+  if (!data.codigo || !data.marca) {
+    $("editStatus").textContent = "Error: datos incompletos.";
+    return;
+  }
+
+  if (!Number.isFinite(data.nuevoStock) || data.nuevoStock < 0) {
+    $("editStatus").textContent = "Nuevo stock inválido.";
+    return;
+  }
+
+  try {
+    setBusyState(true, "Guardando edición…");
+
+    // ✅ SIN nota
+    const res = await apiPostForm({
+      action: "set",
+      user, pass,
+      codigo: data.codigo,
+      marca: data.marca,
+      nuevoStock: data.nuevoStock
+    });
+
+    if (!res.ok) {
+      $("editStatus").textContent = `Error: ${res.error || "No se pudo guardar."}`;
+      return;
+    }
+
+    closeEditModal();
+    await loadStock();
+    await loadMovs();
+  } finally {
+    setBusyState(false);
+  }
+}
+
+/* ===== Bind ===== */
 
 function bindEvents() {
   $("refresh").addEventListener("click", () => { if (!busy) loadStock(); });
@@ -205,20 +226,16 @@ function bindEvents() {
     renderStock({ list: cache, isAdmin, viewFilter, query: $("search").value });
   });
 
-  $("btnAdmin").addEventListener("click", () => { if (!busy) openModal(); });
-  $("btnCloseModal").addEventListener("click", () => { if (!busy) closeModal(); });
-  $("btnCancel").addEventListener("click", () => { if (!busy) closeModal(); });
+  $("btnAdmin").addEventListener("click", () => { if (!busy) openLoginModal(); });
+  $("btnCloseModal").addEventListener("click", () => { if (!busy) closeLoginModal(); });
+  $("btnCancel").addEventListener("click", () => { if (!busy) closeLoginModal(); });
+  $("btnLogin").addEventListener("click", adminLogin);
+
+  $("btnLogout").addEventListener("click", () => { if (!busy) adminLogout(); });
 
   $("modalOverlay").addEventListener("click", (e) => {
-    if (e.target === $("modalOverlay") && !busy) closeModal();
+    if (e.target === $("modalOverlay") && !busy) closeLoginModal();
   });
-
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && $("modalOverlay").style.display === "flex" && !busy) closeModal();
-  });
-
-  $("btnLogin").addEventListener("click", adminLogin);
-  $("btnLogout").addEventListener("click", () => { if (!busy) adminLogout(); });
 
   $("movRange").addEventListener("change", loadMovs);
 
@@ -243,6 +260,7 @@ function bindEvents() {
     renderStock({ list: cache, isAdmin, viewFilter, query: $("search").value });
   });
 
+  // Acciones en tabla
   $("tbody").addEventListener("click", async (ev) => {
     if (busy) return;
 
@@ -253,9 +271,33 @@ function bindEvents() {
     const act = btn.getAttribute("data-act");
     const codigo = btn.getAttribute("data-c");
     const marca = btn.getAttribute("data-m");
-    const s = Number(btn.getAttribute("data-s") || 0);
+    const stock = Number(btn.getAttribute("data-s") || 0);
 
-    await handleAction(act, codigo, marca, s);
+    if (act === "in" || act === "out") {
+      await doInOut(act, codigo, marca);
+      return;
+    }
+
+    if (act === "set") {
+      openEditForRow(codigo, marca, stock);
+      return;
+    }
+  });
+
+  // Modal editar stock
+  $("btnCloseEdit").addEventListener("click", () => { if (!busy) closeEditModal(); });
+  $("btnCancelEdit").addEventListener("click", () => { if (!busy) closeEditModal(); });
+  $("btnSaveEdit").addEventListener("click", () => { if (!busy) saveEdit(); });
+
+  $("editOverlay").addEventListener("click", (e) => {
+    if (e.target === $("editOverlay") && !busy) closeEditModal();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !busy) {
+      if ($("modalOverlay").style.display === "flex") closeLoginModal();
+      if ($("editOverlay").style.display === "flex") closeEditModal();
+    }
   });
 }
 
