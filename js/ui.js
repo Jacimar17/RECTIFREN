@@ -14,9 +14,9 @@ export function fmtDate(iso) {
   catch { return iso; }
 }
 
-// ✅ Regla exacta pedida:
+// Regla exacta (la que usted pidió previamente)
 // - SIN STOCK: stock === 0
-// - BAJO STOCK: SOLO para codigo "528" cuando stock está entre 4 y 5 (inclusive)
+// - BAJO STOCK: SOLO para codigo "528" cuando stock 4..5 inclusive
 export function getStockState(item) {
   const stock = Number(item.stock || 0);
   const codigo = String(item.codigo || "").trim();
@@ -51,18 +51,57 @@ export function setBusy(on, text = "Aplicando cambio…") {
     overlay.setAttribute("aria-hidden", on ? "false" : "true");
   }
 
-  // Bloqueo general de controles
   const ids = ["refresh", "btnAdmin", "btnLogout", "fAll", "fOut", "fLow"];
   ids.forEach(id => {
     const b = $(id);
     if (b) b.disabled = on;
   });
 
-  // Bloqueo de acciones en tabla
   document.querySelectorAll("button[data-act]").forEach(btn => {
     btn.disabled = on || btn.dataset.disabled === "1";
   });
 }
+
+/* ===== Modal Editar Stock ===== */
+
+export function openEditModal({ codigo, marca, actual }) {
+  $("editStatus").textContent = "";
+  $("editCodigo").textContent = codigo;
+  $("editMarca").textContent = marca;
+  $("editActual").textContent = String(actual);
+
+  const input = $("editNuevo");
+  input.value = String(actual);
+  input.focus();
+  input.select();
+
+  const ov = $("editOverlay");
+  ov.style.display = "flex";
+  ov.setAttribute("aria-hidden", "false");
+
+  // guardo datos en dataset
+  ov.dataset.codigo = codigo;
+  ov.dataset.marca = marca;
+  ov.dataset.actual = String(actual);
+}
+
+export function closeEditModal() {
+  const ov = $("editOverlay");
+  ov.style.display = "none";
+  ov.setAttribute("aria-hidden", "true");
+}
+
+export function getEditModalData() {
+  const ov = $("editOverlay");
+  return {
+    codigo: ov.dataset.codigo || "",
+    marca: ov.dataset.marca || "",
+    actual: Number(ov.dataset.actual || 0),
+    nuevoStock: Number($("editNuevo").value)
+  };
+}
+
+/* ===== Render ===== */
 
 export function renderStock({ list, isAdmin, viewFilter, query }) {
   ensureAccionesHeader(isAdmin);
