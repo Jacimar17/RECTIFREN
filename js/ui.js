@@ -14,15 +14,17 @@ export function fmtDate(iso) {
   catch { return iso; }
 }
 
-// Regla actual:
-// - SIN STOCK: stock === 0
-// - BAJO STOCK: SOLO para codigo "528" cuando stock 4..5 inclusive
+/**
+ * NUEVA REGLA (para todos los códigos):
+ * - SIN STOCK: stock === 0
+ * - BAJO STOCK: stock === 1
+ * - OK: stock >= 2
+ */
 export function getStockState(item) {
   const stock = Number(item.stock || 0);
-  const codigo = String(item.codigo || "").trim();
 
   if (stock === 0) return "out";
-  if (codigo === "528" && stock >= 4 && stock <= 5) return "low";
+  if (stock === 1) return "low";
   return "ok";
 }
 
@@ -118,20 +120,20 @@ export function renderStock({ list, isAdmin, viewFilter, query, highlightKey }) 
   const tbody = $("tbody");
   tbody.innerHTML = "";
 
-  // ✅ siempre orden por código
+  // Orden por código
   let working = sortByCodigo(list);
 
-  // búsqueda
+  // Búsqueda
   working = working.filter(x => {
     if (!q) return true;
     return (x.codigo || "").toLowerCase().includes(q) || (x.marca || "").toLowerCase().includes(q);
   });
 
-  // filtros
+  // Filtros
   if (viewFilter === "out") {
-    working = working.filter(it => Number(it.stock || 0) === 0);
+    working = working.filter(it => getStockState(it) === "out"); // stock 0
   } else if (viewFilter === "low") {
-    working = working.filter(it => getStockState(it) === "low");
+    working = working.filter(it => getStockState(it) === "low"); // stock 1
   }
 
   for (const item of working) {
@@ -142,7 +144,7 @@ export function renderStock({ list, isAdmin, viewFilter, query, highlightKey }) 
     if (state === "out") tr.classList.add("row-out");
     if (state === "low") tr.classList.add("row-low");
 
-    // ✅ resaltar fila modificada
+    // Resaltar fila modificada (si aplica)
     if (highlightKey && item.codigo === highlightKey.codigo && item.marca === highlightKey.marca) {
       tr.classList.add("row-flash");
     }
