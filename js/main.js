@@ -10,6 +10,9 @@ let isAdmin = false;
 let viewFilter = "all";
 let busy = false;
 
+// ✅ para resaltar fila modificada
+let highlightKey = null;
+
 function getCreds() {
   return {
     user: sessionStorage.getItem("rectifren_admin_user") || "",
@@ -35,6 +38,34 @@ function setAdminButtonState() {
   }
 }
 
+function setLastUpdatedNow() {
+  const el = $("lastUpdated");
+  if (!el) return;
+  const now = new Date();
+  el.textContent = `Última actualización: ${now.toLocaleString("es-AR")}`;
+}
+
+function applyTheme(theme) {
+  const t = theme === "dark" ? "dark" : "light";
+  document.documentElement.setAttribute("data-theme", t);
+  localStorage.setItem("rectifren_theme", t);
+
+  const btn = $("btnTheme");
+  if (btn) btn.textContent = (t === "dark") ? "☀️" : "🌙";
+}
+
+function initTheme() {
+  const saved = localStorage.getItem("rectifren_theme");
+  if (saved === "dark" || saved === "light") {
+    applyTheme(saved);
+    return;
+  }
+
+  // si no hay preferencia, toma la del sistema
+  const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  applyTheme(prefersDark ? "dark" : "light");
+}
+
 async function loadStock() {
   $("status").textContent = "Cargando...";
   try {
@@ -43,8 +74,24 @@ async function loadStock() {
       $("status").textContent = `Error: ${data.error || "No se pudo cargar."}`;
       return;
     }
+
     cache = data.data || [];
-    renderStock({ list: cache, isAdmin, viewFilter, query: $("search").value });
+
+    renderStock({
+      list: cache,
+      isAdmin,
+      viewFilter,
+      query: $("search").value,
+      highlightKey
+    });
+
+    setLastUpdatedNow();
+
+    // ✅ el flash solo una vez
+    if (highlightKey) {
+      setTimeout(() => { highlightKey = null; }, 1200);
+    }
+
   } catch (err) {
     $("status").textContent = `Error: ${String(err)}`;
   }
@@ -138,8 +185,17 @@ async function adminLogin() {
     setAdminButtonState();
     closeLoginModal();
 
-    renderStock({ list: cache, isAdmin, viewFilter, query: $("search").value });
+    renderStock({
+      list: cache,
+      isAdmin,
+      viewFilter,
+      query: $("search").value,
+      highlightKey: null
+    });
+
     await loadMovs();
+    setLastUpdatedNow();
+
   } catch (err) {
     ls.textContent = String(err).includes("AbortError")
       ? "Error: el servidor tardó demasiado (timeout)."
@@ -155,8 +211,16 @@ function adminLogout() {
   isAdmin = false;
   setAdminButtonState();
 
-  renderStock({ list: cache, isAdmin, viewFilter, query: $("search").value });
+  renderStock({
+    list: cache,
+    isAdmin,
+    viewFilter,
+    query: $("search").value,
+    highlightKey: null
+  });
+
   loadMovs();
+  setLastUpdatedNow();
   alert("Sesión de administrador cerrada.");
 }
 
@@ -178,8 +242,13 @@ async function doInOut(act, codigo, marca) {
       return;
     }
 
+    // ✅ marcar fila modificada
+    highlightKey = { codigo, marca };
+
     await loadStock();
     await loadMovs();
+    setLastUpdatedNow();
+
   } finally {
     setBusyState(false);
   }
@@ -224,8 +293,14 @@ async function saveEdit() {
     }
 
     closeEditModal();
+
+    // ✅ marcar fila modificada
+    highlightKey = { codigo: data.codigo, marca: data.marca };
+
     await loadStock();
     await loadMovs();
+    setLastUpdatedNow();
+
   } finally {
     setBusyState(false);
   }
@@ -235,14 +310,25 @@ async function saveEdit() {
 
 function bindEvents() {
   $("search").addEventListener("input", () => {
-    renderStock({ list: cache, isAdmin, viewFilter, query: $("search").value });
+    renderStock({
+      list: cache,
+      isAdmin,
+      viewFilter,
+      query: $("search").value,
+      highlightKey: null
+    });
   });
 
-  // Botón único: si está admin => logout, si no => abre login
   $("btnAdmin").addEventListener("click", () => {
     if (busy) return;
     if (isAdmin) adminLogout();
     else openLoginModal();
+  });
+
+  $("btnTheme").addEventListener("click", () => {
+    if (busy) return;
+    const current = document.documentElement.getAttribute("data-theme") || "light";
+    applyTheme(current === "dark" ? "light" : "dark");
   });
 
   $("btnCloseModal").addEventListener("click", () => { if (!busy) closeLoginModal(); });
@@ -259,21 +345,21 @@ function bindEvents() {
     if (busy) return;
     viewFilter = "all";
     setActiveChip("fAll");
-    renderStock({ list: cache, isAdmin, viewFilter, query: $("search").value });
+    renderStock({ list: cache, isAdmin, viewFilter, query: $("search").value, highlightKey: null });
   });
 
   $("fOut").addEventListener("click", () => {
     if (busy) return;
     viewFilter = "out";
     setActiveChip("fOut");
-    renderStock({ list: cache, isAdmin, viewFilter, query: $("search").value });
+    renderStock({ list: cache, isAdmin, viewFilter, query: $("search").value, highlightKey: null });
   });
 
   $("fLow").addEventListener("click", () => {
     if (busy) return;
     viewFilter = "low";
     setActiveChip("fLow");
-    renderStock({ list: cache, isAdmin, viewFilter, query: $("search").value });
+    renderStock({ list: cache, isAdmin, viewFilter, query: $("search").value, highlightKey: null });
   });
 
   $("tbody").addEventListener("click", async (ev) => {
@@ -316,12 +402,13 @@ function bindEvents() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  // si hay credenciales guardadas, no asumimos que sean válidas:
-  // simplemente dejamos el estado como "no admin" y usted inicia sesión.
+  initTheme();
+
   isAdmin = false;
   setAdminButtonState();
 
   bindEvents();
   loadStock();
   loadMovs();
+  setLastUpdatedNow();
 });
