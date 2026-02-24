@@ -5,10 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RECTIFREN | Inventario</title>
 
-  <!-- Favicon (logo en la pestaña) -->
   <link rel="icon" type="image/png" href="assets/logo_rectifren.png" />
-
-  <link rel="stylesheet" href="css/styles.css?v=20260224_1">
+  <link rel="stylesheet" href="css/styles.css?v=20260224_3">
 </head>
 
 <body>
@@ -25,9 +23,10 @@
       <div class="toolbar" id="toolbar">
         <div class="search">
           <input id="search" placeholder="Buscar por CODIGO o MARCA..." />
+          <div class="muted tiny" id="lastUpdated">Última actualización: —</div>
         </div>
 
-        <!-- Botón único: Admin / Cerrar sesión -->
+        <button id="btnTheme" title="Cambiar tema">🌙</button>
         <button id="btnAdmin" class="primary">Administrador</button>
       </div>
 
@@ -152,6 +151,6 @@
     </div>
   </div>
 
-  <script type="module" src="js/main.js?v=20260224_1"></script>
+  <script type="module" src="js/main.js?v=20260224_3"></script>
 </body>
 </html>
