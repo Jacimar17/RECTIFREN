@@ -4,7 +4,11 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RECTIFREN | Inventario</title>
-  <link rel="stylesheet" href="css/styles.css?v=20260203_7">
+
+  <!-- Favicon (logo en la pestaña) -->
+  <link rel="icon" type="image/png" href="assets/logo_rectifren.png" />
+
+  <link rel="stylesheet" href="css/styles.css?v=20260224_1">
 </head>
 
 <body>
@@ -21,10 +25,9 @@
       <div class="toolbar" id="toolbar">
         <div class="search">
           <input id="search" placeholder="Buscar por CODIGO o MARCA..." />
-          <button id="refresh">Actualizar</button>
         </div>
 
-        <button id="btnLogout" title="Cerrar sesión de administrador">Cerrar sesión</button>
+        <!-- Botón único: Admin / Cerrar sesión -->
         <button id="btnAdmin" class="primary">Administrador</button>
       </div>
 
@@ -106,7 +109,7 @@
     </div>
   </div>
 
-  <!-- ✅ Modal Editar stock (nuevo, estilo login) -->
+  <!-- Modal Editar stock -->
   <div id="editOverlay" class="modalOverlay" aria-hidden="true">
     <div class="modal modalWide" role="dialog" aria-modal="true" aria-labelledby="editTitle">
       <div class="modalHeader">
@@ -149,6 +152,6 @@
     </div>
   </div>
 
-  <script type="module" src="js/main.js?v=20260203_7"></script>
+  <script type="module" src="js/main.js?v=20260224_1"></script>
 </body>
 </html>
