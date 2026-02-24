@@ -14,7 +14,7 @@ export function fmtDate(iso) {
   catch { return iso; }
 }
 
-// Regla exacta (la que usted pidió previamente)
+// Regla actual:
 // - SIN STOCK: stock === 0
 // - BAJO STOCK: SOLO para codigo "528" cuando stock 4..5 inclusive
 export function getStockState(item) {
@@ -51,7 +51,7 @@ export function setBusy(on, text = "Aplicando cambio…") {
     overlay.setAttribute("aria-hidden", on ? "false" : "true");
   }
 
-  const ids = ["refresh", "btnAdmin", "btnLogout", "fAll", "fOut", "fLow"];
+  const ids = ["btnAdmin", "btnTheme", "fAll", "fOut", "fLow"];
   ids.forEach(id => {
     const b = $(id);
     if (b) b.disabled = on;
@@ -79,7 +79,6 @@ export function openEditModal({ codigo, marca, actual }) {
   ov.style.display = "flex";
   ov.setAttribute("aria-hidden", "false");
 
-  // guardo datos en dataset
   ov.dataset.codigo = codigo;
   ov.dataset.marca = marca;
   ov.dataset.actual = String(actual);
@@ -101,33 +100,52 @@ export function getEditModalData() {
   };
 }
 
+/* ===== Orden por código (SIEMPRE) ===== */
+function sortByCodigo(list) {
+  return [...list].sort((a, b) => {
+    const ca = String(a.codigo || "");
+    const cb = String(b.codigo || "");
+    return ca.localeCompare(cb, "es", { numeric: true, sensitivity: "base" });
+  });
+}
+
 /* ===== Render ===== */
 
-export function renderStock({ list, isAdmin, viewFilter, query }) {
+export function renderStock({ list, isAdmin, viewFilter, query, highlightKey }) {
   ensureAccionesHeader(isAdmin);
 
   const q = (query || "").trim().toLowerCase();
   const tbody = $("tbody");
   tbody.innerHTML = "";
 
-  let filtered = list.filter(x => {
+  // ✅ siempre orden por código
+  let working = sortByCodigo(list);
+
+  // búsqueda
+  working = working.filter(x => {
     if (!q) return true;
     return (x.codigo || "").toLowerCase().includes(q) || (x.marca || "").toLowerCase().includes(q);
   });
 
+  // filtros
   if (viewFilter === "out") {
-    filtered = filtered.filter(it => Number(it.stock || 0) === 0);
+    working = working.filter(it => Number(it.stock || 0) === 0);
   } else if (viewFilter === "low") {
-    filtered = filtered.filter(it => getStockState(it) === "low");
+    working = working.filter(it => getStockState(it) === "low");
   }
 
-  for (const item of filtered) {
+  for (const item of working) {
     const stockNum = Number(item.stock || 0);
     const state = getStockState(item);
 
     const tr = document.createElement("tr");
     if (state === "out") tr.classList.add("row-out");
     if (state === "low") tr.classList.add("row-low");
+
+    // ✅ resaltar fila modificada
+    if (highlightKey && item.codigo === highlightKey.codigo && item.marca === highlightKey.marca) {
+      tr.classList.add("row-flash");
+    }
 
     let badge = "";
     if (state === "out") badge = `<span class="badge out">SIN STOCK</span>`;
@@ -160,7 +178,7 @@ export function renderStock({ list, isAdmin, viewFilter, query }) {
     tbody.appendChild(tr);
   }
 
-  $("status").textContent = `Mostrando ${filtered.length} de ${list.length} registros.`;
+  $("status").textContent = `Mostrando ${working.length} de ${list.length} registros.`;
 }
 
 export function setActiveChip(id) {
