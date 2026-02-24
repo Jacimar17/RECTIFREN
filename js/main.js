@@ -22,6 +22,19 @@ function setBusyState(on, text) {
   setBusy(on, text);
 }
 
+function setAdminButtonState() {
+  const btn = $("btnAdmin");
+  if (!btn) return;
+
+  if (isAdmin) {
+    btn.textContent = "Cerrar sesión";
+    btn.title = "Cerrar sesión de administrador";
+  } else {
+    btn.textContent = "Administrador";
+    btn.title = "Ingresar como administrador";
+  }
+}
+
 async function loadStock() {
   $("status").textContent = "Cargando...";
   try {
@@ -113,6 +126,7 @@ async function adminLogin() {
 
     if (!res || !res.ok) {
       isAdmin = false;
+      setAdminButtonState();
       ls.textContent = `Error: ${(res && res.error) ? res.error : "Login inválido / sin respuesta."}`;
       return;
     }
@@ -121,6 +135,7 @@ async function adminLogin() {
     sessionStorage.setItem("rectifren_admin_pass", pass);
 
     isAdmin = true;
+    setAdminButtonState();
     closeLoginModal();
 
     renderStock({ list: cache, isAdmin, viewFilter, query: $("search").value });
@@ -138,6 +153,7 @@ function adminLogout() {
   sessionStorage.removeItem("rectifren_admin_user");
   sessionStorage.removeItem("rectifren_admin_pass");
   isAdmin = false;
+  setAdminButtonState();
 
   renderStock({ list: cache, isAdmin, viewFilter, query: $("search").value });
   loadMovs();
@@ -156,8 +172,6 @@ async function doInOut(act, codigo, marca) {
   setBusyState(true, "Aplicando cambio…");
   try {
     const cantidad = 1;
-
-    // ✅ SIN nota
     const res = await apiPostForm({ action: act, user, pass, codigo, marca, cantidad });
     if (!res.ok) {
       alert(`Error: ${res.error || "No se pudo operar."}`);
@@ -196,7 +210,6 @@ async function saveEdit() {
   try {
     setBusyState(true, "Guardando edición…");
 
-    // ✅ SIN nota
     const res = await apiPostForm({
       action: "set",
       user, pass,
@@ -221,17 +234,20 @@ async function saveEdit() {
 /* ===== Bind ===== */
 
 function bindEvents() {
-  $("refresh").addEventListener("click", () => { if (!busy) loadStock(); });
   $("search").addEventListener("input", () => {
     renderStock({ list: cache, isAdmin, viewFilter, query: $("search").value });
   });
 
-  $("btnAdmin").addEventListener("click", () => { if (!busy) openLoginModal(); });
+  // Botón único: si está admin => logout, si no => abre login
+  $("btnAdmin").addEventListener("click", () => {
+    if (busy) return;
+    if (isAdmin) adminLogout();
+    else openLoginModal();
+  });
+
   $("btnCloseModal").addEventListener("click", () => { if (!busy) closeLoginModal(); });
   $("btnCancel").addEventListener("click", () => { if (!busy) closeLoginModal(); });
   $("btnLogin").addEventListener("click", adminLogin);
-
-  $("btnLogout").addEventListener("click", () => { if (!busy) adminLogout(); });
 
   $("modalOverlay").addEventListener("click", (e) => {
     if (e.target === $("modalOverlay") && !busy) closeLoginModal();
@@ -260,7 +276,6 @@ function bindEvents() {
     renderStock({ list: cache, isAdmin, viewFilter, query: $("search").value });
   });
 
-  // Acciones en tabla
   $("tbody").addEventListener("click", async (ev) => {
     if (busy) return;
 
@@ -284,7 +299,6 @@ function bindEvents() {
     }
   });
 
-  // Modal editar stock
   $("btnCloseEdit").addEventListener("click", () => { if (!busy) closeEditModal(); });
   $("btnCancelEdit").addEventListener("click", () => { if (!busy) closeEditModal(); });
   $("btnSaveEdit").addEventListener("click", () => { if (!busy) saveEdit(); });
@@ -302,8 +316,12 @@ function bindEvents() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  bindEvents();
+  // si hay credenciales guardadas, no asumimos que sean válidas:
+  // simplemente dejamos el estado como "no admin" y usted inicia sesión.
   isAdmin = false;
+  setAdminButtonState();
+
+  bindEvents();
   loadStock();
   loadMovs();
 });
