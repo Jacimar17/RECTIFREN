@@ -5,7 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RECTIFREN | Inventario</title>
   <link rel="icon" type="image/png" href="assets/logo_rectifren.png" />
-  <link rel="stylesheet" href="css/styles.css?v=20260626">
+  <link rel="stylesheet" href="css/styles.css?v=20260629">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#e8380d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="RECTIFREN">
 </head>
 <body>
 
@@ -70,7 +74,7 @@
             <input id="search" placeholder="Buscar por CODIGO o MARCA..." />
             <button id="btnClearSearch" class="clearSearch" title="Limpiar" style="display:none">✕</button>
           </div>
-          <div class="muted tiny" id="lastUpdated">Última actualización: —</div>
+          <div class="muted tiny" id="lastUpdated">Última actualización: — <span class="refresh-dot" title="Auto-refresh activo cada 5 min"></span></div>
         </div>
         <div class="toolbar-right">
           <div class="filters">
@@ -205,6 +209,6 @@
     </div>
   </div>
 
-  <script type="module" src="js/main.js?v=20260626"></script>
+  <script type="module" src="js/main.js?v=20260629"></script>
 </body>
 </html>

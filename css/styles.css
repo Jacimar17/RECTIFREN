@@ -820,3 +820,29 @@ tr.row-flash { animation: flashRow 1.2s ease-out 1; }
   .stats { grid-template-columns: 1fr 1fr; }
   .header-actions { flex-direction: column; gap: 6px; }
 }
+
+/* ---- Search highlight ---- */
+mark.hl {
+  background: rgba(232, 56, 13, 0.25);
+  color: var(--text);
+  border-radius: 3px;
+  padding: 0 2px;
+  font-weight: 700;
+}
+
+/* ---- Auto-refresh indicator ---- */
+.refresh-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success);
+  margin-left: 6px;
+  vertical-align: middle;
+  animation: pulseDot 2s ease-in-out infinite;
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.7); }
+}

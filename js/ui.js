@@ -147,6 +147,14 @@ export function getEditModalData() {
   };
 }
 
+/* ===== Highlight match ===== */
+function highlight(text, query) {
+  if (!query) return escapeHtml(text);
+  const escaped = escapeHtml(text);
+  const q = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return escaped.replace(new RegExp(`(${q})`, "gi"), `<mark class="hl">$1</mark>`);
+}
+
 /* ===== Sort base ===== */
 function sortByCodigo(list) {
   return [...list].sort((a,b) =>
@@ -238,8 +246,8 @@ export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, so
       </td>` : "";
 
     tr.innerHTML = `
-      <td class="col-codigo">${escapeHtml(item.codigo||"")}</td>
-      <td class="col-marca">${escapeHtml(item.marca||"")}</td>
+      <td class="col-codigo">${highlight(item.codigo||"", q)}</td>
+      <td class="col-marca">${highlight(item.marca||"", q)}</td>
       <td class="col-stock">${stockCell}</td>
       ${acciones}
     `;
@@ -252,4 +260,12 @@ export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, so
 export function setActiveChip(id) {
   ["fAll","fOut","fLow"].forEach(x => $(x)?.classList.remove("active"));
   $(id)?.classList.add("active");
+}
+
+/* ===== Chip counts ===== */
+export function updateChipCounts(list) {
+  const out = list.filter(i => getStockState(i) === "out").length;
+  const low = list.filter(i => getStockState(i) === "low").length;
+  const fOut = $("fOut"); if (fOut) fOut.textContent = `Faltantes${out ? ` (${out})` : ""}`;
+  const fLow = $("fLow"); if (fLow) fLow.textContent = `Bajo stock${low ? ` (${low})` : ""}`;
 }
