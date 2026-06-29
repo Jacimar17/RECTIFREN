@@ -156,9 +156,10 @@ export function showSkeleton(rows = 8) {
 /* ===== Modal Editar ===== */
 export function openEditModal({ codigo, marca, actual }) {
   $("editStatus").textContent = "";
-  $("editCodigo").textContent = codigo;
-  $("editMarca").textContent  = marca;
   $("editActual").textContent = String(actual);
+  $("editProductoOrig").textContent = `${codigo} — ${marca}`;
+  const ci = $("editCodigoInput"); if (ci) ci.value = codigo;
+  const mi = $("editMarcaInput");  if (mi) mi.value = marca;
   const input = $("editNuevo");
   input.value = String(actual);
   const ov = $("editOverlay");
@@ -167,7 +168,7 @@ export function openEditModal({ codigo, marca, actual }) {
   ov.dataset.codigo = codigo;
   ov.dataset.marca  = marca;
   ov.dataset.actual = String(actual);
-  setTimeout(() => { input.focus(); input.select(); }, 80);
+  setTimeout(() => { const ci2 = $("editCodigoInput"); if(ci2){ci2.focus();ci2.select();} }, 80);
 }
 
 export function closeEditModal() {
@@ -179,10 +180,12 @@ export function closeEditModal() {
 export function getEditModalData() {
   const ov = $("editOverlay");
   return {
-    codigo:     ov.dataset.codigo || "",
-    marca:      ov.dataset.marca  || "",
-    actual:     Number(ov.dataset.actual || 0),
-    nuevoStock: Number($("editNuevo").value)
+    codigoOrig:  ov.dataset.codigo || "",
+    marcaOrig:   ov.dataset.marca  || "",
+    actual:      Number(ov.dataset.actual || 0),
+    nuevoCodigo: $("editCodigoInput")?.value.trim() || ov.dataset.codigo || "",
+    nuevaMarca:  $("editMarcaInput")?.value.trim()  || ov.dataset.marca  || "",
+    nuevoStock:  Number($("editNuevo").value)
   };
 }
 
@@ -202,7 +205,7 @@ function sortByCodigo(list) {
 }
 
 /* ===== Render ===== */
-export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, sortCol, sortDir }) {
+export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, sortCol, sortDir, rangeMin, rangeMax }) {
   ensureAccionesHeader(isAdmin);
   const q = (query||"").trim().toLowerCase();
   const tbody = $("tbody");
@@ -216,6 +219,9 @@ export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, so
 
   if (viewFilter === "out") working = working.filter(it => getStockState(it) === "out");
   if (viewFilter === "low") working = working.filter(it => getStockState(it) === "low");
+
+  if (rangeMin !== null && rangeMin !== undefined) working = working.filter(it => Number(it.stock||0) >= rangeMin);
+  if (rangeMax !== null && rangeMax !== undefined) working = working.filter(it => Number(it.stock||0) <= rangeMax);
 
   if (sortCol) {
     working = [...working].sort((a,b) => {

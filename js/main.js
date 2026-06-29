@@ -74,8 +74,11 @@ function initTheme() {
 }
 
 /* ===== Render ===== */
+let rangeMin = null;
+let rangeMax = null;
+
 function doRender() {
-  renderStock({ list: cache, isAdmin, viewFilter, query: $("search")?.value || "", highlightKey, sortCol, sortDir });
+  renderStock({ list: cache, isAdmin, viewFilter, query: $("search")?.value || "", highlightKey, sortCol, sortDir, rangeMin, rangeMax });
   pushUrlParams();
 }
 
@@ -135,23 +138,9 @@ async function loadMovs() {
   try {
     const data = await apiGet({ action: "movements", range });
     if (!data.ok) { status.textContent = `Error: ${data.error || "No se pudo cargar."}`; return; }
-    const tbody = $("movTbody");
-    tbody.innerHTML = "";
-    for (const m of (data.data || [])) {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${escapeHtml(fmtDate(m.fecha))}</td>
-        <td>${escapeHtml(m.accion)}</td>
-        <td>${escapeHtml(m.codigo)}</td>
-        <td>${escapeHtml(m.marca)}</td>
-        <td class="center">${Number(m.cantidad || 0)}</td>
-        <td class="center">${Number(m.stock_anterior || 0)}</td>
-        <td class="center">${Number(m.stock_nuevo || 0)}</td>
-        <td>${escapeHtml(m.nota || "")}</td>
-      `;
-      tbody.appendChild(tr);
-    }
-    status.textContent = `Movimientos: ${(data.data || []).length}`;
+    movCache = data.data || [];
+    renderMovs(movCache);
+    status.textContent = `Movimientos: ${movCache.length}`;
   } catch (err) {
     status.textContent = `Error: ${String(err)}`;
   }
@@ -381,17 +370,75 @@ async function saveEdit() {
   const { user, pass } = getCreds();
   if (!user || !pass) { showToast("No está autenticado como administrador.", "error"); return; }
   const data = getEditModalData();
-  if (!data.codigo || !data.marca) { $("editStatus").textContent = "Error: datos incompletos."; return; }
+  if (!data.codigoOrig || !data.marcaOrig) { $("editStatus").textContent = "Error: datos incompletos."; return; }
+  if (!data.nuevoCodigo) { $("editStatus").textContent = "El código no puede estar vacío."; return; }
+  if (!data.nuevaMarca)  { $("editStatus").textContent = "La marca no puede estar vacía."; return; }
   if (!Number.isFinite(data.nuevoStock) || data.nuevoStock < 0) { $("editStatus").textContent = "Nuevo stock inválido."; return; }
   try {
-    setBusyState(true, "Guardando edición…");
-    const res = await apiPostForm({ action: "set", user, pass, codigo: data.codigo, marca: data.marca, nuevoStock: data.nuevoStock });
+    setBusyState(true, "Guardando cambios…");
+    const res = await apiPostForm({
+      action: "set", user, pass,
+      codigo: data.codigoOrig, marca: data.marcaOrig,
+      nuevoCodigo: data.nuevoCodigo, nuevaMarca: data.nuevaMarca,
+      nuevoStock: data.nuevoStock
+    });
     if (!res.ok) { $("editStatus").textContent = `Error: ${res.error || "No se pudo guardar."}`; return; }
     closeEditModal();
-    highlightKey = { codigo: data.codigo, marca: data.marca };
-    showToast(`Stock de ${data.codigo} actualizado a ${data.nuevoStock}.`, "success");
+    highlightKey = { codigo: data.nuevoCodigo, marca: data.nuevaMarca };
+    showToast(`Producto actualizado correctamente.`, "success");
     await loadStock(); await loadMovs(); setLastUpdatedNow();
   } finally { setBusyState(false); }
+}
+
+/* ===== Sort movimientos ===== */
+let movSortCol = "fecha";
+let movSortDir = "desc";
+let movCache   = [];
+
+function renderMovs(data) {
+  const tbody = $("movTbody"); if (!tbody) return;
+  tbody.innerHTML = "";
+  let rows = [...data];
+  rows.sort((a, b) => {
+    let va = a[movSortCol] ?? "", vb = b[movSortCol] ?? "";
+    if (movSortCol === "cantidad") { va = Number(va); vb = Number(vb); }
+    if (movSortCol === "fecha")    { va = new Date(va).getTime(); vb = new Date(vb).getTime(); }
+    const cmp = typeof va === "number" ? va - vb : String(va).localeCompare(String(vb), "es");
+    return movSortDir === "desc" ? -cmp : cmp;
+  });
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--muted)">Sin movimientos.</td></tr>`;
+    return;
+  }
+  for (const m of rows) {
+    const tr = document.createElement("tr");
+    const isIn = (m.accion||"").toLowerCase() === "in";
+    const col  = isIn ? "color:var(--success)" : "color:var(--warn)";
+    tr.innerHTML = `
+      <td>${escapeHtml(fmtDate(m.fecha))}</td>
+      <td style="${col};font-weight:700">${escapeHtml(m.accion)}</td>
+      <td>${escapeHtml(m.codigo)}</td>
+      <td>${escapeHtml(m.marca)}</td>
+      <td class="center">${Number(m.cantidad||0)}</td>
+      <td class="center">${Number(m.stock_anterior||0)}</td>
+      <td class="center">${Number(m.stock_nuevo||0)}</td>
+      <td>${escapeHtml(m.nota||"")}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+function bindMovSort() {
+  document.querySelectorAll("th.mov-sortable").forEach(th => {
+    th.addEventListener("click", () => {
+      const col = th.dataset.mcol;
+      if (movSortCol === col) movSortDir = movSortDir === "asc" ? "desc" : "asc";
+      else { movSortCol = col; movSortDir = col === "fecha" ? "desc" : "asc"; }
+      document.querySelectorAll("th.mov-sortable").forEach(t => t.classList.remove("mov-sort-asc","mov-sort-desc"));
+      th.classList.add(movSortDir === "asc" ? "mov-sort-asc" : "mov-sort-desc");
+      renderMovs(movCache);
+    });
+  });
 }
 
 /* ===== Sort headers ===== */
@@ -545,6 +592,35 @@ function bindEvents() {
 
   // Compact toggle
   $("btnCompact")?.addEventListener("click", toggleCompact);
+
+  // Búsqueda avanzada - rango de stock
+  $("btnAdvSearch")?.addEventListener("click", () => {
+    const rf = $("rangeFilter");
+    if (!rf) return;
+    const visible = rf.style.display !== "none";
+    rf.style.display = visible ? "none" : "flex";
+    if (visible) { rangeMin = null; rangeMax = null; $("rangeMin").value=""; $("rangeMax").value=""; doRender(); }
+    const btn = $("btnAdvSearch");
+    if (btn) btn.textContent = visible ? "⚡ Filtro stock" : "⚡ Quitar filtro";
+  });
+
+  const applyRange = () => {
+    const mn = $("rangeMin")?.value; const mx = $("rangeMax")?.value;
+    rangeMin = mn !== "" && mn !== null ? Number(mn) : null;
+    rangeMax = mx !== "" && mx !== null ? Number(mx) : null;
+    doRender();
+  };
+  $("rangeMin")?.addEventListener("input", applyRange);
+  $("rangeMax")?.addEventListener("input", applyRange);
+  $("btnClearRange")?.addEventListener("click", () => {
+    rangeMin = null; rangeMax = null;
+    if ($("rangeMin")) $("rangeMin").value = "";
+    if ($("rangeMax")) $("rangeMax").value = "";
+    doRender();
+  });
+
+  // Mov sort
+  bindMovSort();
 
   document.addEventListener("keydown", e => {
     if (e.key === "Escape" && !busy) {

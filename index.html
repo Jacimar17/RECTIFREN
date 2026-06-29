@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RECTIFREN | Inventario</title>
   <link rel="icon" type="image/png" href="assets/logo_rectifren.png" />
-  <link rel="stylesheet" href="css/styles.css?v=20260631">
+  <link rel="stylesheet" href="css/styles.css?v=20260632">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e8380d">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -82,6 +82,13 @@
             <button id="btnClearSearch" class="clearSearch" title="Limpiar" style="display:none">✕</button>
           </div>
           <div class="muted tiny" id="lastUpdated">Última actualización: — <span class="refresh-dot" title="Auto-refresh activo cada 5 min"></span></div>
+          <div class="range-filter" id="rangeFilter" style="display:none">
+            <span class="muted" style="font-size:11px;white-space:nowrap">Stock entre</span>
+            <input id="rangeMin" type="number" min="0" step="1" placeholder="Mín" class="range-input" />
+            <span class="muted" style="font-size:11px">y</span>
+            <input id="rangeMax" type="number" min="0" step="1" placeholder="Máx" class="range-input" />
+            <button id="btnClearRange" class="clearSearch" style="position:static;font-size:11px;padding:4px 8px">✕ Limpiar</button>
+          </div>
         </div>
         <div class="toolbar-right">
           <div class="filters">
@@ -91,6 +98,7 @@
           </div>
           <button id="btnExport" class="btn-export" title="Exportar a CSV">⬇ Exportar</button>
           <button id="btnCompact" class="btn-export" title="Modo compacto">☰ Compacto</button>
+          <button id="btnAdvSearch" class="btn-export" title="Búsqueda por rango de stock">⚡ Filtro stock</button>
           <button id="btnAddProduct" class="btn-add" style="display:none" title="Agregar producto">＋ Producto</button>
         </div>
       </div>
@@ -123,11 +131,11 @@
           <table>
             <thead>
               <tr>
-                <th>Fecha</th>
-                <th>Acción</th>
+                <th class="mov-sortable" data-mcol="fecha">Fecha <span class="sort-icon">↕</span></th>
+                <th class="mov-sortable" data-mcol="accion">Acción <span class="sort-icon">↕</span></th>
                 <th>CODIGO</th>
                 <th>MARCA</th>
-                <th>Cant.</th>
+                <th class="mov-sortable" data-mcol="cantidad">Cant. <span class="sort-icon">↕</span></th>
                 <th>Antes</th>
                 <th>Después</th>
                 <th>Nota</th>
@@ -180,27 +188,38 @@
     </div>
   </div>
 
-  <!-- Modal Editar stock -->
+  <!-- Modal Editar producto -->
   <div id="editOverlay" class="modalOverlay" aria-hidden="true">
     <div class="modal modalWide" role="dialog" aria-modal="true" aria-labelledby="editTitle">
       <div class="modalHeader">
-        <h2 id="editTitle" class="modalTitle">Editar stock</h2>
+        <h2 id="editTitle" class="modalTitle">Editar producto</h2>
         <button id="btnCloseEdit" class="modalClose" title="Cerrar">✕</button>
       </div>
       <div class="modalBody">
-        <div class="editInfo">
-          <div><span class="muted">Código</span><div id="editCodigo" class="editValue">-</div></div>
-          <div><span class="muted">Marca</span><div id="editMarca" class="editValue">-</div></div>
+        <div class="editInfo" style="grid-template-columns:1fr 1fr 1fr">
           <div><span class="muted">Stock actual</span><div id="editActual" class="editValue">-</div></div>
+          <div style="grid-column:span 2"><span class="muted">Producto</span><div id="editProductoOrig" class="editValue" style="font-size:13px">-</div></div>
         </div>
-        <label class="muted" for="editNuevo">Nuevo stock</label>
-        <input id="editNuevo" type="number" min="0" step="1" placeholder="Ingrese el nuevo stock" />
+        <div class="edit-grid">
+          <div>
+            <label class="muted" for="editCodigoInput">Código</label>
+            <input id="editCodigoInput" placeholder="Ej: FR-1234" autocomplete="off" />
+          </div>
+          <div>
+            <label class="muted" for="editMarcaInput">Marca</label>
+            <input id="editMarcaInput" placeholder="Ej: BREMBO" autocomplete="off" />
+          </div>
+          <div>
+            <label class="muted" for="editNuevo">Nuevo stock</label>
+            <input id="editNuevo" type="number" min="0" step="1" placeholder="Stock" />
+          </div>
+        </div>
         <div class="hint">
-          Se guardará el nuevo stock y se registrará el movimiento como <strong>AJUSTE</strong>.
+          Podés editar el código, la marca y/o el stock. Los cambios se registran como <strong>AJUSTE</strong>.
         </div>
         <div class="modalActions">
           <button id="btnCancelEdit">Cancelar</button>
-          <button id="btnSaveEdit" class="primary">Guardar</button>
+          <button id="btnSaveEdit" class="primary">Guardar cambios</button>
         </div>
         <p id="editStatus" class="muted"></p>
       </div>
@@ -320,6 +339,6 @@
     </div>
   </div>
 
-  <script type="module" src="js/main.js?v=20260631"></script>
+  <script type="module" src="js/main.js?v=20260632"></script>
 </body>
 </html>
