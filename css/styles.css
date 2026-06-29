@@ -887,3 +887,20 @@ button.mini.del:hover {
 
 /* ---- Col acciones wider for 4 buttons ---- */
 th.col-acciones, td.col-acciones { width: 190px; }
+
+/* ---- Modo compacto ---- */
+body.compact th,
+body.compact td { padding: 6px 12px; font-size: 12px; }
+body.compact .stat-card { padding: 10px 12px; }
+body.compact .stat-value { font-size: 22px; }
+body.compact #donutChart { width: 40px; height: 40px; }
+
+/* ---- Animación filtro ---- */
+#tbody { transition: opacity .15s ease; }
+#tbody.fading { opacity: 0; }
+
+/* ---- Fila clickeable (historial) ---- */
+tbody tr[data-c]:hover td { background: rgba(232,56,13,0.05); }
+
+/* ---- Historial modal ---- */
+#histTbody td { font-size: 12px; padding: 8px 12px; }

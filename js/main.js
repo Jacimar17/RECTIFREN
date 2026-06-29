@@ -287,10 +287,28 @@ async function confirmAdd() {
   } finally { setBusyState(false); }
 }
 
-async function deleteProduct(codigo, marca) {
+let pendingDelete = null;
+
+function openDelModal(codigo, marca) {
+  pendingDelete = { codigo, marca };
+  const ov = $("delOverlay"); if (!ov) return;
+  $("delCodigo").textContent = codigo;
+  $("delMarca").textContent  = marca;
+  ov.style.display = "flex"; ov.setAttribute("aria-hidden","false");
+}
+
+function closeDelModal() {
+  const ov = $("delOverlay"); if (!ov) return;
+  ov.style.display = "none"; ov.setAttribute("aria-hidden","true");
+  pendingDelete = null;
+}
+
+async function confirmDel() {
+  if (!pendingDelete) return;
+  const { codigo, marca } = pendingDelete;
+  closeDelModal();
   const { user, pass } = getCreds();
   if (!user || !pass) { showToast("No está autenticado.", "error"); return; }
-  if (!confirm(`¿Eliminar "${codigo} - ${marca}"? Esta acción no se puede deshacer.`)) return;
   try {
     setBusyState(true, "Eliminando producto…");
     const res = await apiPostForm({ action:"delete", user, pass, codigo, marca });
@@ -298,6 +316,65 @@ async function deleteProduct(codigo, marca) {
     showToast(`Producto ${codigo} eliminado.`, "success");
     await loadStock(); await loadMovs(); setLastUpdatedNow();
   } finally { setBusyState(false); }
+}
+
+async function deleteProduct(codigo, marca) {
+  openDelModal(codigo, marca);
+}
+
+
+/* ===== Historial por producto ===== */
+async function openHistModal(codigo, marca) {
+  const ov = $("histOverlay"); if (!ov) return;
+  $("histCodigo").textContent = codigo;
+  $("histMarca").textContent  = marca;
+  $("histTitle").textContent  = `Historial — ${codigo}`;
+  $("histStatus").textContent = "Cargando…";
+  $("histTbody").innerHTML    = "";
+  ov.style.display = "flex"; ov.setAttribute("aria-hidden","false");
+  try {
+    const data = await apiGet({ action: "movements", range: "month" });
+    const all  = (data.ok ? data.data || [] : [])
+      .filter(m => m.codigo === codigo && m.marca === marca);
+    const tbody = $("histTbody");
+    tbody.innerHTML = "";
+    if (all.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted)">Sin movimientos recientes.</td></tr>`;
+    } else {
+      for (const m of all) {
+        const tr = document.createElement("tr");
+        const isIn  = m.accion === "in"  || m.accion === "IN";
+        const isDel = m.accion === "delete" || m.accion === "DELETE";
+        const color = isIn ? "color:var(--success)" : isDel ? "color:var(--danger)" : "color:var(--warn)";
+        tr.innerHTML = `
+          <td>${escapeHtml(fmtDate(m.fecha))}</td>
+          <td style="${color};font-weight:700">${escapeHtml(m.accion)}</td>
+          <td class="center">${Number(m.cantidad||0)}</td>
+          <td class="center">${Number(m.stock_anterior||0)}</td>
+          <td class="center">${Number(m.stock_nuevo||0)}</td>
+          <td>${escapeHtml(m.nota||"")}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+    $("histStatus").textContent = `${all.length} movimiento(s) en los últimos 30 días.`;
+  } catch (err) {
+    $("histStatus").textContent = `Error: ${String(err)}`;
+  }
+}
+
+function closeHistModal() {
+  const ov = $("histOverlay"); if (!ov) return;
+  ov.style.display = "none"; ov.setAttribute("aria-hidden","true");
+}
+
+/* ===== Modo compacto ===== */
+let compactMode = false;
+function toggleCompact() {
+  compactMode = !compactMode;
+  document.body.classList.toggle("compact", compactMode);
+  const btn = $("btnCompact");
+  if (btn) btn.textContent = compactMode ? "☰ Normal" : "☰ Compacto";
 }
 
 async function saveEdit() {
@@ -386,7 +463,12 @@ function bindEvents() {
 
   const chipFilter = (f, id) => () => {
     if (busy) return;
-    viewFilter = f; setActiveChip(id); doRender();
+    viewFilter = f; setActiveChip(id);
+    const tb = document.getElementById("tbody");
+    if (tb) {
+      tb.classList.add("fading");
+      setTimeout(() => { doRender(); tb.classList.remove("fading"); }, 120);
+    } else { doRender(); }
   };
   $("fAll").addEventListener("click", chipFilter("all","fAll"));
   $("fOut").addEventListener("click", chipFilter("out","fOut"));
@@ -434,14 +516,45 @@ function bindEvents() {
     addOv.addEventListener("click", e => { if(e.target===addOv && !busy) closeAddModal(); });
   }
 
+  // Delete confirm modal
+  const delOv = $("delOverlay");
+  if (delOv) {
+    $("btnCloseDel")?.addEventListener("click",   () => { if(!busy) closeDelModal(); });
+    $("btnCancelDel")?.addEventListener("click",  () => { if(!busy) closeDelModal(); });
+    $("btnConfirmDel")?.addEventListener("click", () => { if(!busy) confirmDel(); });
+    delOv.addEventListener("click", e => { if(e.target===delOv && !busy) closeDelModal(); });
+  }
+
+  // Historial modal
+  const histOv = $("histOverlay");
+  if (histOv) {
+    $("btnCloseHist")?.addEventListener("click", () => closeHistModal());
+    histOv.addEventListener("click", e => { if(e.target===histOv) closeHistModal(); });
+  }
+
+  // Row click -> historial (solo click en td, no en botones)
+  $("tbody").addEventListener("click", async ev => {
+    if (busy) return;
+    if (ev.target.closest("button")) return; // ya manejado arriba
+    const tr = ev.target.closest("tr[data-c]");
+    if (!tr) return;
+    const codigo = tr.dataset.c;
+    const marca  = tr.dataset.m;
+    if (codigo && marca) await openHistModal(codigo, marca);
+  });
+
+  // Compact toggle
+  $("btnCompact")?.addEventListener("click", toggleCompact);
+
   document.addEventListener("keydown", e => {
     if (e.key === "Escape" && !busy) {
       if ($("modalOverlay").style.display === "flex") closeLoginModal();
       if ($("editOverlay").style.display   === "flex") closeEditModal();
       if ($("noteOverlay")?.style.display  === "flex") closeNoteModal();
       if ($("addOverlay")?.style.display   === "flex") closeAddModal();
+      if ($("delOverlay")?.style.display   === "flex") closeDelModal();
+      if ($("histOverlay")?.style.display  === "flex") closeHistModal();
     }
-    // Slash shortcut para buscador
     if (e.key === "/" && document.activeElement?.tagName !== "INPUT") {
       e.preventDefault();
       $("search")?.focus();

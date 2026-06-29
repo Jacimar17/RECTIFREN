@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RECTIFREN | Inventario</title>
   <link rel="icon" type="image/png" href="assets/logo_rectifren.png" />
-  <link rel="stylesheet" href="css/styles.css?v=20260630">
+  <link rel="stylesheet" href="css/styles.css?v=20260631">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e8380d">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -90,6 +90,7 @@
             <button class="chip chip-warn" id="fLow" type="button">Bajo stock</button>
           </div>
           <button id="btnExport" class="btn-export" title="Exportar a CSV">⬇ Exportar</button>
+          <button id="btnCompact" class="btn-export" title="Modo compacto">☰ Compacto</button>
           <button id="btnAddProduct" class="btn-add" style="display:none" title="Agregar producto">＋ Producto</button>
         </div>
       </div>
@@ -207,6 +208,61 @@
   </div>
 
 
+  <!-- Modal Historial producto -->
+  <div id="histOverlay" class="modalOverlay" aria-hidden="true">
+    <div class="modal modalWide" role="dialog" aria-modal="true">
+      <div class="modalHeader">
+        <h2 class="modalTitle" id="histTitle">Historial</h2>
+        <button id="btnCloseHist" class="modalClose">✕</button>
+      </div>
+      <div class="modalBody" style="gap:10px">
+        <div class="editInfo" id="histInfo">
+          <div><span class="muted">Código</span><div id="histCodigo" class="editValue">-</div></div>
+          <div style="grid-column:span 2"><span class="muted">Marca</span><div id="histMarca" class="editValue">-</div></div>
+        </div>
+        <div class="tableWrap" style="max-height:340px; overflow-y:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Acción</th>
+                <th>Cant.</th>
+                <th>Antes</th>
+                <th>Después</th>
+                <th>Nota</th>
+              </tr>
+            </thead>
+            <tbody id="histTbody"></tbody>
+          </table>
+        </div>
+        <p id="histStatus" class="muted"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Confirmar eliminar -->
+  <div id="delOverlay" class="modalOverlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modalHeader">
+        <h2 class="modalTitle" style="color:var(--danger)">⚠ Eliminar producto</h2>
+        <button id="btnCloseDel" class="modalClose">✕</button>
+      </div>
+      <div class="modalBody">
+        <div class="editInfo" id="delInfo">
+          <div><span class="muted">Código</span><div id="delCodigo" class="editValue">-</div></div>
+          <div style="grid-column:span 2"><span class="muted">Marca</span><div id="delMarca" class="editValue">-</div></div>
+        </div>
+        <div class="hint" style="border-color:var(--danger)">
+          Esta acción <strong>no se puede deshacer</strong>. El producto y su historial serán eliminados permanentemente.
+        </div>
+        <div class="modalActions">
+          <button id="btnCancelDel">Cancelar</button>
+          <button id="btnConfirmDel" class="primary" style="background:var(--danger)">Eliminar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal Agregar producto -->
   <div id="addOverlay" class="modalOverlay" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true">
@@ -264,6 +320,6 @@
     </div>
   </div>
 
-  <script type="module" src="js/main.js?v=20260630"></script>
+  <script type="module" src="js/main.js?v=20260631"></script>
 </body>
 </html>

@@ -284,6 +284,9 @@ export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, so
           data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" title="Eliminar producto">🗑</button>
       </td>` : "";
 
+    tr.dataset.c = item.codigo || "";
+    tr.dataset.m = item.marca  || "";
+    tr.style.cursor = "pointer";
     tr.innerHTML = `
       <td class="col-codigo">${highlight(item.codigo||"", q)}</td>
       <td class="col-marca">${highlight(item.marca||"", q)}</td>
@@ -293,7 +296,8 @@ export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, so
     tbody.appendChild(tr);
   }
 
-  $("status").textContent = `Mostrando ${working.length} de ${list.length} registros.`;
+  const filteredUnits = working.reduce((acc, i) => acc + Number(i.stock || 0), 0);
+  $("status").textContent = `Mostrando ${working.length} de ${list.length} productos · ${filteredUnits} unidades en vista.`;
 }
 
 export function setActiveChip(id) {
