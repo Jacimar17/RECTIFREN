@@ -189,8 +189,6 @@ export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, so
     });
   }
 
-  const maxStock = Math.max(5, ...working.map(i => Number(i.stock||0)));
-
   if (working.length === 0) {
     const tr = document.createElement("tr");
     const colspan = isAdmin ? 4 : 3;
@@ -215,7 +213,7 @@ export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, so
     if (state === "out") badge = `<span class="badge out">SIN STOCK</span>`;
     if (state === "low") badge = `<span class="badge low">BAJO</span>`;
 
-    const barPct  = state === "out" ? 0 : Math.min(100, Math.round((stockNum / maxStock) * 100));
+    const barPct  = state === "out" ? 0 : state === "low" ? 40 : 100;
     const barClass = state === "out" ? "bar-danger" : state === "low" ? "bar-warn" : "";
 
     const numColor = state === "out"
