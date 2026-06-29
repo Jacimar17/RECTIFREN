@@ -11,6 +11,7 @@ let isAdmin     = false;
 let viewFilter  = "all";
 let busy        = false;
 let highlightKey = null;
+let pendingAction = null; // { act, codigo, marca, stock }
 let sortCol     = null;
 let sortDir     = "asc";
 let autoRefreshTimer = null;
@@ -187,6 +188,7 @@ async function adminLogin() {
     sessionStorage.setItem("rectifren_admin_user", user);
     sessionStorage.setItem("rectifren_admin_pass", pass);
     isAdmin = true; setAdminButtonState();
+    const bap = $("btnAddProduct"); if(bap) bap.style.display="flex";
     closeLoginModal(); doRender();
     await loadMovs(); setLastUpdatedNow();
     showToast("Sesión de administrador iniciada.", "success");
@@ -202,20 +204,98 @@ function adminLogout() {
   sessionStorage.removeItem("rectifren_admin_user");
   sessionStorage.removeItem("rectifren_admin_pass");
   isAdmin = false; setAdminButtonState();
+  const bap2 = $("btnAddProduct"); if(bap2) bap2.style.display="none";
   doRender(); loadMovs(); setLastUpdatedNow();
   showToast("Sesión cerrada correctamente.", "info");
 }
 
 /* ===== Acciones stock ===== */
-async function doInOut(act, codigo, marca) {
+function openNoteModal(act, codigo, marca, stock) {
+  pendingAction = { act, codigo, marca, stock };
+  const ov = $("noteOverlay"); if (!ov) return;
+  $("noteTitle").textContent = act === "in" ? "Agregar una unidad" : "Retirar una unidad";
+  $("noteCodigo").textContent = codigo;
+  $("noteAccion").textContent = act === "in" ? "+ Entrada" : "− Salida";
+  $("noteStock").textContent  = String(stock);
+  $("noteInput").value = "";
+  ov.style.display = "flex";
+  ov.setAttribute("aria-hidden","false");
+  setTimeout(() => $("noteInput")?.focus(), 80);
+}
+
+function closeNoteModal() {
+  const ov = $("noteOverlay"); if (!ov) return;
+  ov.style.display = "none";
+  ov.setAttribute("aria-hidden","true");
+  pendingAction = null;
+}
+
+async function confirmNote() {
+  if (!pendingAction) return;
+  const { act, codigo, marca } = pendingAction;
+  const nota = $("noteInput")?.value.trim() || "";
+  closeNoteModal();
   const { user, pass } = getCreds();
   if (!user || !pass) { showToast("No está autenticado como administrador.", "error"); return; }
   setBusyState(true, "Aplicando cambio…");
   try {
-    const res = await apiPostForm({ action: act, user, pass, codigo, marca, cantidad: 1 });
+    const res = await apiPostForm({ action: act, user, pass, codigo, marca, cantidad: 1, nota });
     if (!res.ok) { showToast(`Error: ${res.error || "No se pudo operar."}`, "error"); return; }
     highlightKey = { codigo, marca };
     showToast(`Stock ${act === "in" ? "aumentado" : "reducido"} para ${codigo}.`, "success");
+    await loadStock(); await loadMovs(); setLastUpdatedNow();
+  } finally { setBusyState(false); }
+}
+
+async function doInOut(act, codigo, marca, stock) {
+  openNoteModal(act, codigo, marca, stock);
+}
+
+
+/* ===== Agregar producto ===== */
+function openAddModal() {
+  ["addCodigo","addMarca"].forEach(id => { const el = $(id); if(el) el.value=""; });
+  const st = $("addStock"); if(st) st.value="0";
+  const s = $("addStatus"); if(s) s.textContent="";
+  const ov = $("addOverlay"); if(!ov) return;
+  ov.style.display="flex"; ov.setAttribute("aria-hidden","false");
+  setTimeout(() => $("addCodigo")?.focus(), 80);
+}
+
+function closeAddModal() {
+  const ov = $("addOverlay"); if(!ov) return;
+  ov.style.display="none"; ov.setAttribute("aria-hidden","true");
+}
+
+async function confirmAdd() {
+  const { user, pass } = getCreds();
+  if (!user || !pass) { showToast("No está autenticado.", "error"); return; }
+  const codigo = $("addCodigo")?.value.trim();
+  const marca  = $("addMarca")?.value.trim();
+  const stock  = Number($("addStock")?.value || 0);
+  const st     = $("addStatus");
+  if (!codigo) { if(st) st.textContent="El código es obligatorio."; return; }
+  if (!marca)  { if(st) st.textContent="La marca es obligatoria.";  return; }
+  if (!Number.isFinite(stock) || stock < 0) { if(st) st.textContent="Stock inválido."; return; }
+  try {
+    setBusyState(true, "Agregando producto…");
+    const res = await apiPostForm({ action:"add", user, pass, codigo, marca, stock });
+    if (!res.ok) { if(st) st.textContent=`Error: ${res.error||"No se pudo agregar."}`; return; }
+    closeAddModal();
+    showToast(`Producto ${codigo} agregado.`, "success");
+    await loadStock(); await loadMovs(); setLastUpdatedNow();
+  } finally { setBusyState(false); }
+}
+
+async function deleteProduct(codigo, marca) {
+  const { user, pass } = getCreds();
+  if (!user || !pass) { showToast("No está autenticado.", "error"); return; }
+  if (!confirm(`¿Eliminar "${codigo} - ${marca}"? Esta acción no se puede deshacer.`)) return;
+  try {
+    setBusyState(true, "Eliminando producto…");
+    const res = await apiPostForm({ action:"delete", user, pass, codigo, marca });
+    if (!res.ok) { showToast(`Error: ${res.error||"No se pudo eliminar."}`, "error"); return; }
+    showToast(`Producto ${codigo} eliminado.`, "success");
     await loadStock(); await loadMovs(); setLastUpdatedNow();
   } finally { setBusyState(false); }
 }
@@ -320,8 +400,9 @@ function bindEvents() {
     const codigo = btn.getAttribute("data-c");
     const marca  = btn.getAttribute("data-m");
     const stock  = Number(btn.getAttribute("data-s") || 0);
-    if (act === "in" || act === "out") { await doInOut(act, codigo, marca); return; }
+    if (act === "in" || act === "out") { await doInOut(act, codigo, marca, stock); return; }
     if (act === "set") { openEditModal({ codigo, marca, actual: stock }); return; }
+    if (act === "del") { await deleteProduct(codigo, marca); return; }
   });
 
   $("btnCloseEdit").addEventListener("click",  () => { if (!busy) closeEditModal(); });
@@ -333,10 +414,37 @@ function bindEvents() {
     if (e.target === $("editOverlay") && !busy) closeEditModal();
   });
 
+  // Note modal
+  const noteOv = $("noteOverlay");
+  if (noteOv) {
+    $("btnCloseNote")?.addEventListener("click",   () => { if(!busy) closeNoteModal(); });
+    $("btnCancelNote")?.addEventListener("click",  () => { if(!busy) closeNoteModal(); });
+    $("btnConfirmNote")?.addEventListener("click", () => { if(!busy) confirmNote(); });
+    $("noteInput")?.addEventListener("keydown", e => { if(e.key==="Enter" && !busy) confirmNote(); });
+    noteOv.addEventListener("click", e => { if(e.target===noteOv && !busy) closeNoteModal(); });
+  }
+
+  // Add product modal
+  const addOv = $("addOverlay");
+  if (addOv) {
+    $("btnAddProduct")?.addEventListener("click",  () => { if(!busy) openAddModal(); });
+    $("btnCloseAdd")?.addEventListener("click",    () => { if(!busy) closeAddModal(); });
+    $("btnCancelAdd")?.addEventListener("click",   () => { if(!busy) closeAddModal(); });
+    $("btnConfirmAdd")?.addEventListener("click",  () => { if(!busy) confirmAdd(); });
+    addOv.addEventListener("click", e => { if(e.target===addOv && !busy) closeAddModal(); });
+  }
+
   document.addEventListener("keydown", e => {
     if (e.key === "Escape" && !busy) {
       if ($("modalOverlay").style.display === "flex") closeLoginModal();
       if ($("editOverlay").style.display   === "flex") closeEditModal();
+      if ($("noteOverlay")?.style.display  === "flex") closeNoteModal();
+      if ($("addOverlay")?.style.display   === "flex") closeAddModal();
+    }
+    // Slash shortcut para buscador
+    if (e.key === "/" && document.activeElement?.tagName !== "INPUT") {
+      e.preventDefault();
+      $("search")?.focus();
     }
   });
 

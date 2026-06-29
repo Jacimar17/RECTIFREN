@@ -846,3 +846,44 @@ mark.hl {
   0%, 100% { opacity: 1; transform: scale(1); }
   50%       { opacity: 0.4; transform: scale(0.7); }
 }
+
+/* ---- 5-col stats ---- */
+.stats { grid-template-columns: repeat(5, 1fr); }
+
+@media (max-width: 900px) { .stats { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 600px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+
+/* ---- Donut stat card ---- */
+.stat-card.stat-donut { gap: 10px; }
+#donutChart { flex-shrink: 0; }
+
+/* ---- Accent stat (unidades) ---- */
+.stat-card.stat-accent { border-color: rgba(232,56,13,0.25); }
+.stat-card.stat-accent .stat-value { color: var(--accent); }
+
+/* ---- Btn agregar producto ---- */
+.btn-add {
+  background: transparent;
+  border-color: var(--success);
+  color: var(--success);
+  font-size: 12px;
+  padding: 8px 14px;
+  font-weight: 700;
+}
+.btn-add:hover { background: var(--success); color: #fff; border-color: transparent; }
+
+/* ---- Delete mini button ---- */
+button.mini.del {
+  background: transparent;
+  color: var(--dim);
+  border-color: transparent;
+  font-size: 13px;
+}
+button.mini.del:hover {
+  background: rgba(239,68,68,0.12);
+  color: #ef4444;
+  border-color: rgba(239,68,68,0.2);
+}
+
+/* ---- Col acciones wider for 4 buttons ---- */
+th.col-acciones, td.col-acciones { width: 190px; }

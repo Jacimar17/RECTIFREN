@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RECTIFREN | Inventario</title>
   <link rel="icon" type="image/png" href="assets/logo_rectifren.png" />
-  <link rel="stylesheet" href="css/styles.css?v=20260629">
+  <link rel="stylesheet" href="css/styles.css?v=20260630">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e8380d">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -36,11 +36,18 @@
 
       <!-- Stats -->
       <div class="stats" id="statsRow">
-        <div class="stat-card">
-          <div class="stat-icon">📦</div>
+        <div class="stat-card stat-donut">
+          <canvas id="donutChart" width="56" height="56"></canvas>
           <div class="stat-body">
             <div class="stat-value" id="statTotalVal">—</div>
             <div class="stat-label">Total productos</div>
+          </div>
+        </div>
+        <div class="stat-card stat-accent">
+          <div class="stat-icon">🔢</div>
+          <div class="stat-body">
+            <div class="stat-value" id="statUnitsVal">—</div>
+            <div class="stat-label">Unidades totales</div>
           </div>
         </div>
         <div class="stat-card stat-danger">
@@ -83,6 +90,7 @@
             <button class="chip chip-warn" id="fLow" type="button">Bajo stock</button>
           </div>
           <button id="btnExport" class="btn-export" title="Exportar a CSV">⬇ Exportar</button>
+          <button id="btnAddProduct" class="btn-add" style="display:none" title="Agregar producto">＋ Producto</button>
         </div>
       </div>
 
@@ -198,6 +206,53 @@
     </div>
   </div>
 
+
+  <!-- Modal Agregar producto -->
+  <div id="addOverlay" class="modalOverlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modalHeader">
+        <h2 class="modalTitle">Agregar producto</h2>
+        <button id="btnCloseAdd" class="modalClose">✕</button>
+      </div>
+      <div class="modalBody">
+        <label class="muted" for="addCodigo">Código</label>
+        <input id="addCodigo" placeholder="Ej: FR-1234" autocomplete="off" />
+        <label class="muted" for="addMarca">Marca</label>
+        <input id="addMarca" placeholder="Ej: BREMBO" autocomplete="off" />
+        <label class="muted" for="addStock">Stock inicial</label>
+        <input id="addStock" type="number" min="0" step="1" placeholder="0" value="0" />
+        <div class="modalActions">
+          <button id="btnCancelAdd">Cancelar</button>
+          <button id="btnConfirmAdd" class="primary">Agregar</button>
+        </div>
+        <p id="addStatus" class="muted"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Nota movimiento -->
+  <div id="noteOverlay" class="modalOverlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modalHeader">
+        <h2 class="modalTitle" id="noteTitle">Confirmar movimiento</h2>
+        <button id="btnCloseNote" class="modalClose">✕</button>
+      </div>
+      <div class="modalBody">
+        <div class="editInfo" id="noteInfo">
+          <div><span class="muted">Código</span><div id="noteCodigo" class="editValue">-</div></div>
+          <div><span class="muted">Acción</span><div id="noteAccion" class="editValue">-</div></div>
+          <div><span class="muted">Stock actual</span><div id="noteStock" class="editValue">-</div></div>
+        </div>
+        <label class="muted" for="noteInput">Nota (opcional)</label>
+        <input id="noteInput" placeholder="Ej: Vendido a cliente, devolución..." />
+        <div class="modalActions">
+          <button id="btnCancelNote">Cancelar</button>
+          <button id="btnConfirmNote" class="primary">Confirmar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Busy overlay -->
   <div id="busyOverlay" class="busyOverlay" aria-hidden="true">
     <div class="busyCard">
@@ -209,6 +264,6 @@
     </div>
   </div>
 
-  <script type="module" src="js/main.js?v=20260629"></script>
+  <script type="module" src="js/main.js?v=20260630"></script>
 </body>
 </html>

@@ -67,7 +67,7 @@ export function showToast(message, type = "info", duration = 3200) {
 
 /* ===== Stats ===== */
 export function setStatsLoading() {
-  ["statTotalVal","statOutVal","statLowVal","statOkVal"].forEach(id => {
+  ["statTotalVal","statUnitsVal","statOutVal","statLowVal","statOkVal"].forEach(id => {
     const el = $(id); if (!el) return;
     el.textContent = "—";
     el.closest(".stat-card")?.classList.add("stat-loading");
@@ -79,6 +79,7 @@ export function updateStats(list) {
   const out   = list.filter(i => getStockState(i) === "out").length;
   const low   = list.filter(i => getStockState(i) === "low").length;
   const ok    = total - out - low;
+  const units = list.reduce((acc, i) => acc + Number(i.stock || 0), 0);
 
   const setVal = (id, val) => {
     const el = $(id); if (!el) return;
@@ -87,9 +88,47 @@ export function updateStats(list) {
   };
 
   setVal("statTotalVal", total);
+  setVal("statUnitsVal", units);
   setVal("statOutVal",   out);
   setVal("statLowVal",   low);
   setVal("statOkVal",    ok);
+
+  // Titulo pestana
+  document.title = out > 0 ? `(${out}) RECTIFREN | Inventario` : "RECTIFREN | Inventario";
+
+  // Donut
+  drawDonut({ ok, low, out });
+}
+
+function drawDonut({ ok, low, out }) {
+  const canvas = document.getElementById("donutChart");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const total = ok + low + out;
+  const W = canvas.width, H = canvas.height;
+  const cx = W/2, cy = H/2, r = W/2 - 4, inner = r * 0.58;
+  ctx.clearRect(0, 0, W, H);
+  if (total === 0) {
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2);
+    ctx.strokeStyle = "rgba(255,255,255,0.1)";
+    ctx.lineWidth = r - inner; ctx.stroke(); return;
+  }
+  const segments = [
+    { val: ok,  color: "#22c55e" },
+    { val: low, color: "#f59e0b" },
+    { val: out, color: "#ef4444" },
+  ].filter(s => s.val > 0);
+  let angle = -Math.PI / 2;
+  for (const seg of segments) {
+    const sweep = (seg.val / total) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, (r + inner) / 2, angle, angle + sweep);
+    ctx.strokeStyle = seg.color;
+    ctx.lineWidth = r - inner;
+    ctx.lineCap = "butt";
+    ctx.stroke();
+    angle += sweep;
+  }
 }
 
 /* ===== Skeleton loader ===== */
@@ -234,13 +273,15 @@ export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, so
     const acciones = isAdmin ? `
       <td class="col-acciones">
         <button class="mini success" data-act="in"
-          data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}">+</button>
+          data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${stockNum}">+</button>
         <button class="mini danger" data-act="out"
           data-disabled="${minusDisabled?"1":"0"}"
           ${minusDisabled?"disabled":""}
-          data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}">−</button>
+          data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${stockNum}">−</button>
         <button class="mini" data-act="set"
           data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${stockNum}">✏️</button>
+        <button class="mini del" data-act="del"
+          data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" title="Eliminar producto">🗑</button>
       </td>` : "";
 
     tr.innerHTML = `
