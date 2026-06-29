@@ -4,52 +4,100 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RECTIFREN | Inventario</title>
-
   <link rel="icon" type="image/png" href="assets/logo_rectifren.png" />
-  <link rel="stylesheet" href="css/styles.css?v=20260224_3">
+  <link rel="stylesheet" href="css/styles.css?v=20260626">
 </head>
-
 <body>
+
+  <!-- Toasts -->
+  <div id="toastContainer" class="toastContainer"></div>
+
   <div class="container">
     <div class="card">
+
+      <!-- Header -->
       <header>
         <img src="assets/logo_rectifren.png" alt="RECTIFREN" />
-        <div>
+        <div class="header-text">
           <h1>RECTI<span>FREN</span></h1>
           <div class="muted">Sistema de inventario · Visualización de stock</div>
         </div>
+        <div class="header-actions">
+          <button id="btnTheme" title="Cambiar tema">☀️</button>
+          <button id="btnAdmin" class="primary">Administrador</button>
+        </div>
       </header>
 
+      <div class="divider-gradient"></div>
+
+      <!-- Stats -->
+      <div class="stats" id="statsRow">
+        <div class="stat-card">
+          <div class="stat-icon">📦</div>
+          <div class="stat-body">
+            <div class="stat-value" id="statTotalVal">—</div>
+            <div class="stat-label">Total productos</div>
+          </div>
+        </div>
+        <div class="stat-card stat-danger">
+          <div class="stat-icon">🚫</div>
+          <div class="stat-body">
+            <div class="stat-value" id="statOutVal">—</div>
+            <div class="stat-label">Sin stock</div>
+          </div>
+        </div>
+        <div class="stat-card stat-warn">
+          <div class="stat-icon">⚠️</div>
+          <div class="stat-body">
+            <div class="stat-value" id="statLowVal">—</div>
+            <div class="stat-label">Bajo stock</div>
+          </div>
+        </div>
+        <div class="stat-card stat-success">
+          <div class="stat-icon">✅</div>
+          <div class="stat-body">
+            <div class="stat-value" id="statOkVal">—</div>
+            <div class="stat-label">En stock</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Toolbar -->
       <div class="toolbar" id="toolbar">
         <div class="search">
-          <input id="search" placeholder="Buscar por CODIGO o MARCA..." />
+          <div class="searchWrap">
+            <span class="searchIcon">🔍</span>
+            <input id="search" placeholder="Buscar por CODIGO o MARCA..." />
+            <button id="btnClearSearch" class="clearSearch" title="Limpiar" style="display:none">✕</button>
+          </div>
           <div class="muted tiny" id="lastUpdated">Última actualización: —</div>
         </div>
-
-        <button id="btnTheme" title="Cambiar tema">☀️</button>
-        <button id="btnAdmin" class="primary">Administrador</button>
+        <div class="toolbar-right">
+          <div class="filters">
+            <button class="chip active" id="fAll" type="button">Todos</button>
+            <button class="chip chip-danger" id="fOut" type="button">Faltantes</button>
+            <button class="chip chip-warn" id="fLow" type="button">Bajo stock</button>
+          </div>
+          <button id="btnExport" class="btn-export" title="Exportar a CSV">⬇ Exportar</button>
+        </div>
       </div>
 
-      <div class="filters">
-        <button class="chip active" id="fAll" type="button">Todos</button>
-        <button class="chip" id="fOut" type="button">Faltantes</button>
-        <button class="chip" id="fLow" type="button">Bajo stock</button>
-      </div>
-
+      <!-- Tabla stock -->
       <div class="tableWrap">
         <table id="stockTable">
           <thead>
             <tr>
-              <th class="col-codigo">CODIGO</th>
-              <th class="col-marca">MARCA</th>
-              <th class="col-stock">STOCK</th>
+              <th class="col-codigo sortable" data-col="codigo">CODIGO <span class="sort-icon">↕</span></th>
+              <th class="col-marca sortable" data-col="marca">MARCA <span class="sort-icon">↕</span></th>
+              <th class="col-stock sortable" data-col="stock">STOCK <span class="sort-icon">↕</span></th>
             </tr>
           </thead>
           <tbody id="tbody"></tbody>
         </table>
       </div>
 
-      <div id="movPanel" style="display:none; margin-top:14px;">
+      <!-- Panel movimientos (solo admin) -->
+      <div id="movPanel" style="display:none; margin-top:24px;">
         <div class="movHeader">
           <strong>Últimos movimientos</strong>
           <select id="movRange" class="select">
@@ -58,7 +106,6 @@
           </select>
           <span id="movStatus" class="muted"></span>
         </div>
-
         <div class="tableWrap">
           <table>
             <thead>
@@ -80,6 +127,22 @@
 
       <p id="status" class="muted"></p>
     </div>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+      <div class="footer-brand">
+        <img src="assets/logo_rectifren.png" alt="RECTIFREN" class="footer-logo" />
+        <div>
+          <div class="footer-name">RECTIFREN</div>
+          <div class="footer-sub">Expertos en frenos, rectificaciones, retenes y rodamientos</div>
+        </div>
+      </div>
+      <div class="footer-links">
+        <a href="https://www.instagram.com/rectifren.ryr/" target="_blank" rel="noopener" class="footer-link">
+          📸 Instagram
+        </a>
+      </div>
+    </footer>
   </div>
 
   <!-- Modal Login -->
@@ -89,20 +152,16 @@
         <h2 id="modalTitle" class="modalTitle">Acceso Administrador</h2>
         <button id="btnCloseModal" class="modalClose" title="Cerrar">✕</button>
       </div>
-
       <div class="modalBody">
         <input id="adminUser" placeholder="Usuario" autocomplete="username" />
         <input id="adminPass" type="password" placeholder="Contraseña" autocomplete="current-password" />
-
         <div class="hint">
           Si el login es correcto, se habilitan: <strong>+</strong> / <strong>−</strong> / <strong>✏️</strong>, guardado automático y últimos movimientos.
         </div>
-
         <div class="modalActions">
           <button id="btnCancel">Cancelar</button>
           <button id="btnLogin" class="primary">Ingresar</button>
         </div>
-
         <p id="loginStatus" class="muted"></p>
       </div>
     </div>
@@ -115,32 +174,27 @@
         <h2 id="editTitle" class="modalTitle">Editar stock</h2>
         <button id="btnCloseEdit" class="modalClose" title="Cerrar">✕</button>
       </div>
-
       <div class="modalBody">
         <div class="editInfo">
           <div><span class="muted">Código</span><div id="editCodigo" class="editValue">-</div></div>
           <div><span class="muted">Marca</span><div id="editMarca" class="editValue">-</div></div>
           <div><span class="muted">Stock actual</span><div id="editActual" class="editValue">-</div></div>
         </div>
-
         <label class="muted" for="editNuevo">Nuevo stock</label>
         <input id="editNuevo" type="number" min="0" step="1" placeholder="Ingrese el nuevo stock" />
-
         <div class="hint">
           Se guardará el nuevo stock y se registrará el movimiento como <strong>AJUSTE</strong>.
         </div>
-
         <div class="modalActions">
           <button id="btnCancelEdit">Cancelar</button>
           <button id="btnSaveEdit" class="primary">Guardar</button>
         </div>
-
         <p id="editStatus" class="muted"></p>
       </div>
     </div>
   </div>
 
-  <!-- Overlay de carga -->
+  <!-- Busy overlay -->
   <div id="busyOverlay" class="busyOverlay" aria-hidden="true">
     <div class="busyCard">
       <div class="spinner" aria-hidden="true"></div>
@@ -151,6 +205,6 @@
     </div>
   </div>
 
-  <script type="module" src="js/main.js?v=20260224_3"></script>
+  <script type="module" src="js/main.js?v=20260626"></script>
 </body>
 </html>
