@@ -939,3 +939,102 @@ th.mov-sort-asc  .sort-icon::after { content: ' ▲'; font-size: 10px; color: va
 th.mov-sort-desc .sort-icon::after { content: ' ▼'; font-size: 10px; color: var(--accent); }
 th.mov-sort-asc  .sort-icon,
 th.mov-sort-desc .sort-icon { opacity: 0; }
+
+/* ============================================================
+   MOBILE — Vista de tarjetas
+   ============================================================ */
+@media (max-width: 640px) {
+  /* Ocultar tabla normal */
+  .tableWrap { display: none; }
+
+  /* Grid de cards */
+  #cardGrid {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .stock-card {
+    background: var(--raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    cursor: pointer;
+    transition: border-color .15s;
+  }
+
+  .stock-card:hover { border-color: var(--border2); }
+  .stock-card.card-out { border-left: 3px solid var(--danger); }
+  .stock-card.card-low { border-left: 3px solid var(--warn); }
+  .stock-card.card-ok  { border-left: 3px solid var(--success); }
+
+  .stock-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .stock-card-codigo {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    color: var(--text);
+  }
+
+  .stock-card-marca {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .stock-card-stock {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 900;
+    line-height: 1;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .stock-card-stock.s-ok     { color: var(--success); }
+  .stock-card-stock.s-low    { color: var(--warn); }
+  .stock-card-stock.s-out    { color: var(--danger); }
+
+  .stock-card-bar {
+    height: 4px;
+    border-radius: 99px;
+    background: var(--border2);
+    overflow: hidden;
+  }
+
+  .stock-card-bar-fill {
+    height: 100%;
+    border-radius: 99px;
+    transition: width .4s ease;
+  }
+
+  .stock-card-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 2px;
+  }
+
+  .stock-card-actions button {
+    flex: 1;
+    justify-content: center;
+    font-size: 13px;
+    padding: 7px 0;
+  }
+
+  /* Ocultar cardGrid en desktop */
+  #cardGrid { display: none; }
+}
+
+@media (max-width: 640px) {
+  #cardGrid { display: grid !important; }
+}

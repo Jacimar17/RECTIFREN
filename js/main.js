@@ -3,7 +3,7 @@ import {
   $, fmtDate, escapeHtml,
   renderStock, setBusy, setActiveChip,
   openEditModal, closeEditModal, getEditModalData,
-  showToast, updateStats, showSkeleton, updateChipCounts
+  showToast, updateStats, showSkeleton, updateChipCounts, renderCards
 } from "./ui.js";
 
 let cache       = [];
@@ -78,8 +78,35 @@ let rangeMin = null;
 let rangeMax = null;
 
 function doRender() {
-  renderStock({ list: cache, isAdmin, viewFilter, query: $("search")?.value || "", highlightKey, sortCol, sortDir, rangeMin, rangeMax });
+  const opts = { list: cache, isAdmin, viewFilter, query: $("search")?.value || "", highlightKey, sortCol, sortDir, rangeMin, rangeMax };
+  renderStock(opts);
+  renderCards(opts);
   pushUrlParams();
+}
+
+/* ===== Notificaciones ===== */
+let notifPermission = false;
+
+async function requestNotifPermission() {
+  if (!("Notification" in window)) return;
+  if (Notification.permission === "granted") { notifPermission = true; return; }
+  if (Notification.permission !== "denied") {
+    const perm = await Notification.requestPermission();
+    notifPermission = perm === "granted";
+  }
+}
+
+function checkNewOutOfStock(oldCache, newCache) {
+  if (!notifPermission) return;
+  const wasOut = new Set(oldCache.filter(i => Number(i.stock||0) === 0).map(i => `${i.codigo}|${i.marca}`));
+  const nowOut = newCache.filter(i => Number(i.stock||0) === 0);
+  const nuevos = nowOut.filter(i => !wasOut.has(`${i.codigo}|${i.marca}`));
+  for (const item of nuevos) {
+    new Notification("⚠ RECTIFREN — Sin stock", {
+      body: `${item.codigo} (${item.marca}) quedó sin stock.`,
+      icon: "assets/logo_rectifren.png"
+    });
+  }
 }
 
 /* ===== Auto-refresh ===== */
@@ -90,7 +117,9 @@ function startAutoRefresh() {
     try {
       const data = await apiGet({ action: "list" });
       if (data.ok) {
+        const oldCache = [...cache];
         cache = data.data || [];
+        checkNewOutOfStock(oldCache, cache);
         updateStats(cache);
         updateChipCounts(cache);
         doRender();
@@ -521,18 +550,29 @@ function bindEvents() {
   $("fOut").addEventListener("click", chipFilter("out","fOut"));
   $("fLow").addEventListener("click", chipFilter("low","fLow"));
 
-  $("tbody").addEventListener("click", async ev => {
+  const handleStockAction = async (ev, allowRowClick) => {
     if (busy) return;
     const btn = ev.target.closest("button[data-act]");
-    if (!btn || btn.disabled) return;
-    const act    = btn.getAttribute("data-act");
-    const codigo = btn.getAttribute("data-c");
-    const marca  = btn.getAttribute("data-m");
-    const stock  = Number(btn.getAttribute("data-s") || 0);
-    if (act === "in" || act === "out") { await doInOut(act, codigo, marca, stock); return; }
-    if (act === "set") { openEditModal({ codigo, marca, actual: stock }); return; }
-    if (act === "del") { await deleteProduct(codigo, marca); return; }
-  });
+    if (btn && !btn.disabled) {
+      const act    = btn.getAttribute("data-act");
+      const codigo = btn.getAttribute("data-c");
+      const marca  = btn.getAttribute("data-m");
+      const stock  = Number(btn.getAttribute("data-s") || 0);
+      if (act === "in" || act === "out") { await doInOut(act, codigo, marca, stock); return; }
+      if (act === "set") { openEditModal({ codigo, marca, actual: stock }); return; }
+      if (act === "del") { await deleteProduct(codigo, marca); return; }
+      return;
+    }
+    if (allowRowClick && !ev.target.closest("button")) {
+      const row = ev.target.closest("[data-c]");
+      if (row) { const c = row.dataset.c, m = row.dataset.m; if(c&&m) await openHistModal(c,m); }
+    }
+  };
+
+  $("tbody").addEventListener("click", ev => handleStockAction(ev, true));
+
+  const cardGrid = document.getElementById("cardGrid");
+  if (cardGrid) cardGrid.addEventListener("click", ev => handleStockAction(ev, true));
 
   $("btnCloseEdit").addEventListener("click",  () => { if (!busy) closeEditModal(); });
   $("btnCancelEdit").addEventListener("click", () => { if (!busy) closeEditModal(); });
@@ -579,16 +619,7 @@ function bindEvents() {
     histOv.addEventListener("click", e => { if(e.target===histOv) closeHistModal(); });
   }
 
-  // Row click -> historial (solo click en td, no en botones)
-  $("tbody").addEventListener("click", async ev => {
-    if (busy) return;
-    if (ev.target.closest("button")) return; // ya manejado arriba
-    const tr = ev.target.closest("tr[data-c]");
-    if (!tr) return;
-    const codigo = tr.dataset.c;
-    const marca  = tr.dataset.m;
-    if (codigo && marca) await openHistModal(codigo, marca);
-  });
+  // Row/card click -> historial (manejado en handleStockAction)
 
   // Compact toggle
   $("btnCompact")?.addEventListener("click", toggleCompact);
@@ -655,4 +686,6 @@ document.addEventListener("DOMContentLoaded", () => {
   loadStock().then(() => startAutoRefresh());
   loadMovs();
   setLastUpdatedNow();
+  // Pedir permiso de notificaciones después de un momento
+  setTimeout(requestNotifPermission, 3000);
 });

@@ -24,7 +24,14 @@ function doGet(e) {
     const action = (e.parameter.action || "").toLowerCase();
 
     if (action === "list") {
-      return json_({ ok: true, data: getStock_() });
+      const cache = CacheService.getScriptCache();
+      const cached = cache.get("stock_list");
+      if (cached) {
+        return json_({ ok: true, data: JSON.parse(cached), cached: true });
+      }
+      const data = getStock_();
+      cache.put("stock_list", JSON.stringify(data), 120); // 2 minutos
+      return json_({ ok: true, data });
     }
 
     if (action === "movements") {
@@ -244,6 +251,8 @@ function logMove_(accion, codigo, marca, cantidad, before, after, nota) {
     new Date(), accion, codigo, marca,
     cantidad, before, after, nota || ""
   ]);
+  // Invalidar caché de stock
+  try { CacheService.getScriptCache().remove("stock_list"); } catch(e) {}
 }
 
 function getMovements_(range) {
