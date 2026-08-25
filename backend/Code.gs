@@ -1,119 +1,325 @@
 /**
- * RECTIFREN Inventario API
- * Hoja principal: encabezados exactos "CODIGO", "MARCA", "STOCK"
- * Hoja movimientos: "MOVIMIENTOS" (se crea si no existe)
+ * ============================================================
+ *  RECTIFREN — API Backend
+ *  Motor: Google Apps Script + Google Sheets
+ *  Versión: 2.0
+ * ============================================================
  *
- * Acciones GET:
- *   ?action=list
- *   ?action=movements&range=week|month
+ *  HOJA "Stock":        CODIGO | MARCA | STOCK | EQUIVALENCIAS
+ *  HOJA "MOVIMIENTOS":  FECHA | ACCION | CODIGO | MARCA | CANTIDAD | STOCK_ANTERIOR | STOCK_NUEVO | NOTA
  *
- * Acciones POST:
- *   action=login   (user, pass)
- *   action=in      (user, pass, codigo, marca, cantidad, nota?)
- *   action=out     (user, pass, codigo, marca, cantidad, nota?)
- *   action=set     (user, pass, codigo, marca, nuevoStock, nuevoCodigo?, nuevaMarca?)
- *   action=add     (user, pass, codigo, marca, stock)
- *   action=delete  (user, pass, codigo, marca)
+ *  GET  ?action=list
+ *  GET  ?action=movements&range=week|month
+ *  GET  ?action=search&q=<término>
+ *
+ *  POST action=login   { user, pass }
+ *  POST action=in      { user, pass, codigo, marca, cantidad, nota? }
+ *  POST action=out     { user, pass, codigo, marca, cantidad, nota? }
+ *  POST action=set     { user, pass, codigo, marca, nuevoStock, nuevoCodigo?, nuevaMarca?, equivalencias? }
+ *  POST action=add     { user, pass, codigo, marca, stock, equivalencias? }
+ *  POST action=delete  { user, pass, codigo, marca }
+ * ============================================================
  */
 
-const SHEET_NAME_STOCK = "Stock";
-const SHEET_NAME_MOVS  = "MOVIMIENTOS";
+/* ============================================================
+   CONFIGURACIÓN
+   ============================================================ */
+
+const CONFIG = {
+  sheets: {
+    stock: "Stock",
+    movimientos: "MOVIMIENTOS"
+  },
+  cache: {
+    ttl: 120  // segundos que vive el caché de lista
+  },
+  headers: {
+    stock: ["CODIGO", "MARCA", "STOCK", "EQUIVALENCIAS"],
+    movimientos: ["FECHA", "ACCION", "CODIGO", "MARCA", "CANTIDAD", "STOCK_ANTERIOR", "STOCK_NUEVO", "NOTA"]
+  }
+};
+
+/* ============================================================
+   ENTRY POINTS
+   ============================================================ */
 
 function doGet(e) {
-  try {
-    const action = (e.parameter.action || "").toLowerCase();
-
-    if (action === "list") {
-      const cache = CacheService.getScriptCache();
-      const cached = cache.get("stock_list");
-      if (cached) {
-        return json_({ ok: true, data: JSON.parse(cached), cached: true });
-      }
-      const data = getStock_();
-      cache.put("stock_list", JSON.stringify(data), 120); // 2 minutos
-      return json_({ ok: true, data });
+  return handleRequest(() => {
+    const { action, ...params } = parseParams(e.parameter);
+    switch (action) {
+      case "list":      return listStock_();
+      case "movements": return listMovements_(params.range || "week");
+      case "search":    return searchStock_(params.q || "");
+      default:          return error_("Acción no válida. Acciones GET: list, movements, search");
     }
-
-    if (action === "movements") {
-      const range = (e.parameter.range || "week").toLowerCase();
-      return json_({ ok: true, data: getMovements_(range) });
-    }
-
-    return json_({ ok: false, error: "Acción no válida. Use ?action=list" });
-  } catch (err) {
-    return json_({ ok: false, error: String(err) });
-  }
+  });
 }
 
 function doPost(e) {
-  try {
-    const params = e.parameter || {};
-    const action = (params.action || "").toLowerCase();
+  return handleRequest(() => {
+    const params = parseParams(e.parameter);
+    const { action } = params;
 
     if (action === "login") {
       const ok = validateCreds_(params.user, params.pass);
-      return json_({ ok });
+      return ok ? ok_({}) : error_("Credenciales inválidas.", 401);
     }
 
-    if (["in", "out", "set", "add", "delete"].includes(action)) {
-      if (!validateCreds_(params.user, params.pass)) {
-        return json_({ ok: false, error: "Credenciales inválidas." });
-      }
-
-      const codigo = (params.codigo || "").trim();
-      const marca  = (params.marca  || "").trim();
-
-      if (!codigo || !marca) {
-        return json_({ ok: false, error: "Faltan datos: codigo/marca." });
-      }
-
-      // ---- ENTRADA / SALIDA ----
-      if (action === "in" || action === "out") {
-        const cantidad = Number(params.cantidad || 0);
-        if (!Number.isFinite(cantidad) || cantidad <= 0) {
-          return json_({ ok: false, error: "Cantidad inválida." });
-        }
-        const nota = (params.nota || "").trim();
-        const res = applyInOut_(action, codigo, marca, cantidad, nota);
-        return json_({ ok: true, ...res });
-      }
-
-      // ---- AJUSTE DE STOCK (con edición opcional de código/marca) ----
-      if (action === "set") {
-        const nuevoStock  = Number(params.nuevoStock);
-        const nuevoCodigo = (params.nuevoCodigo || "").trim() || codigo;
-        const nuevaMarca  = (params.nuevaMarca  || "").trim() || marca;
-        if (!Number.isFinite(nuevoStock) || nuevoStock < 0) {
-          return json_({ ok: false, error: "nuevoStock inválido." });
-        }
-        const res = applySet_(codigo, marca, nuevoStock, nuevoCodigo, nuevaMarca);
-        return json_({ ok: true, ...res });
-      }
-
-      // ---- AGREGAR PRODUCTO ----
-      if (action === "add") {
-        const stock = Number(params.stock || 0);
-        if (!Number.isFinite(stock) || stock < 0) {
-          return json_({ ok: false, error: "Stock inválido." });
-        }
-        const res = addProduct_(codigo, marca, stock);
-        return json_(res);
-      }
-
-      // ---- ELIMINAR PRODUCTO ----
-      if (action === "delete") {
-        const res = deleteProduct_(codigo, marca);
-        return json_(res);
-      }
+    // — Rutas protegidas —
+    if (!validateCreds_(params.user, params.pass)) {
+      return error_("No autorizado.", 401);
     }
 
-    return json_({ ok: false, error: "Acción no válida." });
+    const { codigo, marca } = sanitize_(params);
+    if (!codigo || !marca) return error_("Faltan campos requeridos: codigo, marca.");
+
+    switch (action) {
+      case "in":
+      case "out":    return stockInOut_(action, codigo, marca, params);
+      case "set":    return stockSet_(codigo, marca, params);
+      case "add":    return productAdd_(codigo, marca, params);
+      case "delete": return productDelete_(codigo, marca);
+      default:       return error_("Acción no válida.");
+    }
+  });
+}
+
+/* ============================================================
+   ACCIONES — STOCK
+   ============================================================ */
+
+function listStock_() {
+  const cache   = CacheService.getScriptCache();
+  const cached  = cache.get("stock_list");
+  if (cached) return ok_({ data: JSON.parse(cached), fromCache: true });
+
+  const data = readStockRows_();
+  cache.put("stock_list", JSON.stringify(data), CONFIG.cache.ttl);
+  return ok_({ data });
+}
+
+function searchStock_(query) {
+  if (!query.trim()) return ok_({ data: [] });
+  const q    = query.trim().toLowerCase();
+  const all  = readStockRows_();
+  const data = all.filter(p =>
+    p.codigo.toLowerCase().includes(q) ||
+    p.marca.toLowerCase().includes(q)  ||
+    p.equivalencias.toLowerCase().includes(q)
+  );
+  return ok_({ data, query, total: data.length });
+}
+
+function stockInOut_(type, codigo, marca, params) {
+  const cantidad = parseFloat(params.cantidad);
+  if (!cantidad || cantidad <= 0) return error_("El campo 'cantidad' debe ser un número positivo.");
+
+  const sh  = getStockSheet_();
+  const row = findRow_(sh, codigo, marca);
+  if (row === -1) return error_(`Producto no encontrado: ${codigo} — ${marca}`);
+
+  const antes  = getStockValue_(sh, row);
+  let   despues = antes;
+
+  if (type === "in")  despues = antes + cantidad;
+  if (type === "out") {
+    if (antes < cantidad) return error_(`Stock insuficiente. Disponible: ${antes}, solicitado: ${cantidad}`);
+    despues = antes - cantidad;
+  }
+
+  sh.getRange(row, 3).setValue(despues);
+  logMovimiento_(type === "in" ? "ENTRADA" : "SALIDA", codigo, marca, cantidad, antes, despues, params.nota || "");
+  invalidateCache_();
+
+  return ok_({ codigo, marca, stock_anterior: antes, stock_nuevo: despues });
+}
+
+function stockSet_(codigo, marca, params) {
+  const nuevoStock  = parseFloat(params.nuevoStock);
+  if (isNaN(nuevoStock) || nuevoStock < 0) return error_("El campo 'nuevoStock' debe ser un número >= 0.");
+
+  const nuevoCodigo      = (params.nuevoCodigo      || codigo).trim();
+  const nuevaMarca       = (params.nuevaMarca       || marca).trim();
+  const nuevasEquiv      = (params.equivalencias    || "").trim();
+
+  const sh  = getStockSheet_();
+  const row = findRow_(sh, codigo, marca);
+  if (row === -1) return error_(`Producto no encontrado: ${codigo} — ${marca}`);
+
+  const antes = getStockValue_(sh, row);
+  sh.getRange(row, 1, 1, 4).setValues([[nuevoCodigo, nuevaMarca, nuevoStock, nuevasEquiv]]);
+  logMovimiento_("AJUSTE", nuevoCodigo, nuevaMarca, 0, antes, nuevoStock, "");
+  invalidateCache_();
+
+  return ok_({ codigo: nuevoCodigo, marca: nuevaMarca, stock_anterior: antes, stock_nuevo: nuevoStock });
+}
+
+/* ============================================================
+   ACCIONES — PRODUCTOS
+   ============================================================ */
+
+function productAdd_(codigo, marca, params) {
+  const sh = getStockSheet_();
+  if (findRow_(sh, codigo, marca) !== -1) {
+    return error_(`El producto ya existe: ${codigo} — ${marca}`);
+  }
+
+  const stock       = parseFloat(params.stock || 0);
+  const equivalencias = (params.equivalencias || "").trim();
+  if (isNaN(stock) || stock < 0) return error_("El campo 'stock' debe ser un número >= 0.");
+
+  sh.appendRow([codigo, marca, stock, equivalencias]);
+  logMovimiento_("ALTA", codigo, marca, stock, 0, stock, "");
+  invalidateCache_();
+
+  return ok_({ codigo, marca, stock });
+}
+
+function productDelete_(codigo, marca) {
+  const sh  = getStockSheet_();
+  const row = findRow_(sh, codigo, marca);
+  if (row === -1) return error_(`Producto no encontrado: ${codigo} — ${marca}`);
+
+  const stockAntes = getStockValue_(sh, row);
+  sh.deleteRow(row);
+  logMovimiento_("BAJA", codigo, marca, 0, stockAntes, 0, "");
+  invalidateCache_();
+
+  return ok_({ codigo, marca });
+}
+
+/* ============================================================
+   MOVIMIENTOS
+   ============================================================ */
+
+function listMovements_(range) {
+  const sh      = getMovSheet_();
+  const lastRow = sh.getLastRow();
+  if (lastRow < 2) return ok_({ data: [] });
+
+  const days   = range === "month" ? 30 : 7;
+  const cutoff = new Date(Date.now() - days * 86400 * 1000);
+  const rows   = sh.getRange(2, 1, lastRow - 1, 8).getValues();
+
+  const data = rows
+    .filter(r => {
+      const fecha = r[0] instanceof Date ? r[0] : new Date(r[0]);
+      return fecha >= cutoff;
+    })
+    .map(r => ({
+      fecha:          (r[0] instanceof Date ? r[0] : new Date(r[0])).toISOString(),
+      accion:         String(r[1] || ""),
+      codigo:         String(r[2] || ""),
+      marca:          String(r[3] || ""),
+      cantidad:       Number(r[4] || 0),
+      stock_anterior: Number(r[5] || 0),
+      stock_nuevo:    Number(r[6] || 0),
+      nota:           String(r[7] || "")
+    }))
+    .sort((a, b) => b.fecha.localeCompare(a.fecha));
+
+  return ok_({ data, range, total: data.length });
+}
+
+function logMovimiento_(accion, codigo, marca, cantidad, antes, despues, nota) {
+  getMovSheet_().appendRow([new Date(), accion, codigo, marca, cantidad, antes, despues, nota || ""]);
+}
+
+/* ============================================================
+   HELPERS — SHEETS
+   ============================================================ */
+
+function getSpreadsheet_() {
+  return SpreadsheetApp.getActiveSpreadsheet();
+}
+
+function getStockSheet_() {
+  const ss = getSpreadsheet_();
+  return ss.getSheetByName(CONFIG.sheets.stock) || ss.getSheets()[0];
+}
+
+function getMovSheet_() {
+  const ss = getSpreadsheet_();
+  let sh   = ss.getSheetByName(CONFIG.sheets.movimientos);
+  if (!sh) {
+    sh = ss.insertSheet(CONFIG.sheets.movimientos);
+    sh.getRange(1, 1, 1, 8).setValues([CONFIG.headers.movimientos]);
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
+function readStockRows_() {
+  const sh      = getStockSheet_();
+  const lastRow = sh.getLastRow();
+  if (lastRow < 2) return [];
+
+  // Leer hasta 4 columnas (la 4ta es EQUIVALENCIAS, puede no existir aún)
+  const numCols = Math.min(sh.getLastColumn(), 4);
+  return sh.getRange(2, 1, lastRow - 1, numCols).getValues()
+    .filter(r => String(r[0]).trim() || String(r[1]).trim())
+    .map(r => ({
+      codigo:        String(r[0] || "").trim(),
+      marca:         String(r[1] || "").trim(),
+      stock:         Number(r[2] || 0),
+      equivalencias: String(r[3] || "").trim()
+    }));
+}
+
+function findRow_(sh, codigo, marca) {
+  const lastRow = sh.getLastRow();
+  if (lastRow < 2) return -1;
+  const values = sh.getRange(2, 1, lastRow - 1, 2).getValues();
+  for (let i = 0; i < values.length; i++) {
+    if (String(values[i][0]).trim() === codigo && String(values[i][1]).trim() === marca) {
+      return i + 2;
+    }
+  }
+  return -1;
+}
+
+function getStockValue_(sh, row) {
+  return Number(sh.getRange(row, 3).getValue() || 0);
+}
+
+/* ============================================================
+   HELPERS — CACHÉ
+   ============================================================ */
+
+function invalidateCache_() {
+  try { CacheService.getScriptCache().remove("stock_list"); } catch (_) {}
+}
+
+/* ============================================================
+   HELPERS — AUTH
+   ============================================================ */
+
+function validateCreds_(user, pass) {
+  const props = PropertiesService.getScriptProperties();
+  return String(user || "") === (props.getProperty("ADMIN_USER") || "")
+      && String(pass || "") === (props.getProperty("ADMIN_PASS") || "");
+}
+
+/* ============================================================
+   HELPERS — RESPUESTA HTTP
+   ============================================================ */
+
+function handleRequest(fn) {
+  try {
+    return fn();
   } catch (err) {
-    return json_({ ok: false, error: String(err) });
+    console.error(err);
+    return error_(`Error interno: ${String(err)}`);
   }
 }
 
-/* ===================== Helpers ===================== */
+function ok_(payload) {
+  return json_({ ok: true, ...payload });
+}
+
+function error_(message, code) {
+  return json_({ ok: false, error: message, code: code || 400 });
+}
 
 function json_(obj) {
   return ContentService
@@ -121,172 +327,21 @@ function json_(obj) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-function getSs_() {
-  return SpreadsheetApp.getActiveSpreadsheet();
-}
+/* ============================================================
+   HELPERS — PARSEO
+   ============================================================ */
 
-function getStockSheet_() {
-  const ss = getSs_();
-  let sh = ss.getSheetByName(SHEET_NAME_STOCK);
-  if (!sh) sh = ss.getSheets()[0];
-  return sh;
-}
-
-function getMovSheet_() {
-  const ss = getSs_();
-  let sh = ss.getSheetByName(SHEET_NAME_MOVS);
-  if (!sh) {
-    sh = ss.insertSheet(SHEET_NAME_MOVS);
-    sh.getRange(1,1,1,8).setValues([[
-      "FECHA","ACCION","CODIGO","MARCA","CANTIDAD","STOCK_ANTERIOR","STOCK_NUEVO","NOTA"
-    ]]);
-    sh.setFrozenRows(1);
+function parseParams(params) {
+  const result = {};
+  for (const key in params) {
+    result[key.toLowerCase()] = String(params[key] || "").trim();
   }
-  return sh;
+  return result;
 }
 
-function ensureHeaders_(sh) {
-  const headers = sh.getRange(1,1,1,3).getValues()[0].map(String);
-  const expected = ["CODIGO","MARCA","STOCK"];
-  if (headers.join("|") !== expected.join("|")) {
-    throw new Error(`Encabezados inválidos. Deben ser: ${expected.join(" | ")}`);
-  }
-}
-
-function getStock_() {
-  const sh = getStockSheet_();
-  ensureHeaders_(sh);
-  const lastRow = sh.getLastRow();
-  if (lastRow < 2) return [];
-  return sh.getRange(2,1,lastRow-1,3).getValues()
-    .filter(r => String(r[0]).trim() !== "" || String(r[1]).trim() !== "")
-    .map(r => ({
-      codigo: String(r[0] ?? "").trim(),
-      marca:  String(r[1] ?? "").trim(),
-      stock:  Number(r[2] ?? 0)
-    }));
-}
-
-function findRow_(sh, codigo, marca) {
-  const lastRow = sh.getLastRow();
-  if (lastRow < 2) return -1;
-  const values = sh.getRange(2,1,lastRow-1,2).getValues();
-  for (let i = 0; i < values.length; i++) {
-    const c = String(values[i][0] ?? "").trim();
-    const m = String(values[i][1] ?? "").trim();
-    if (c === codigo && m === marca) return i + 2;
-  }
-  return -1;
-}
-
-function applyInOut_(type, codigo, marca, cantidad, nota) {
-  const sh = getStockSheet_();
-  ensureHeaders_(sh);
-  const row = findRow_(sh, codigo, marca);
-  if (row === -1) return { ok: false, error: "Producto no encontrado." };
-
-  const stockCell = sh.getRange(row, 3);
-  const before = Number(stockCell.getValue() || 0);
-  let after = before;
-
-  if (type === "in") after = before + cantidad;
-  if (type === "out") {
-    after = before - cantidad;
-    if (after < 0) return { ok: false, error: "Stock insuficiente." };
-  }
-
-  stockCell.setValue(after);
-  logMove_(type === "in" ? "ENTRADA" : "SALIDA", codigo, marca, cantidad, before, after, nota || "");
-  return { stock_anterior: before, stock_nuevo: after };
-}
-
-function applySet_(codigo, marca, nuevoStock, nuevoCodigo, nuevaMarca) {
-  const sh = getStockSheet_();
-  ensureHeaders_(sh);
-  const row = findRow_(sh, codigo, marca);
-  if (row === -1) return { ok: false, error: "Producto no encontrado." };
-
-  const before = Number(sh.getRange(row, 3).getValue() || 0);
-
-  // Actualizar codigo, marca y stock en la misma fila
-  sh.getRange(row, 1).setValue(nuevoCodigo);
-  sh.getRange(row, 2).setValue(nuevaMarca);
-  sh.getRange(row, 3).setValue(nuevoStock);
-
-  logMove_("AJUSTE", nuevoCodigo, nuevaMarca, 0, before, nuevoStock, "");
-  return { stock_anterior: before, stock_nuevo: nuevoStock };
-}
-
-function addProduct_(codigo, marca, stock) {
-  const sh = getStockSheet_();
-  ensureHeaders_(sh);
-
-  // Verificar que no exista ya
-  const existing = findRow_(sh, codigo, marca);
-  if (existing !== -1) {
-    return { ok: false, error: `El producto "${codigo} - ${marca}" ya existe.` };
-  }
-
-  sh.appendRow([codigo, marca, stock]);
-  logMove_("ALTA", codigo, marca, stock, 0, stock, "");
-  return { ok: true };
-}
-
-function deleteProduct_(codigo, marca) {
-  const sh = getStockSheet_();
-  ensureHeaders_(sh);
-
-  const row = findRow_(sh, codigo, marca);
-  if (row === -1) return { ok: false, error: "Producto no encontrado." };
-
-  const before = Number(sh.getRange(row, 3).getValue() || 0);
-  sh.deleteRow(row);
-  logMove_("BAJA", codigo, marca, 0, before, 0, "");
-  return { ok: true };
-}
-
-function logMove_(accion, codigo, marca, cantidad, before, after, nota) {
-  const sh = getMovSheet_();
-  sh.appendRow([
-    new Date(), accion, codigo, marca,
-    cantidad, before, after, nota || ""
-  ]);
-  // Invalidar caché de stock
-  try { CacheService.getScriptCache().remove("stock_list"); } catch(e) {}
-}
-
-function getMovements_(range) {
-  const sh = getMovSheet_();
-  const lastRow = sh.getLastRow();
-  if (lastRow < 2) return [];
-
-  const days = (range === "month") ? 30 : 7;
-  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-  const values = sh.getRange(2,1,lastRow-1,8).getValues();
-
-  const out = [];
-  for (const r of values) {
-    const fecha = r[0] instanceof Date ? r[0] : new Date(r[0]);
-    if (fecha < cutoff) continue;
-    out.push({
-      fecha:          fecha.toISOString(),
-      accion:         String(r[1] ?? ""),
-      codigo:         String(r[2] ?? ""),
-      marca:          String(r[3] ?? ""),
-      cantidad:       Number(r[4] ?? 0),
-      stock_anterior: Number(r[5] ?? 0),
-      stock_nuevo:    Number(r[6] ?? 0),
-      nota:           String(r[7] ?? "")
-    });
-  }
-
-  out.sort((a, b) => (a.fecha < b.fecha ? 1 : -1));
-  return out;
-}
-
-function validateCreds_(user, pass) {
-  const props = PropertiesService.getScriptProperties();
-  const u = props.getProperty("ADMIN_USER") || "";
-  const p = props.getProperty("ADMIN_PASS") || "";
-  return String(user || "") === u && String(pass || "") === p;
+function sanitize_(params) {
+  return {
+    codigo: (params.codigo || "").trim(),
+    marca:  (params.marca  || "").trim()
+  };
 }
