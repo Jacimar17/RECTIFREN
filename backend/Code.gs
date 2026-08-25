@@ -89,13 +89,18 @@ function doPost(e) {
    ============================================================ */
 
 function listStock_() {
-  const cache   = CacheService.getScriptCache();
-  const cached  = cache.get("stock_list");
-  if (cached) return ok_({ data: JSON.parse(cached), fromCache: true });
-
-  const data = readStockRows_();
-  cache.put("stock_list", JSON.stringify(data), CONFIG.cache.ttl);
-  return ok_({ data });
+  try {
+    const cache  = CacheService.getScriptCache();
+    const cached = cache.get("stock_list");
+    if (cached) return ok_({ data: JSON.parse(cached), fromCache: true });
+    const data = readStockRows_();
+    try { cache.put("stock_list", JSON.stringify(data), CONFIG.cache.ttl); } catch (_) { /* datos muy grandes, se omite cache */ }
+    return ok_({ data });
+  } catch (err) {
+    // Si falla el cache, devolver igual sin el
+    const data = readStockRows_();
+    return ok_({ data });
+  }
 }
 
 function searchStock_(query) {
