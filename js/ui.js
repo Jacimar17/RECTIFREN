@@ -74,6 +74,20 @@ export function setStatsLoading() {
   });
 }
 
+/* ===== Contador animado ===== */
+function animateCounter(el, from, to, duration = 600) {
+  if (from === to) { el.textContent = to; return; }
+  const start = performance.now();
+  const update = (now) => {
+    const progress = Math.min((now - start) / duration, 1);
+    // easeOutCubic
+    const ease = 1 - Math.pow(1 - progress, 3);
+    el.textContent = Math.round(from + (to - from) * ease);
+    if (progress < 1) requestAnimationFrame(update);
+  };
+  requestAnimationFrame(update);
+}
+
 export function updateStats(list) {
   const total = list.length;
   const out   = list.filter(i => getStockState(i) === "out").length;
@@ -81,10 +95,11 @@ export function updateStats(list) {
   const ok    = total - out - low;
   const units = list.reduce((acc, i) => acc + Number(i.stock || 0), 0);
 
-  const setVal = (id, val) => {
+  const setVal = (id, newVal) => {
     const el = $(id); if (!el) return;
-    el.textContent = val;
+    const oldVal = parseInt(el.textContent) || 0;
     el.closest(".stat-card")?.classList.remove("stat-loading");
+    animateCounter(el, oldVal, newVal);
   };
 
   setVal("statTotalVal", total);
@@ -92,6 +107,20 @@ export function updateStats(list) {
   setVal("statOutVal",   out);
   setVal("statLowVal",   low);
   setVal("statOkVal",    ok);
+
+  // Pulso en cards de peligro según intensidad
+  const outCard = $("statOutVal")?.closest(".stat-card");
+  const lowCard = $("statLowVal")?.closest(".stat-card");
+  if (outCard) {
+    outCard.classList.toggle("stat-pulse-high",   out >= 5);
+    outCard.classList.toggle("stat-pulse-medium", out > 0 && out < 5);
+    outCard.classList.remove(out === 0 ? "stat-pulse-high" : "");
+    if (out === 0) { outCard.classList.remove("stat-pulse-high","stat-pulse-medium"); }
+  }
+  if (lowCard) {
+    lowCard.classList.toggle("stat-pulse-medium", low > 0);
+    if (low === 0) lowCard.classList.remove("stat-pulse-medium");
+  }
 
   // Titulo pestana
   document.title = out > 0 ? `(${out}) RECTIFREN | Inventario` : "RECTIFREN | Inventario";
@@ -269,7 +298,7 @@ export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, so
 
     const stockCell = `
       <div class="stock-bar-wrap">
-        <span style="${numColor}">${stockNum}</span>${badge}
+        <span class="stock-num" style="${numColor}">${stockNum}</span>${badge}
         <div class="stock-bar">
           <div class="stock-bar-fill ${barClass}" style="width:${barPct}%"></div>
         </div>
