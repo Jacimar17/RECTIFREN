@@ -114,7 +114,6 @@ export function updateStats(list) {
   if (outCard) {
     outCard.classList.toggle("stat-pulse-high",   out >= 5);
     outCard.classList.toggle("stat-pulse-medium", out > 0 && out < 5);
-    outCard.classList.remove(out === 0 ? "stat-pulse-high" : "");
     if (out === 0) { outCard.classList.remove("stat-pulse-high","stat-pulse-medium"); }
   }
   if (lowCard) {
