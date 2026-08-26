@@ -27,7 +27,7 @@
 
 const CONFIG = {
   sheets: {
-    stock: "Stock",
+    stock: "stock",
     movimientos: "MOVIMIENTOS"
   },
   cache: {
