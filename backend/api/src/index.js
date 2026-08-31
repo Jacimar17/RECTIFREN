@@ -11,41 +11,45 @@ const authRouter         = require("./routes/auth");
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
-/* ── Middleware ── */
 app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true })); // compatibilidad con form-encoded
+app.use(express.urlencoded({ extended: true }));
 
-/* ── Rutas ── */
-app.use("/api/auth",         authRouter);
-app.use("/api/productos",    productosRouter);
-app.use("/api/stock",        stockRouter);
-app.use("/api/movimientos",  movimientosRouter);
+app.use("/api/auth",        authRouter);
+app.use("/api/productos",   productosRouter);
+app.use("/api/stock",       stockRouter);
+app.use("/api/movimientos", movimientosRouter);
 
-/* ── Health check ── */
 app.get("/", (req, res) => {
   res.json({ ok: true, app: "RECTIFREN API", version: "1.0.0" });
 });
 
-/* ── 404 ── */
-app.use((req, res) => {
-  res.status(404).json({ ok: false, error: "Ruta no encontrada." });
+/* ── Migración (usar UNA VEZ, luego eliminar) ── */
+app.post("/api/migrate", async (req, res) => {
+  const secret = req.query.secret || "";
+  if (secret !== "rectifren_migrate_2024") {
+    return res.status(401).json({ ok: false, error: "No autorizado." });
+  }
+  try {
+    const datos = require("./scripts/importCSV.js");
+    const col   = mongoose.connection.db.collection("productos");
+    await col.deleteMany({});
+    const now   = new Date();
+    const docs  = datos.map(p => ({ ...p, createdAt: now, updatedAt: now }));
+    const result = await col.insertMany(docs);
+    res.json({ ok: true, insertados: result.insertedCount });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e) });
+  }
 });
 
-/* ── Error handler global ── */
-app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(500).json({ ok: false, error: "Error interno del servidor." });
-});
+app.use((req, res) => res.status(404).json({ ok: false, error: "Ruta no encontrada." }));
+app.use((err, req, res, next) => { console.error(err); res.status(500).json({ ok: false, error: "Error interno." }); });
 
-/* ── Conexión a MongoDB ── */
 mongoose
   .connect(process.env.MONGODB_URI)
   .then(() => {
     console.log("✅ Conectado a MongoDB Atlas");
-    app.listen(PORT, () => console.log(`🚀 API corriendo en puerto ${PORT}`));
+    app.listen(PORT, () => console.log(`🚀 API en puerto ${PORT}`));
   })
-  .catch((err) => {
-    console.error("❌ Error conectando a MongoDB:", err.message);
-    process.exit(1);
-  });
+  .catch((err) => { console.error("❌ Error MongoDB:", err.message); process.exit(1); });
