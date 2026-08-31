@@ -2,21 +2,36 @@ const mongoose = require("mongoose");
 
 const productoSchema = new mongoose.Schema(
   {
-    codigo:        { type: String, required: true, trim: true },
-    marca:         { type: String, required: true, trim: true },
-    stock:         { type: Number, required: true, default: 0, min: 0 },
+    // Soporte para mayúsculas (CSV importado) y minúsculas
+    codigo:        { type: String, trim: true },
+    marca:         { type: String, trim: true },
+    stock:         { type: Number, default: 0, min: 0 },
     equivalencias: { type: String, default: "", trim: true },
+
+    // Aliases en mayúscula (como los importó el CSV)
+    CODIGO: { type: String, trim: true },
+    MARCA:  { type: String, trim: true },
+    STOCK:  { type: Number },
   },
   {
-    timestamps: true, // agrega createdAt y updatedAt
-    collection: "productos"
+    timestamps: true,
+    collection: "productos",
+    strict: false // acepta campos extra del CSV
   }
 );
 
-// Índice compuesto: codigo + marca es único
-productoSchema.index({ codigo: 1, marca: 1 }, { unique: true });
+// Virtual para normalizar — devuelve siempre minúscula sin importar cómo esté guardado
+productoSchema.methods.normalizado = function() {
+  return {
+    _id:          this._id,
+    codigo:       this.codigo || this.CODIGO || "",
+    marca:        this.marca  || this.MARCA  || "",
+    stock:        this.stock  !== undefined ? this.stock : (this.STOCK || 0),
+    equivalencias: this.equivalencias || ""
+  };
+};
 
-// Índice de texto para búsqueda
-productoSchema.index({ codigo: "text", marca: "text", equivalencias: "text" });
+productoSchema.index({ codigo: 1, marca: 1 });
+productoSchema.index({ CODIGO: 1, MARCA: 1 });
 
 module.exports = mongoose.model("Producto", productoSchema);
