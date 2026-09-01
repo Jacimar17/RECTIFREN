@@ -11,7 +11,8 @@ function norm(p) {
     codigo:       p.codigo || p.CODIGO || "",
     marca:        p.marca  || p.MARCA  || "",
     stock:        p.stock  !== undefined && p.stock !== null ? p.stock : (p.STOCK !== undefined ? p.STOCK : 0),
-    equivalencias: p.equivalencias || ""
+    equivalencias: p.equivalencias || "",
+    stockMinimo:   p.stockMinimo !== undefined ? p.stockMinimo : 2
   };
 }
 
@@ -109,6 +110,24 @@ router.delete("/:id", auth, async (req, res) => {
     await producto.deleteOne();
 
     res.json({ ok: true, mensaje: `Producto ${n.codigo} eliminado.` });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+
+// PATCH /api/productos/:id/minimo — actualizar stock mínimo
+router.patch("/:id/minimo", auth, async (req, res) => {
+  try {
+    const minimo = Number(req.body.stockMinimo);
+    if (isNaN(minimo) || minimo < 0) return res.status(400).json({ ok: false, error: "Valor inválido." });
+    const producto = await Producto.findByIdAndUpdate(
+      req.params.id,
+      { stockMinimo: minimo },
+      { new: true }
+    );
+    if (!producto) return res.status(404).json({ ok: false, error: "Producto no encontrado." });
+    res.json({ ok: true, data: norm(producto) });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }

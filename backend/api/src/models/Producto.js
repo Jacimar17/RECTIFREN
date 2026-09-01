@@ -5,7 +5,8 @@ const productoSchema = new mongoose.Schema(
     codigo:        { type: String, trim: true },
     marca:         { type: String, trim: true },
     stock:         { type: Number, default: 0, min: 0 },
-    equivalencias: { type: String, default: "", trim: true },
+    equivalencias:   { type: String, default: "", trim: true },
+    stockMinimo:     { type: Number, default: 2, min: 0 },
 
     // Referencias a otros productos del inventario
     equivalentesVinculados: [{ type: mongoose.Schema.Types.ObjectId, ref: "Producto" }],

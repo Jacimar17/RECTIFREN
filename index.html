@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RECTIFREN | Inventario</title>
   <link rel="icon" type="image/png" href="assets/logo_rectifren.png" />
-  <link rel="stylesheet" href="css/styles.css?v=20260634">
+  <link rel="stylesheet" href="css/styles.css?v=20260635">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e8380d">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -302,6 +302,32 @@
     </div>
   </div>
 
+  <!-- Modal Stock Mínimo -->
+  <div id="minimoOverlay" class="modalOverlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modalHeader">
+        <h2 class="modalTitle">⚙️ Stock mínimo</h2>
+        <button id="btnCloseMinimo" class="modalClose">✕</button>
+      </div>
+      <div class="modalBody">
+        <div class="editInfo">
+          <div><span class="muted">Código</span><div id="minimoCodigo" class="editValue">-</div></div>
+          <div style="grid-column:span 2"><span class="muted">Marca</span><div id="minimoMarca" class="editValue">-</div></div>
+        </div>
+        <div class="hint">
+          Cuando el stock baje de este número, el producto aparecerá en <strong style="color:var(--warn)">amarillo</strong> como alerta.
+        </div>
+        <label class="muted" for="minimoInput">Stock mínimo</label>
+        <input id="minimoInput" type="number" min="0" step="1" placeholder="Ej: 5" />
+        <div class="modalActions">
+          <button id="btnCancelMinimo">Cancelar</button>
+          <button id="btnSaveMinimo" class="primary">Guardar</button>
+        </div>
+        <p id="minimoStatus" class="muted"></p>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal Confirmar eliminar -->
   <div id="delOverlay" class="modalOverlay" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true">
@@ -382,6 +408,6 @@
     </div>
   </div>
 
-  <script type="module" src="js/main.js?v=20260634"></script>
+  <script type="module" src="js/main.js?v=20260635"></script>
 </body>
 </html>

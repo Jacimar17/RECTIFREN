@@ -12,9 +12,10 @@ export function fmtDate(iso) {
 }
 
 export function getStockState(item) {
-  const s = Number(item.stock || 0);
-  if (s === 0) return "out";
-  if (s <= 2)  return "low";
+  const s   = Number(item.stock || 0);
+  const min = Number(item.stockMinimo !== undefined ? item.stockMinimo : 2);
+  if (s === 0)    return "out";
+  if (s <= min)   return "low";
   return "ok";
 }
 

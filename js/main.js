@@ -575,6 +575,58 @@ function bindEquivModal() {
   });
 }
 
+
+/* ===== Stock mínimo ===== */
+let minimoProductoId = null;
+
+function openMinimoModal(id, codigo, marca, actual) {
+  minimoProductoId = id;
+  $("minimoCodigo").textContent = codigo;
+  $("minimoMarca").textContent  = marca;
+  $("minimoInput").value        = actual;
+  $("minimoStatus").textContent = "";
+  const ov = $("minimoOverlay");
+  ov.style.display = "flex";
+  ov.setAttribute("aria-hidden","false");
+  setTimeout(() => { const i = $("minimoInput"); i.focus(); i.select(); }, 80);
+}
+
+function closeMinimoModal() {
+  $("minimoOverlay").style.display = "none";
+  $("minimoOverlay").setAttribute("aria-hidden","true");
+  minimoProductoId = null;
+}
+
+async function saveMinimoModal() {
+  if (!minimoProductoId) return;
+  const val = Number($("minimoInput").value);
+  if (isNaN(val) || val < 0) { $("minimoStatus").textContent = "Valor inválido."; return; }
+  const { user, pass } = getCreds();
+  try {
+    setBusyState(true, "Guardando...");
+    const res = await fetch(`${API_URL}/api/productos/${minimoProductoId}/minimo`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user, pass, stockMinimo: val })
+    });
+    const data = await res.json();
+    if (!data.ok) { $("minimoStatus").textContent = `Error: ${data.error}`; return; }
+    closeMinimoModal();
+    showToast(`Stock mínimo actualizado a ${val}.`, "success");
+    await loadStock();
+  } finally {
+    setBusyState(false);
+  }
+}
+
+function bindMinimoModal() {
+  $("btnCloseMinimo")?.addEventListener("click",  closeMinimoModal);
+  $("btnCancelMinimo")?.addEventListener("click", closeMinimoModal);
+  $("btnSaveMinimo")?.addEventListener("click",   saveMinimoModal);
+  $("minimoInput")?.addEventListener("keydown", e => { if(e.key==="Enter") saveMinimoModal(); });
+  $("minimoOverlay")?.addEventListener("click", e => { if(e.target===$("minimoOverlay")) closeMinimoModal(); });
+}
+
 async function saveEdit() {
   const { user, pass } = getCreds();
   if (!user || !pass) { showToast("No está autenticado como administrador.", "error"); return; }
@@ -741,7 +793,8 @@ function bindEvents() {
       if (act === "in" || act === "out") { await doInOut(act, codigo, marca, stock); return; }
       if (act === "set") { openEditModal({ codigo, marca, actual: stock }); return; }
       if (act === "del") { await deleteProduct(codigo, marca); return; }
-      if (act === "equiv") { const id = btn.getAttribute("data-id"); await openEquivModal(id, codigo, marca); return; }
+      if (act === "equiv")   { const id = btn.getAttribute("data-id"); await openEquivModal(id, codigo, marca); return; }
+      if (act === "minimo") { const id = btn.getAttribute("data-id"); const min = Number(btn.getAttribute("data-min")||2); openMinimoModal(id, codigo, marca, min); return; }
       return;
     }
     if (allowRowClick && !ev.target.closest("button")) {
@@ -841,6 +894,7 @@ function bindEvents() {
       if ($("noteOverlay")?.style.display  === "flex") closeNoteModal();
       if ($("addOverlay")?.style.display   === "flex") closeAddModal();
       if ($("equivOverlay")?.style.display  === "flex") closeEquivModal();
+      if ($("minimoOverlay")?.style.display === "flex") closeMinimoModal();
       if ($("delOverlay")?.style.display   === "flex") closeDelModal();
       if ($("histOverlay")?.style.display  === "flex") closeHistModal();
     }
@@ -866,6 +920,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setAdminButtonState();
   bindEvents();
   bindEquivModal();
+  bindMinimoModal();
   loadStock().then(() => startAutoRefresh());
   loadMovs();
   setLastUpdatedNow();
