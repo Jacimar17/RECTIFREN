@@ -442,7 +442,7 @@ button.primary:hover {
 table {
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed;
+  table-layout: auto;
   min-width: 780px;
 }
 
@@ -486,10 +486,10 @@ th.sort-asc  .sort-icon, th.sort-desc .sort-icon { opacity: 0; }
 .sort-icon { font-size: 10px; color: var(--dim); margin-left: 4px; }
 
 /* Col widths */
-th.col-codigo,   td.col-codigo   { width: 150px; }
-th.col-marca,    td.col-marca    { width: auto; min-width: 120px; }
-th.col-stock,    td.col-stock    { width: 140px; text-align: center; }
-th.col-acciones, td.col-acciones { width: 260px; text-align: center; }
+th.col-codigo,   td.col-codigo   { width: 16%; min-width: 130px; }
+th.col-marca,    td.col-marca    { width: 30%; min-width: 120px; }
+th.col-stock,    td.col-stock    { width: 18%; min-width: 130px; text-align: center; }
+th.col-acciones, td.col-acciones { width: 36%; min-width: 270px; text-align: center; }
 
 /* Stock cell */
 td.col-stock { font-family: var(--font-display); font-weight: 700; font-size: 15px; text-align: center; }
