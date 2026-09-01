@@ -1,4 +1,5 @@
 import { apiGet, apiPostForm } from "./api.js";
+import { API_URL } from "./config.js";
 import {
   $, fmtDate, escapeHtml,
   renderStock, setBusy, setActiveChip,
@@ -395,6 +396,185 @@ function toggleCompact() {
   if (btn) btn.textContent = compactMode ? "☰ Normal" : "☰ Compacto";
 }
 
+
+/* ===== Equivalencias ===== */
+let equivProductoId   = null;
+let equivSearchTimer  = null;
+
+async function openEquivModal(id, codigo, marca) {
+  equivProductoId = id;
+  $("equivCodigo").textContent = codigo;
+  $("equivMarca").textContent  = marca;
+  $("equivSearch").value       = "";
+  $("equivStatus").textContent = "";
+  $("equivSuggestions").style.display = "none";
+  $("equivList").innerHTML = '<div class="muted" style="font-size:13px">Cargando...</div>';
+
+  const ov = $("equivOverlay");
+  ov.style.display = "flex";
+  ov.setAttribute("aria-hidden","false");
+  setTimeout(() => $("equivSearch")?.focus(), 80);
+
+  await loadEquivList();
+}
+
+function closeEquivModal() {
+  const ov = $("equivOverlay");
+  ov.style.display = "none";
+  ov.setAttribute("aria-hidden","true");
+  equivProductoId = null;
+}
+
+async function loadEquivList() {
+  if (!equivProductoId) return;
+  try {
+    const res = await fetch(`${API_URL}/api/equivalencias/${equivProductoId}`);
+    const data = await res.json();
+    const list = $("equivList");
+    list.innerHTML = "";
+
+    if (!data.ok) { list.innerHTML = `<div class="muted">Error cargando equivalencias.</div>`; return; }
+
+    const { vinculados, textoLibre } = data;
+
+    if (!vinculados.length && !textoLibre.length) {
+      list.innerHTML = `<div class="muted" style="font-size:13px">Sin equivalencias cargadas aún.</div>`;
+      return;
+    }
+
+    // Productos vinculados del stock
+    for (const p of vinculados) {
+      const s = Number(p.stock || 0);
+      const sc = s === 0 ? "out" : s <= 2 ? "low" : "ok";
+      const div = document.createElement("div");
+      div.className = "equiv-item";
+      div.innerHTML = `
+        <div class="equiv-item-info">
+          <div class="equiv-item-code">${escapeHtml(p.codigo)}</div>
+          <div class="equiv-item-meta">${escapeHtml(p.marca)} · En stock</div>
+        </div>
+        <div class="equiv-item-stock ${sc}">${s}</div>
+        <button class="equiv-item-del" data-vid="${p._id}" title="Quitar vínculo">✕</button>
+      `;
+      div.querySelector(".equiv-item-del").addEventListener("click", () => desvincularEquiv(p._id, null));
+      list.appendChild(div);
+    }
+
+    // Texto libre
+    for (const txt of textoLibre) {
+      const div = document.createElement("div");
+      div.className = "equiv-item";
+      div.innerHTML = `
+        <div class="equiv-item-info">
+          <div class="equiv-item-code">${escapeHtml(txt)}</div>
+          <div class="equiv-item-meta" style="color:var(--warn)">Texto libre (no está en stock)</div>
+        </div>
+        <button class="equiv-item-del" title="Quitar">✕</button>
+      `;
+      div.querySelector(".equiv-item-del").addEventListener("click", () => desvincularEquiv(null, txt));
+      list.appendChild(div);
+    }
+  } catch(e) {
+    $("equivList").innerHTML = `<div class="muted">Error: ${e.message}</div>`;
+  }
+}
+
+async function buscarEquivSuggestions(q) {
+  const box = $("equivSuggestions");
+  if (!q || q.length < 1) { box.style.display = "none"; return; }
+  try {
+    const res  = await fetch(`${API_URL}/api/equivalencias/search?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+    box.innerHTML = "";
+
+    const items = (data.data || []).filter(p => p._id !== equivProductoId);
+
+    for (const p of items) {
+      const s  = Number(p.stock || 0);
+      const sc = s === 0 ? "out" : s <= 2 ? "low" : "ok";
+      const div = document.createElement("div");
+      div.className = "equiv-suggestion-item";
+      div.innerHTML = `
+        <div>
+          <span class="sug-code">${escapeHtml(p.codigo)}</span>
+          <span class="sug-marca"> · ${escapeHtml(p.marca)}</span>
+        </div>
+        <span class="sug-stock ${sc}">${s}</span>
+      `;
+      div.addEventListener("click", () => vincularEquiv(p._id, null));
+      box.appendChild(div);
+    }
+
+    // Opción texto libre
+    const free = document.createElement("div");
+    free.className = "equiv-suggestion-free";
+    free.textContent = `Guardar "${q}" como texto (no está en stock)`;
+    free.addEventListener("click", () => vincularEquiv(null, q));
+    box.appendChild(free);
+
+    box.style.display = items.length > 0 || q ? "block" : "none";
+  } catch(e) {
+    box.style.display = "none";
+  }
+}
+
+async function vincularEquiv(equivalenteId, equivalenteTexto) {
+  if (!equivProductoId) return;
+  $("equivSuggestions").style.display = "none";
+  $("equivSearch").value = "";
+  $("equivStatus").textContent = "Guardando...";
+  try {
+    const res = await fetch(`${API_URL}/api/equivalencias/${equivProductoId}/vincular`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user: sessionStorage.getItem("rectifren_admin_user"), pass: sessionStorage.getItem("rectifren_admin_pass"), equivalenteId, equivalenteTexto })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      $("equivStatus").textContent = "✅ Equivalencia agregada.";
+      await loadEquivList();
+    } else {
+      $("equivStatus").textContent = `Error: ${data.error}`;
+    }
+  } catch(e) {
+    $("equivStatus").textContent = `Error: ${e.message}`;
+  }
+}
+
+async function desvincularEquiv(equivalenteId, equivalenteTexto) {
+  if (!equivProductoId) return;
+  try {
+    const res = await fetch(`${API_URL}/api/equivalencias/${equivProductoId}/desvincular`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user: sessionStorage.getItem("rectifren_admin_user"), pass: sessionStorage.getItem("rectifren_admin_pass"), equivalenteId, equivalenteTexto })
+    });
+    const data = await res.json();
+    if (data.ok) await loadEquivList();
+    else $("equivStatus").textContent = `Error: ${data.error}`;
+  } catch(e) {
+    $("equivStatus").textContent = `Error: ${e.message}`;
+  }
+}
+
+function bindEquivModal() {
+  $("btnCloseEquiv")?.addEventListener("click",  closeEquivModal);
+  $("btnCloseEquiv2")?.addEventListener("click", closeEquivModal);
+  $("equivOverlay")?.addEventListener("click", e => { if(e.target === $("equivOverlay")) closeEquivModal(); });
+
+  $("equivSearch")?.addEventListener("input", e => {
+    clearTimeout(equivSearchTimer);
+    equivSearchTimer = setTimeout(() => buscarEquivSuggestions(e.target.value.trim()), 250);
+  });
+
+  // Cerrar sugerencias al clickear afuera
+  document.addEventListener("click", e => {
+    if (!$("equivOverlay")?.contains(e.target)) {
+      $("equivSuggestions").style.display = "none";
+    }
+  });
+}
+
 async function saveEdit() {
   const { user, pass } = getCreds();
   if (!user || !pass) { showToast("No está autenticado como administrador.", "error"); return; }
@@ -561,6 +741,7 @@ function bindEvents() {
       if (act === "in" || act === "out") { await doInOut(act, codigo, marca, stock); return; }
       if (act === "set") { openEditModal({ codigo, marca, actual: stock }); return; }
       if (act === "del") { await deleteProduct(codigo, marca); return; }
+      if (act === "equiv") { const id = btn.getAttribute("data-id"); await openEquivModal(id, codigo, marca); return; }
       return;
     }
     if (allowRowClick && !ev.target.closest("button")) {
@@ -659,6 +840,7 @@ function bindEvents() {
       if ($("editOverlay").style.display   === "flex") closeEditModal();
       if ($("noteOverlay")?.style.display  === "flex") closeNoteModal();
       if ($("addOverlay")?.style.display   === "flex") closeAddModal();
+      if ($("equivOverlay")?.style.display  === "flex") closeEquivModal();
       if ($("delOverlay")?.style.display   === "flex") closeDelModal();
       if ($("histOverlay")?.style.display  === "flex") closeHistModal();
     }
@@ -683,6 +865,7 @@ document.addEventListener("DOMContentLoaded", () => {
   isAdmin = false;
   setAdminButtonState();
   bindEvents();
+  bindEquivModal();
   loadStock().then(() => startAutoRefresh());
   loadMovs();
   setLastUpdatedNow();

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RECTIFREN | Inventario</title>
   <link rel="icon" type="image/png" href="assets/logo_rectifren.png" />
-  <link rel="stylesheet" href="css/styles.css?v=20260633">
+  <link rel="stylesheet" href="css/styles.css?v=20260634">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e8380d">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -258,6 +258,50 @@
     </div>
   </div>
 
+  <!-- Modal Equivalencias -->
+  <div id="equivOverlay" class="modalOverlay" aria-hidden="true">
+    <div class="modal modalWide" role="dialog" aria-modal="true">
+      <div class="modalHeader">
+        <h2 class="modalTitle">🔗 Equivalencias</h2>
+        <button id="btnCloseEquiv" class="modalClose">✕</button>
+      </div>
+      <div class="modalBody">
+        <div class="editInfo" id="equivProductoInfo">
+          <div><span class="muted">Código</span><div id="equivCodigo" class="editValue">-</div></div>
+          <div style="grid-column:span 2"><span class="muted">Marca</span><div id="equivMarca" class="editValue">-</div></div>
+        </div>
+
+        <!-- Buscador con autocompletado -->
+        <div>
+          <label class="muted" for="equivSearch">Buscar equivalente en stock</label>
+          <div style="position:relative">
+            <div class="searchWrap">
+              <span class="searchIcon">🔍</span>
+              <input id="equivSearch" placeholder="Escribí código o marca..." autocomplete="off" />
+            </div>
+            <div id="equivSuggestions" class="equiv-suggestions" style="display:none"></div>
+          </div>
+          <div class="hint" style="margin-top:8px">
+            Si el producto <strong>existe en el stock</strong> aparece como sugerencia. Si <strong>no existe</strong>, podés guardarlo igual como texto.
+          </div>
+        </div>
+
+        <!-- Lista de equivalencias actuales -->
+        <div>
+          <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Equivalencias cargadas</div>
+          <div id="equivList" style="display:flex;flex-direction:column;gap:6px">
+            <div class="muted" style="font-size:13px">Cargando...</div>
+          </div>
+        </div>
+
+        <div class="modalActions">
+          <button id="btnCloseEquiv2">Cerrar</button>
+        </div>
+        <p id="equivStatus" class="muted"></p>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal Confirmar eliminar -->
   <div id="delOverlay" class="modalOverlay" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true">
@@ -338,6 +382,6 @@
     </div>
   </div>
 
-  <script type="module" src="js/main.js?v=20260633"></script>
+  <script type="module" src="js/main.js?v=20260634"></script>
 </body>
 </html>
