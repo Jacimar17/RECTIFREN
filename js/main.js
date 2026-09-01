@@ -916,14 +916,24 @@ function bindEvents() {
 document.addEventListener("DOMContentLoaded", () => {
   initTheme();
   readUrlParams();
-  isAdmin = false;
+
+  // Restaurar sesión admin si estaba logueado antes de recargar
+  const savedUser = sessionStorage.getItem("rectifren_admin_user");
+  const savedPass = sessionStorage.getItem("rectifren_admin_pass");
+  if (savedUser && savedPass) {
+    isAdmin = true;
+  } else {
+    isAdmin = false;
+  }
+
   setAdminButtonState();
   bindEvents();
   bindEquivModal();
   bindMinimoModal();
-  loadStock().then(() => startAutoRefresh());
-  loadMovs();
+  loadStock().then(() => {
+    startAutoRefresh();
+    if (isAdmin) loadMovs();
+  });
   setLastUpdatedNow();
-  // Pedir permiso de notificaciones después de un momento
   setTimeout(requestNotifPermission, 3000);
 });
