@@ -314,16 +314,20 @@ export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, so
     const minusDisabled = stockNum === 0;
     const acciones = isAdmin ? `
       <td class="col-acciones">
-        <button class="mini success" data-act="in"
+        <button class="mini success" data-act="in" data-tooltip="Entrada"
           data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${stockNum}">+</button>
-        <button class="mini danger" data-act="out"
+        <button class="mini danger" data-act="out" data-tooltip="Salida"
           data-disabled="${minusDisabled?"1":"0"}"
           ${minusDisabled?"disabled":""}
           data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${stockNum}">−</button>
-        <button class="mini" data-act="set"
+        <button class="mini" data-act="set" data-tooltip="Editar"
           data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${stockNum}">✏️</button>
-        <button class="mini del" data-act="del"
-          data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" title="Eliminar producto">🗑</button>
+        <button class="mini" data-act="equiv" data-tooltip="Equivalencias"
+          data-id="${item._id||""}" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}">🔗</button>
+        <button class="mini" data-act="minimo" data-tooltip="Stock mínimo"
+          data-id="${item._id||""}" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-min="${item.stockMinimo!==undefined?item.stockMinimo:2}">⚙️</button>
+        <button class="mini del" data-act="del" data-tooltip="Eliminar"
+          data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}">🗑</button>
       </td>` : "";
 
     tr.dataset.c = item.codigo || "";
