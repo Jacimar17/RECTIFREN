@@ -285,7 +285,7 @@ export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, so
 
     let badge = "";
     if (state === "out") badge = `<span class="badge out">SIN STOCK</span>`;
-    if (state === "low") badge = `<span class="badge low">BAJO</span>`;
+    if (state === "low") badge = `<span class="badge low">⚠️</span>`;
 
     const barPct  = state === "out" ? 0 : state === "low" ? 40 : 100;
     const barClass = state === "out" ? "bar-danger" : state === "low" ? "bar-warn" : "";
