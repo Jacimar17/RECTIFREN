@@ -486,9 +486,10 @@ th.sort-asc  .sort-icon, th.sort-desc .sort-icon { opacity: 0; }
 .sort-icon { font-size: 10px; color: var(--dim); margin-left: 4px; }
 
 /* Col widths */
-th.col-codigo, td.col-codigo { width: 160px; }
-th.col-stock,  td.col-stock  { width: 180px; text-align: center; }
-th.col-acciones, td.col-acciones { width: 210px; text-align: center; }
+th.col-codigo,   td.col-codigo   { width: 170px; }
+th.col-marca,    td.col-marca    { width: auto; min-width: 140px; }
+th.col-stock,    td.col-stock    { width: 160px; text-align: center; }
+th.col-acciones, td.col-acciones { width: 220px; text-align: center; }
 
 /* Stock cell */
 td.col-stock { font-family: var(--font-display); font-weight: 700; font-size: 15px; text-align: center; }
