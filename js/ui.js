@@ -296,9 +296,16 @@ export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, so
       ? "color:var(--warn); font-weight:800"
       : "color:var(--success)";
 
+    const prevStock = window._prevStock?.[`${item.codigo}|${item.marca}`];
+    const flipClass = prevStock !== undefined
+      ? (stockNum > prevStock ? "stock-flip-up" : stockNum < prevStock ? "stock-flip-down" : "")
+      : "";
+    if (!window._prevStock) window._prevStock = {};
+    window._prevStock[`${item.codigo}|${item.marca}`] = stockNum;
+
     const stockCell = `
       <div class="stock-bar-wrap">
-        <span class="stock-num" style="${numColor}">${stockNum}</span>${badge}
+        <span class="stock-num ${flipClass}" style="${numColor}">${stockNum}</span>${badge}
         <div class="stock-bar">
           <div class="stock-bar-fill ${barClass}" style="width:${barPct}%"></div>
         </div>
