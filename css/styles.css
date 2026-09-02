@@ -890,36 +890,135 @@ body.compact #donutChart { width: 40px; height: 40px; }
 
 @media (max-width: 640px) {
   .tableWrap { display: none; }
-  #cardGrid { display: grid !important; gap: 10px; margin-bottom: 12px; }
+  #cardGrid  { display: flex !important; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+
+  /* Stats en 2 cols */
+  .stats { grid-template-columns: repeat(2, 1fr) !important; }
+
+  /* Toolbar compacta */
+  .toolbar { flex-direction: column; gap: 8px; }
+  .toolbar-right { width: 100%; overflow-x: auto; padding-bottom: 2px; }
+  .filters { flex-wrap: nowrap; }
+
+  /* Header compacto */
+  header img { width: 48px; height: 48px; }
+  h1 { font-size: 26px; }
+  .header-actions { flex-direction: row; gap: 6px; }
+  .header-actions button { font-size: 12px; padding: 7px 10px; }
+
+  .container { padding: 12px 12px 40px; }
+  .card { padding: 16px; }
 }
 
+/* Card base */
 .stock-card {
   background: var(--raised);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 14px;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  overflow: hidden;
+  transition: transform .15s, box-shadow .15s;
   cursor: pointer;
-  transition: border-color .15s, transform .15s;
 }
 
-.stock-card:hover { border-color: var(--border2); transform: translateY(-1px); }
+.stock-card:active { transform: scale(0.99); }
+
 .stock-card.card-out { border-left: 3px solid var(--danger); }
 .stock-card.card-low { border-left: 3px solid var(--warn); }
 .stock-card.card-ok  { border-left: 3px solid var(--azul); }
-.stock-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-.stock-card-codigo { font-family: var(--font-display); font-size: 16px; font-weight: 800; letter-spacing: 0.5px; }
-.stock-card-marca { font-size: 12px; color: var(--muted); margin-top: 2px; }
-.stock-card-stock { font-family: var(--font-display); font-size: 28px; font-weight: 900; line-height: 1; text-align: right; flex-shrink: 0; }
+
+/* Card body */
+.stock-card-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.stock-card-info { flex: 1; min-width: 0; }
+
+.stock-card-codigo {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stock-card-marca {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stock-card-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.stock-card-stock {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 900;
+  line-height: 1;
+}
+
 .stock-card-stock.s-ok  { color: var(--success); }
 .stock-card-stock.s-low { color: var(--warn); }
 .stock-card-stock.s-out { color: var(--danger); }
-.stock-card-bar { height: 4px; border-radius: 99px; background: var(--border2); overflow: hidden; }
-.stock-card-bar-fill { height: 100%; border-radius: 99px; transition: width .4s ease; }
-.stock-card-actions { display: flex; gap: 6px; margin-top: 2px; }
-.stock-card-actions button { flex: 1; justify-content: center; font-size: 13px; padding: 7px 0; }
+
+/* Barra */
+.stock-card-bar {
+  height: 3px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.stock-card-bar-fill {
+  height: 100%;
+  border-radius: 0;
+  transition: width .4s ease;
+}
+
+/* Acciones */
+.stock-card-actions {
+  display: flex;
+  border-top: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.stock-card-actions button {
+  flex: 1;
+  border: none;
+  border-right: 1px solid var(--border);
+  border-radius: 0;
+  margin: 0;
+  padding: 10px 4px;
+  font-size: 16px;
+  background: transparent;
+  color: var(--muted);
+  justify-content: center;
+  transition: background .12s, color .12s;
+  min-width: 0;
+}
+
+.stock-card-actions button:last-child { border-right: none; }
+.stock-card-actions button:hover { background: var(--lift); color: var(--text); }
+.stock-card-actions button.success:hover { background: rgba(34,197,94,0.12); color: var(--success); }
+.stock-card-actions button.danger:hover  { background: rgba(239,68,68,0.10); color: var(--danger); }
+.stock-card-actions button.del:hover     { background: rgba(239,68,68,0.10); color: var(--danger); }
+.stock-card-actions button:disabled      { opacity: 0.2; cursor: not-allowed; }
 
 /* ============================================================
    EQUIVALENCIAS

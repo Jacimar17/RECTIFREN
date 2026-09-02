@@ -422,12 +422,14 @@ export function renderCards({ list, isAdmin, viewFilter, query, highlightKey, so
       </div>` : "";
 
     card.innerHTML = `
-      <div class="stock-card-top">
-        <div>
-          <div class="stock-card-codigo">${highlight(item.codigo||"", q)}${badge}</div>
+      <div class="stock-card-body">
+        <div class="stock-card-info">
+          <div class="stock-card-codigo">${highlight(item.codigo||"", q)} ${badge}</div>
           <div class="stock-card-marca">${highlight(item.marca||"", q)}</div>
         </div>
-        <div class="stock-card-stock ${sClass}">${stockNum}</div>
+        <div class="stock-card-right">
+          <div class="stock-card-stock ${sClass}">${stockNum}</div>
+        </div>
       </div>
       <div class="stock-card-bar">
         <div class="stock-card-bar-fill" style="width:${barPct}%;background:${barColor}"></div>
