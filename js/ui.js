@@ -305,7 +305,7 @@ export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, so
 
     const stockCell = `
       <div class="stock-bar-wrap">
-        <span class="stock-num ${flipClass}" style="${numColor}">${stockNum}</span>${badge}
+        <span class="stock-num ${flipClass}" style="${numColor}">${stockNum}</span>
         <div class="stock-bar">
           <div class="stock-bar-fill ${barClass}" style="width:${barPct}%"></div>
         </div>
