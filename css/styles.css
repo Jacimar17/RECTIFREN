@@ -499,11 +499,11 @@ th.sort-desc .sort-icon::after { content: ' ▼'; font-size: 9px; color: var(--a
 th.sort-asc  .sort-icon, th.sort-desc .sort-icon { opacity: 0; }
 .sort-icon { font-size: 9px; color: var(--dim); margin-left: 3px; }
 
-/* Columnas — proporciones naturales */
-th.col-codigo, td.col-codigo { width: 180px; font-family: var(--font-body); font-size: 13px; font-weight: 600; letter-spacing: 0; }
-th.col-marca,  td.col-marca  { }
-th.col-stock,  td.col-stock  { width: 150px; text-align: center; }
-th.col-acciones, td.col-acciones { width: 240px; text-align: right; padding-right: 12px; }
+/* Columnas — proporciones fijas */
+th.col-codigo, td.col-codigo   { width: 220px; max-width: 220px; font-family: var(--font-body); font-size: 13px; font-weight: 600; letter-spacing: 0; }
+th.col-marca,  td.col-marca    { width: 180px; max-width: 180px; }
+th.col-stock,  td.col-stock    { width: 160px; max-width: 160px; text-align: center; }
+th.col-acciones, td.col-acciones { width: 290px; max-width: 290px; text-align: right; padding-right: 12px; }
 
 /* Stock cell */
 td.col-stock { font-family: var(--font-display); font-weight: 800; font-size: 18px; text-align: center; }
