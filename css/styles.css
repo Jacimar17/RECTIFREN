@@ -170,6 +170,13 @@ h1 {
   background-clip: text;
 }
 
+html[data-theme="light"] h1 {
+  background: linear-gradient(135deg, #0a0d18 0%, #1a3f8f 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 h1 span {
   background: linear-gradient(135deg, var(--rojo) 0%, #ff6b6b 100%);
   -webkit-background-clip: text;
