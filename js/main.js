@@ -952,6 +952,7 @@ document.addEventListener("DOMContentLoaded", () => {
   bindEvents();
   bindEquivModal();
   bindMinimoModal();
+  bindBetaModal();
   loadStock().then(() => {
     startAutoRefresh();
     if (isAdmin) loadMovs();
