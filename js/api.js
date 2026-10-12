@@ -120,3 +120,11 @@ export async function apiPostForm(bodyObj, timeoutMs = 15000) {
 
   return { ok: false, error: "Acción no reconocida." };
 }
+/* ── Beta: búsqueda en proveedores ── */
+export async function apiBetaProveedores(q, creds) {
+  return request(`${API_URL}/api/proveedores`, {
+    method: "POST",
+    headers: jsonHeaders(),
+    body: JSON.stringify({ user: creds.user, pass: creds.pass, q })
+  }, 40000);
+}
