@@ -397,7 +397,32 @@
       </div>
     </div>
   </div>
-
+  
+  <!-- Modal Beta: búsqueda en proveedores -->
+  <div id="betaOverlay" class="modalOverlay" aria-hidden="true">
+    <div class="modal modalWide" role="dialog" aria-modal="true" aria-labelledby="betaTitle">
+      <div class="modalHeader">
+        <h2 id="betaTitle" class="modalTitle">🧪 Beta · Búsqueda en proveedores</h2>
+        <button id="btnCloseBeta" class="modalClose" title="Cerrar">✕</button>
+      </div>
+      <div class="modalBody">
+        <div class="hint">
+          Función en prueba. Busca en los proveedores y te dice si el producto está en tu inventario.
+        </div>
+        <div class="searchWrap">
+          <span class="searchIcon">🔍</span>
+          <input id="betaSearch" placeholder="Ej: pastilla de freno Amarok" autocomplete="off" />
+        </div>
+        <div class="modalActions">
+          <button id="btnCloseBeta2">Cerrar</button>
+          <button id="btnBetaSearch" class="primary">Buscar</button>
+        </div>
+        <div id="betaResults"></div>
+        <p id="betaStatus" class="muted"></p>
+      </div>
+    </div>
+  </div>
+  
   <!-- Busy overlay -->
   <div id="busyOverlay" class="busyOverlay" aria-hidden="true">
     <div class="busyCard">
