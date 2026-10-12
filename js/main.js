@@ -912,6 +912,28 @@ function bindEvents() {
   bindSortHeaders();
 }
 
+/* ===== Beta: búsqueda en proveedores ===== */
+function openBetaModal() {
+  $("betaStatus").textContent = "";
+  $("betaOverlay").style.display = "flex";
+  $("betaOverlay").setAttribute("aria-hidden", "false");
+  setTimeout(() => $("betaSearch")?.focus(), 80);
+}
+
+function closeBetaModal() {
+  $("betaOverlay").style.display = "none";
+  $("betaOverlay").setAttribute("aria-hidden", "true");
+}
+
+function bindBetaModal() {
+  const ov = $("betaOverlay");
+  if (!ov) return;
+  $("btnBeta")?.addEventListener("click", () => { if (!busy) openBetaModal(); });
+  $("btnCloseBeta")?.addEventListener("click", () => { if (!busy) closeBetaModal(); });
+  $("btnCloseBeta2")?.addEventListener("click", () => { if (!busy) closeBetaModal(); });
+  ov.addEventListener("click", e => { if (e.target === ov && !busy) closeBetaModal(); });
+}
+
 /* ===== Init ===== */
 document.addEventListener("DOMContentLoaded", () => {
   initTheme();
