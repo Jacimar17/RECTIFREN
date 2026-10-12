@@ -5,7 +5,7 @@ const router   = express.Router();
 
 // Proveedores activos. Acá vamos sumando Aimar y ATONOR.
 const PROVEEDORES = [
-  { nombre: "Demo", buscar: require("../proveedores/demo") },
+  { nombre: "Litton", buscar: require("../proveedores/litton") },
 ];
 
 function escapeRegex(s) {
@@ -29,13 +29,13 @@ async function buscarEnInventario(codigo) {
   };
 }
 
-// GET /api/proveedores?q=pastilla amarok   (BETA, requiere login)
-router.get("/", auth, async (req, res) => {
+// POST /api/proveedores   body: { user, pass, q }   (BETA, requiere login)
+router.post("/", auth, async (req, res) => {
   if (process.env.BETA_PROVEEDORES !== "true") {
     return res.status(404).json({ ok: false, error: "Ruta no encontrada." });
   }
 
-  const q = (req.query.q || "").trim();
+  const q = (req.body.q || "").trim();
   if (!q) return res.json({ ok: true, query: q, total: 0, data: [], errores: [] });
 
   const respuestas = await Promise.allSettled(PROVEEDORES.map((p) => p.buscar(q)));
