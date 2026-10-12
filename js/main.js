@@ -925,12 +925,91 @@ function closeBetaModal() {
   $("betaOverlay").setAttribute("aria-hidden", "true");
 }
 
+function fmtPrecio(n) {
+  const v = Number(n);
+  if (!isFinite(v)) return "—";
+  return v.toLocaleString("es-AR", { style: "currency", currency: "ARS" });
+}
+
+function semaforo(l) {
+  const colores = { V: "var(--success)", A: "var(--warn)", R: "var(--danger)" };
+  const color = colores[l] || "var(--muted)";
+  return `<span class="beta-dot" style="background:${color}" title="Semáforo de stock del proveedor (${escapeHtml(l || "—")})"></span>`;
+}
+
+function renderBetaResults(resp) {
+  const items   = resp.data || [];
+  const errores = resp.errores || [];
+  let html = "";
+
+  for (const e of errores) {
+    html += `<div class="hint beta-error"><strong>${escapeHtml(e.proveedor)}:</strong> ${escapeHtml(e.error)}</div>`;
+  }
+  if (!items.length && !errores.length) {
+    html += `<div class="hint">No encontré resultados. Probá con otro código.</div>`;
+  }
+
+  for (const it of items) {
+    const inv = it.enInventario;
+    const invHtml = inv
+      ? `<span class="beta-badge beta-ok">En tu inventario: ${escapeHtml(String(inv.stock))} u. (${escapeHtml(inv.marca)})</span>`
+      : `<span class="beta-badge beta-no">No lo tenés</span>`;
+    const img = it.imagen
+      ? `<img class="beta-img" src="${escapeHtml(it.imagen)}" alt="" loading="lazy" />`
+      : `<div class="beta-img"></div>`;
+
+    html += `
+      <div class="beta-item">
+        ${img}
+        <div class="beta-info">
+          <div class="beta-title">${escapeHtml(it.codigo)} · ${escapeHtml(it.marca || it.proveedor)}</div>
+          <div class="beta-name">${escapeHtml(it.nombre || "")}</div>
+          <div class="beta-row">
+            <strong>${fmtPrecio(it.precio)}</strong>
+            ${semaforo(it.stockProveedor)}
+            ${invHtml}
+          </div>
+          <div class="muted tiny">Fuente: ${escapeHtml(it.proveedor)}</div>
+        </div>
+      </div>`;
+  }
+  $("betaResults").innerHTML = html;
+}
+
+async function buscarBeta() {
+  const q = $("betaSearch").value.trim();
+  if (!q) { $("betaStatus").textContent = "Escribí un código o producto."; return; }
+  if (!isAdmin) { showToast("Ingresá como administrador para usar la beta.", "error"); return; }
+
+  const btn = $("btnBetaSearch");
+  btn.disabled = true;
+  $("betaStatus").textContent = "";
+  $("betaResults").innerHTML = `
+    <div class="beta-loading">
+      <div class="spinner"></div>
+      <div>Buscando en proveedores…<div class="muted">La primera búsqueda puede tardar unos segundos.</div></div>
+    </div>`;
+
+  const resp = await apiBetaProveedores(q, getCreds());
+  btn.disabled = false;
+
+  if (!resp.ok) {
+    $("betaResults").innerHTML = "";
+    $("betaStatus").textContent = resp.error || "Error en la búsqueda.";
+    return;
+  }
+  renderBetaResults(resp);
+  $("betaStatus").textContent = `${resp.total} resultado(s) para "${q}"`;
+}
+
 function bindBetaModal() {
   const ov = $("betaOverlay");
   if (!ov) return;
   $("btnBeta")?.addEventListener("click", () => { if (!busy) openBetaModal(); });
   $("btnCloseBeta")?.addEventListener("click", () => { if (!busy) closeBetaModal(); });
   $("btnCloseBeta2")?.addEventListener("click", () => { if (!busy) closeBetaModal(); });
+  $("btnBetaSearch")?.addEventListener("click", buscarBeta);
+  $("betaSearch")?.addEventListener("keydown", e => { if (e.key === "Enter") buscarBeta(); });
   ov.addEventListener("click", e => { if (e.target === ov && !busy) closeBetaModal(); });
 }
 
