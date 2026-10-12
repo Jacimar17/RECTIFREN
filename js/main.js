@@ -1,4 +1,4 @@
-import { apiGet, apiPostForm } from "./api.js";
+import { apiGet, apiPostForm, apiBetaProveedores } from "./api.js";
 import { API_URL } from "./config.js";
 import {
   $, fmtDate, escapeHtml,
