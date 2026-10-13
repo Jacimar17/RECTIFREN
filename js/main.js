@@ -1,21 +1,19 @@
-import { apiGet, apiPostForm, authJsonHeaders } from "./api.js";
-import { API_URL } from "./config.js";
+import { apiGet, apiPostForm } from "./api.js";
 import {
   $,
   renderStock, setBusy, setActiveChip,
-  openEditModal, closeEditModal, getEditModalData,
   showToast, updateStats, showSkeleton, updateChipCounts, renderCards
 } from "./ui.js";
 import { createEquivalencesController } from "./equivalences.js";
 import { createMovementController } from "./movements.js";
 import { bindBetaModal } from "./beta.js";
+import { createProductActions } from "./product-actions.js";
 
 let cache       = [];
 let isAdmin     = false;
 let viewFilter  = "all";
 let busy        = false;
 let highlightKey = null;
-let pendingAction = null; // { act, codigo, marca, stock }
 let sortCol     = null;
 let sortDir     = "asc";
 let autoRefreshTimer = null;
@@ -27,6 +25,18 @@ const SEARCH_DEBOUNCE_MS = 250;
 const movements = createMovementController({ getIsAdmin: () => isAdmin });
 const { loadMovs, openHistModal, bindMovSort, bindHistModal, closeHistModal } = movements;
 const { openEquivModal, bind: bindEquivModal } = createEquivalencesController({ getAdminToken });
+const productActions = createProductActions({
+  getAdminToken,
+  adminLogout: () => adminLogout(),
+  isBusy: () => busy,
+  setBusyState,
+  loadStock,
+  loadMovs,
+  setLastUpdatedNow,
+  setHighlightKey: value => { highlightKey = value; },
+  openHistModal,
+  openEquivModal
+});
 
 /* ===== URL params ===== */
 function readUrlParams() {
@@ -288,120 +298,6 @@ function adminLogout() {
   showToast("Sesión cerrada correctamente.", "info");
 }
 
-/* ===== Acciones stock ===== */
-function openNoteModal(act, codigo, marca, stock) {
-  pendingAction = { act, codigo, marca, stock };
-  const ov = $("noteOverlay"); if (!ov) return;
-  $("noteTitle").textContent = act === "in" ? "Agregar una unidad" : "Retirar una unidad";
-  $("noteCodigo").textContent = codigo;
-  $("noteAccion").textContent = act === "in" ? "+ Entrada" : "− Salida";
-  $("noteStock").textContent  = String(stock);
-  $("noteInput").value = "";
-  ov.style.display = "flex";
-  ov.setAttribute("aria-hidden","false");
-  setTimeout(() => $("noteInput")?.focus(), 80);
-}
-
-function closeNoteModal() {
-  const ov = $("noteOverlay"); if (!ov) return;
-  ov.style.display = "none";
-  ov.setAttribute("aria-hidden","true");
-  pendingAction = null;
-}
-
-async function confirmNote() {
-  if (!pendingAction) return;
-  const { act, codigo, marca } = pendingAction;
-  const nota = $("noteInput")?.value.trim() || "";
-  closeNoteModal();
-  const token = getAdminToken();
-  if (!token) { adminLogout(); showToast("La sesión venció. Ingresá nuevamente.", "error"); return; }
-  setBusyState(true, "Aplicando cambio…");
-  try {
-    const res = await apiPostForm({ action: act, token, codigo, marca, cantidad: 1, nota });
-    if (!res.ok) { showToast(`Error: ${res.error || "No se pudo operar."}`, "error"); return; }
-    highlightKey = { codigo, marca };
-    showToast(`Stock ${act === "in" ? "aumentado" : "reducido"} para ${codigo}.`, "success");
-    await loadStock(); await loadMovs(); setLastUpdatedNow();
-  } finally { setBusyState(false); }
-}
-
-async function doInOut(act, codigo, marca, stock) {
-  openNoteModal(act, codigo, marca, stock);
-}
-
-
-/* ===== Agregar producto ===== */
-function openAddModal() {
-  ["addCodigo","addMarca"].forEach(id => { const el = $(id); if(el) el.value=""; });
-  const st = $("addStock"); if(st) st.value="0";
-  const s = $("addStatus"); if(s) s.textContent="";
-  const ov = $("addOverlay"); if(!ov) return;
-  ov.style.display="flex"; ov.setAttribute("aria-hidden","false");
-  setTimeout(() => $("addCodigo")?.focus(), 80);
-}
-
-function closeAddModal() {
-  const ov = $("addOverlay"); if(!ov) return;
-  ov.style.display="none"; ov.setAttribute("aria-hidden","true");
-}
-
-async function confirmAdd() {
-  const token = getAdminToken();
-  if (!token) { adminLogout(); showToast("La sesión venció. Ingresá nuevamente.", "error"); return; }
-  const codigo = $("addCodigo")?.value.trim();
-  const marca  = $("addMarca")?.value.trim();
-  const stock  = Number($("addStock")?.value || 0);
-  const st     = $("addStatus");
-  if (!codigo) { if(st) st.textContent="El código es obligatorio."; return; }
-  if (!marca)  { if(st) st.textContent="La marca es obligatoria.";  return; }
-  if (!Number.isFinite(stock) || stock < 0) { if(st) st.textContent="Stock inválido."; return; }
-  try {
-    setBusyState(true, "Agregando producto…");
-    const res = await apiPostForm({ action:"add", token, codigo, marca, stock });
-    if (!res.ok) { if(st) st.textContent=`Error: ${res.error||"No se pudo agregar."}`; return; }
-    closeAddModal();
-    showToast(`Producto ${codigo} agregado.`, "success");
-    await loadStock(); await loadMovs(); setLastUpdatedNow();
-  } finally { setBusyState(false); }
-}
-
-let pendingDelete = null;
-
-function openDelModal(codigo, marca) {
-  pendingDelete = { codigo, marca };
-  const ov = $("delOverlay"); if (!ov) return;
-  $("delCodigo").textContent = codigo;
-  $("delMarca").textContent  = marca;
-  ov.style.display = "flex"; ov.setAttribute("aria-hidden","false");
-}
-
-function closeDelModal() {
-  const ov = $("delOverlay"); if (!ov) return;
-  ov.style.display = "none"; ov.setAttribute("aria-hidden","true");
-  pendingDelete = null;
-}
-
-async function confirmDel() {
-  if (!pendingDelete) return;
-  const { codigo, marca } = pendingDelete;
-  closeDelModal();
-  const token = getAdminToken();
-  if (!token) { adminLogout(); showToast("La sesión venció. Ingresá nuevamente.", "error"); return; }
-  try {
-    setBusyState(true, "Eliminando producto…");
-    const res = await apiPostForm({ action:"delete", token, codigo, marca });
-    if (!res.ok) { showToast(`Error: ${res.error||"No se pudo eliminar."}`, "error"); return; }
-    showToast(`Producto ${codigo} eliminado.`, "success");
-    await loadStock(); await loadMovs(); setLastUpdatedNow();
-  } finally { setBusyState(false); }
-}
-
-async function deleteProduct(codigo, marca) {
-  openDelModal(codigo, marca);
-}
-
-
 /* ===== Modo compacto ===== */
 let compactMode = false;
 function toggleCompact() {
@@ -411,82 +307,6 @@ function toggleCompact() {
   if (btn) btn.textContent = compactMode ? "☰ Normal" : "☰ Compacto";
 }
 
-
-/* ===== Stock mínimo ===== */
-let minimoProductoId = null;
-
-function openMinimoModal(id, codigo, marca, actual) {
-  minimoProductoId = id;
-  $("minimoCodigo").textContent = codigo;
-  $("minimoMarca").textContent  = marca;
-  $("minimoInput").value        = actual;
-  $("minimoStatus").textContent = "";
-  const ov = $("minimoOverlay");
-  ov.style.display = "flex";
-  ov.setAttribute("aria-hidden","false");
-  setTimeout(() => { const i = $("minimoInput"); i.focus(); i.select(); }, 80);
-}
-
-function closeMinimoModal() {
-  $("minimoOverlay").style.display = "none";
-  $("minimoOverlay").setAttribute("aria-hidden","true");
-  minimoProductoId = null;
-}
-
-async function saveMinimoModal() {
-  if (!minimoProductoId) return;
-  const val = Number($("minimoInput").value);
-  if (isNaN(val) || val < 0) { $("minimoStatus").textContent = "Valor inválido."; return; }
-  const token = getAdminToken();
-  if (!token) { adminLogout(); showToast("La sesión venció. Ingresá nuevamente.", "error"); return; }
-  try {
-    setBusyState(true, "Guardando...");
-    const res = await fetch(`${API_URL}/api/productos/${minimoProductoId}/minimo`, {
-      method: "PATCH",
-      headers: authJsonHeaders(token),
-      body: JSON.stringify({ stockMinimo: val })
-    });
-    const data = await res.json();
-    if (!data.ok) { $("minimoStatus").textContent = `Error: ${data.error}`; return; }
-    closeMinimoModal();
-    showToast(`Stock mínimo actualizado a ${val}.`, "success");
-    await loadStock();
-  } finally {
-    setBusyState(false);
-  }
-}
-
-function bindMinimoModal() {
-  $("btnCloseMinimo")?.addEventListener("click",  closeMinimoModal);
-  $("btnCancelMinimo")?.addEventListener("click", closeMinimoModal);
-  $("btnSaveMinimo")?.addEventListener("click",   saveMinimoModal);
-  $("minimoInput")?.addEventListener("keydown", e => { if(e.key==="Enter") saveMinimoModal(); });
-  $("minimoOverlay")?.addEventListener("click", e => { if(e.target===$("minimoOverlay")) closeMinimoModal(); });
-}
-
-async function saveEdit() {
-  const token = getAdminToken();
-  if (!token) { adminLogout(); showToast("La sesión venció. Ingresá nuevamente.", "error"); return; }
-  const data = getEditModalData();
-  if (!data.codigoOrig || !data.marcaOrig) { $("editStatus").textContent = "Error: datos incompletos."; return; }
-  if (!data.nuevoCodigo) { $("editStatus").textContent = "El código no puede estar vacío."; return; }
-  if (!data.nuevaMarca)  { $("editStatus").textContent = "La marca no puede estar vacía."; return; }
-  if (!Number.isFinite(data.nuevoStock) || data.nuevoStock < 0) { $("editStatus").textContent = "Nuevo stock inválido."; return; }
-  try {
-    setBusyState(true, "Guardando cambios…");
-    const res = await apiPostForm({
-      action: "set", token,
-      codigo: data.codigoOrig, marca: data.marcaOrig,
-      nuevoCodigo: data.nuevoCodigo, nuevaMarca: data.nuevaMarca,
-      nuevoStock: data.nuevoStock
-    });
-    if (!res.ok) { $("editStatus").textContent = `Error: ${res.error || "No se pudo guardar."}`; return; }
-    closeEditModal();
-    highlightKey = { codigo: data.nuevoCodigo, marca: data.nuevaMarca };
-    showToast(`Producto actualizado correctamente.`, "success");
-    await loadStock(); await loadMovs(); setLastUpdatedNow();
-  } finally { setBusyState(false); }
-}
 
 /* ===== Sort headers ===== */
 function bindSortHeaders() {
@@ -580,73 +400,6 @@ function bindEvents() {
   $("fOut").addEventListener("click", chipFilter("out","fOut"));
   $("fLow").addEventListener("click", chipFilter("low","fLow"));
 
-  const handleStockAction = async (ev, allowRowClick) => {
-    if (busy) return;
-    const btn = ev.target.closest("button[data-act]");
-    if (btn && !btn.disabled) {
-      const act    = btn.getAttribute("data-act");
-      const codigo = btn.getAttribute("data-c");
-      const marca  = btn.getAttribute("data-m");
-      const stock  = Number(btn.getAttribute("data-s") || 0);
-      if (act === "in" || act === "out") { await doInOut(act, codigo, marca, stock); return; }
-      if (act === "set") { openEditModal({ codigo, marca, actual: stock }); return; }
-      if (act === "del") { await deleteProduct(codigo, marca); return; }
-      if (act === "equiv")   { const id = btn.getAttribute("data-id"); await openEquivModal(id, codigo, marca); return; }
-      if (act === "minimo") { const id = btn.getAttribute("data-id"); const min = Number(btn.getAttribute("data-min")||2); openMinimoModal(id, codigo, marca, min); return; }
-      return;
-    }
-    if (allowRowClick && !ev.target.closest("button")) {
-      const row = ev.target.closest("[data-c]");
-      if (row) { const c = row.dataset.c, m = row.dataset.m; if(c&&m) await openHistModal(c,m); }
-    }
-  };
-
-  $("tbody").addEventListener("click", ev => handleStockAction(ev, true));
-
-  const cardGrid = document.getElementById("cardGrid");
-  if (cardGrid) cardGrid.addEventListener("click", ev => handleStockAction(ev, true));
-
-  $("btnCloseEdit").addEventListener("click",  () => { if (!busy) closeEditModal(); });
-  $("btnCancelEdit").addEventListener("click", () => { if (!busy) closeEditModal(); });
-  $("btnSaveEdit").addEventListener("click",   () => { if (!busy) saveEdit(); });
-  $("editNuevo").addEventListener("keydown",   e => { if (e.key === "Enter" && !busy) saveEdit(); });
-
-  $("editOverlay").addEventListener("click", e => {
-    if (e.target === $("editOverlay") && !busy) closeEditModal();
-  });
-
-  // Note modal
-  const noteOv = $("noteOverlay");
-  if (noteOv) {
-    $("btnCloseNote")?.addEventListener("click",   () => { if(!busy) closeNoteModal(); });
-    $("btnCancelNote")?.addEventListener("click",  () => { if(!busy) closeNoteModal(); });
-    $("btnConfirmNote")?.addEventListener("click", () => { if(!busy) confirmNote(); });
-    $("noteInput")?.addEventListener("keydown", e => { if(e.key==="Enter" && !busy) confirmNote(); });
-    noteOv.addEventListener("click", e => { if(e.target===noteOv && !busy) closeNoteModal(); });
-  }
-
-  // Add product modal
-  const addOv = $("addOverlay");
-  if (addOv) {
-    $("btnAddProduct")?.addEventListener("click",  () => { if(!busy) openAddModal(); });
-    $("btnCloseAdd")?.addEventListener("click",    () => { if(!busy) closeAddModal(); });
-    $("btnCancelAdd")?.addEventListener("click",   () => { if(!busy) closeAddModal(); });
-    $("btnConfirmAdd")?.addEventListener("click",  () => { if(!busy) confirmAdd(); });
-    addOv.addEventListener("click", e => { if(e.target===addOv && !busy) closeAddModal(); });
-  }
-
-  // Delete confirm modal
-  const delOv = $("delOverlay");
-  if (delOv) {
-    $("btnCloseDel")?.addEventListener("click",   () => { if(!busy) closeDelModal(); });
-    $("btnCancelDel")?.addEventListener("click",  () => { if(!busy) closeDelModal(); });
-    $("btnConfirmDel")?.addEventListener("click", () => { if(!busy) confirmDel(); });
-    delOv.addEventListener("click", e => { if(e.target===delOv && !busy) closeDelModal(); });
-  }
-
-  // Historial modal
-  // Row/card click -> historial (manejado en handleStockAction)
-
   // Compact toggle
   $("btnCompact")?.addEventListener("click", toggleCompact);
 
@@ -682,12 +435,8 @@ function bindEvents() {
   document.addEventListener("keydown", e => {
     if (e.key === "Escape" && !busy) {
       if ($("modalOverlay").style.display === "flex") closeLoginModal();
-      if ($("editOverlay").style.display   === "flex") closeEditModal();
-      if ($("noteOverlay")?.style.display  === "flex") closeNoteModal();
-      if ($("addOverlay")?.style.display   === "flex") closeAddModal();
+      productActions.closeOpenModals();
       if ($("equivOverlay")?.style.display  === "flex") closeEquivModal();
-      if ($("minimoOverlay")?.style.display === "flex") closeMinimoModal();
-      if ($("delOverlay")?.style.display   === "flex") closeDelModal();
       if ($("histOverlay")?.style.display  === "flex") closeHistModal();
     }
     if (e.key === "/" && document.activeElement?.tagName !== "INPUT") {
@@ -713,9 +462,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   setAdminButtonState();
   bindEvents();
+  productActions.bind();
   bindHistModal();
   bindEquivModal();
-  bindMinimoModal();
   bindBetaModal({
     getIsAdmin: () => isAdmin,
     getAdminToken,
