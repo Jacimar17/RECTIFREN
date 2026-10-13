@@ -1233,41 +1233,103 @@ tbody tr:nth-child(n+11) { animation-delay: .32s; }
 }
 
 /* ===== Beta: búsqueda y detalle de proveedores ===== */
+#betaOverlay.modalOverlay {
+  padding: 0;
+  background: var(--bg);
+  backdrop-filter: none;
+}
 .modalBeta {
-  width: min(1100px, 94vw);
+  width: 100%;
   max-width: none;
-  height: 90vh;
+  height: 100%;
   padding: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  transform: none;
+  opacity: 1;
+  animation: none;
 }
-.modalBeta::before { z-index: 1; }
+.modalBeta::before { display: none; }
 .beta-header {
   position: sticky;
   top: 0;
   z-index: 2;
   flex: 0 0 auto;
-  padding: 20px 24px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  margin: 0;
+  padding: 20px clamp(20px, 4vw, 56px) 18px;
   background: var(--card);
   border-bottom: 1px solid var(--border);
 }
 .beta-topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.beta-topbar .modalTitle { font-size: 23px; }
-.beta-searchbar { display: flex; gap: 10px; margin-top: 14px; }
-.beta-searchbar input {
+.beta-branding { min-width: 0; display: flex; align-items: center; gap: 16px; }
+.beta-brand-logo {
+  width: 58px;
+  height: 58px;
+  flex: 0 0 58px;
+  margin: 0;
+  padding: 5px;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+}
+.beta-heading-copy { min-width: 0; }
+.beta-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.beta-topbar .modalTitle { font-size: clamp(22px, 2.4vw, 30px); }
+.beta-label {
+  padding: 4px 9px;
+  color: #fff;
+  background: var(--rojo);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+.beta-description { margin: 5px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.beta-topbar > .modalClose {
+  min-width: 44px;
+  min-height: 44px;
+  color: #fff;
+  background: var(--rojo);
+  border: 0;
+  border-radius: var(--radius-sm);
+}
+.beta-topbar > .modalClose:hover { color: #fff; background: var(--rojo-h); }
+.beta-searchbar { display: flex; gap: 12px; margin-top: 18px; }
+.beta-search-input {
   min-width: 0;
-  min-height: 48px;
+  min-height: 54px;
   flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   padding: 0 15px;
-  color: var(--text);
+  color: var(--muted);
   background: var(--lift);
   border: 1px solid var(--border2);
   border-radius: var(--radius-sm);
+  font-size: 17px;
+}
+.beta-search-input:focus-within { outline: 2px solid var(--rojo); outline-offset: 1px; }
+.beta-searchbar input {
+  min-width: 0;
+  flex: 1;
+  padding: 0;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  outline: 0;
   font: inherit;
 }
-.beta-searchbar input:focus { outline: 2px solid var(--rojo); outline-offset: 1px; }
-.beta-searchbar button { min-width: 112px; min-height: 48px; }
+.beta-searchbar button { min-width: 128px; min-height: 54px; justify-content: center; font-size: 15px; }
 .beta-visually-hidden {
   position: absolute;
   width: 1px;
@@ -1279,17 +1341,28 @@ tbody tr:nth-child(n+11) { animation-delay: .32s; }
   white-space: nowrap;
   border: 0;
 }
-.beta-content { min-height: 0; flex: 1; overflow-y: auto; padding: 22px 24px 26px; }
-#betaStatus { margin: 16px 2px 0; }
+.beta-content { min-height: 0; flex: 1; overflow-y: auto; padding: 26px clamp(20px, 4vw, 56px); }
+.beta-footer {
+  min-height: 48px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  padding: 8px clamp(20px, 4vw, 56px);
+  color: var(--muted);
+  background: var(--card);
+  border-top: 1px solid var(--border);
+}
+#betaStatus { margin: 0; font-size: 13px; }
 #betaResults { display: flex; flex-direction: column; gap: 18px; }
-.beta-results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+.beta-results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 560px), 1fr)); gap: 16px; }
 .beta-result-card {
   min-width: 0;
   min-height: 190px;
-  display: flex;
-  align-items: flex-start;
-  gap: 18px;
-  padding: 16px;
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr) minmax(170px, .35fr);
+  align-items: center;
+  gap: clamp(16px, 2vw, 28px);
+  padding: 20px;
   cursor: pointer;
   color: var(--text);
   text-align: left;
@@ -1340,6 +1413,16 @@ tbody tr:nth-child(n+11) { animation-delay: .32s; }
   gap: 7px;
 }
 .beta-result-info { flex: 1; }
+.beta-result-price {
+  justify-self: end;
+  color: var(--rojo);
+  font-size: clamp(24px, 2.3vw, 32px);
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: right;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
 .beta-code, .beta-provider-code {
   max-width: 100%;
   color: var(--text);
@@ -1475,20 +1558,23 @@ tbody tr:nth-child(n+11) { animation-delay: .32s; }
   .beta-suppliers-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
-  #betaOverlay { padding: 0; }
-  .modalBeta { width: 100vw; max-width: none; height: 100dvh; border: 0; border-radius: 0; }
-  .beta-header { padding: 16px; }
-  .beta-topbar .modalTitle { font-size: 18px; }
+  .beta-header { padding: 14px 16px; }
+  .beta-branding { gap: 10px; }
+  .beta-brand-logo { width: 46px; height: 46px; flex-basis: 46px; }
+  .beta-topbar .modalTitle { font-size: 19px; }
+  .beta-description { font-size: 12px; }
   .beta-content { padding: 16px; }
+  .beta-footer { min-height: 44px; padding: 8px 16px; }
   .beta-results-grid { grid-template-columns: 1fr; }
-  .beta-result-card { flex-direction: column; gap: 14px; padding: 14px; }
-  .beta-result-photo { width: min(100%, 220px); height: min(55vw, 220px); align-self: center; }
+  .beta-result-card { grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 14px; }
+  .beta-result-photo { width: min(100%, 220px); height: min(55vw, 220px); justify-self: center; }
+  .beta-result-price { justify-self: start; text-align: left; }
   .beta-main-product { flex-direction: column; align-items: stretch; gap: 18px; padding: 14px; }
   .beta-main-photo { width: min(100%, 260px); height: min(65vw, 260px); align-self: center; }
   .beta-code-large, .beta-price-large { font-size: 30px; }
   .beta-provider-card { flex-direction: column; }
   .beta-provider-photo { width: min(100%, 180px); height: min(48vw, 180px); align-self: flex-start; }
   .beta-searchbar { gap: 8px; }
-  .beta-searchbar button { min-width: 88px; }
+  .beta-searchbar button { min-width: 88px; min-height: 48px; }
   .beta-lightbox { padding: 7vh 4vw; }
 }

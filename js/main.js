@@ -6,7 +6,7 @@ import {
 } from "./ui.js";
 import { createEquivalencesController } from "./equivalences.js";
 import { createMovementController } from "./movements.js";
-import { bindBetaModal } from "./beta.js?v=20260641";
+import { bindBetaModal } from "./beta.js?v=20260642";
 import { createProductActions } from "./product-actions.js";
 
 let cache       = [];

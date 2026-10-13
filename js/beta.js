@@ -88,11 +88,11 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
       ${photoMarkup(item.imagen, code, "beta-result-photo")}
       <div class="beta-result-info">
         <div class="beta-code">${escapeHtml(code)}</div>
-        <div class="beta-price">${fmtPrecio(item.precio)}</div>
         <div class="beta-brand">${escapeHtml(item.marca || "Marca no informada")}</div>
         <div class="beta-name">${escapeHtml(item.nombre || "Sin descripción disponible")}</div>
         <div class="beta-result-badges">${semaforo(item.stockProveedor)}${inventoryBadge(item.enInventario)}</div>
       </div>
+      <div class="beta-result-price">${fmtPrecio(item.precio)}</div>
     </article>`;
   }
 

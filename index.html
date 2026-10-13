@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RECTIFREN | Inventario</title>
   <link rel="icon" type="image/png" href="assets/logo_rectifren.png" />
-  <link rel="stylesheet" href="css/styles.css?v=20260641">
+  <link rel="stylesheet" href="css/styles.css?v=20260642">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e8380d">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -400,22 +400,36 @@
   
   <!-- Modal Beta: búsqueda en proveedores -->
   <div id="betaOverlay" class="modalOverlay" aria-hidden="true">
-    <div class="modal modalBeta" role="dialog" aria-modal="true" aria-labelledby="betaTitle">
+    <div class="modal modalBeta" role="dialog" aria-modal="true" aria-labelledby="betaTitle" aria-describedby="betaDescription">
       <header class="beta-header">
         <div class="beta-topbar">
-          <h2 id="betaTitle" class="modalTitle">🧪 Beta · Búsqueda en proveedores</h2>
+          <div class="beta-branding">
+            <img class="beta-brand-logo" src="assets/logo_rectifren.png" alt="RECTIFREN" />
+            <div class="beta-heading-copy">
+              <div class="beta-title-row">
+                <h2 id="betaTitle" class="modalTitle">Búsqueda en proveedores</h2>
+                <span class="beta-label">BETA</span>
+              </div>
+              <p id="betaDescription" class="beta-description">Busca en Litton y consulta el detalle y disponibilidad informados por Aimar y ATONOR.</p>
+            </div>
+          </div>
           <button id="btnCloseBeta" class="modalClose" type="button" title="Cerrar" aria-label="Cerrar beta">✕</button>
         </div>
         <div class="beta-searchbar">
           <label class="beta-visually-hidden" for="betaSearch">Buscar código o producto</label>
-          <input id="betaSearch" placeholder="Ej: pastilla de freno Amarok" autocomplete="off" />
+          <div class="beta-search-input">
+            <span aria-hidden="true">🔍</span>
+            <input id="betaSearch" placeholder="Ej: 528 o pastilla de freno Amarok" autocomplete="off" />
+          </div>
           <button id="btnBetaSearch" class="primary" type="button">Buscar</button>
         </div>
       </header>
       <main class="beta-content">
         <div id="betaResults"></div>
-        <p id="betaStatus" class="muted" role="status" aria-live="polite"></p>
       </main>
+      <footer class="beta-footer">
+        <p id="betaStatus" role="status" aria-live="polite"></p>
+      </footer>
     </div>
   </div>
   <div id="betaLightbox" class="beta-lightbox" aria-hidden="true">
@@ -437,6 +451,6 @@
     </div>
   </div>
 
-  <script type="module" src="js/main.js?v=20260641"></script>
+  <script type="module" src="js/main.js?v=20260642"></script>
 </body>
 </html>
