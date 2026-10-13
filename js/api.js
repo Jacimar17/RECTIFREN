@@ -17,8 +17,14 @@ async function request(url, options = {}, timeoutMs = 15000) {
   }
 }
 
-function jsonHeaders() {
-  return { "Content-Type": "application/json" };
+function jsonHeaders(token) {
+  return token
+    ? { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }
+    : { "Content-Type": "application/json" };
+}
+
+export function authJsonHeaders(token) {
+  return jsonHeaders(token);
 }
 
 /* ── GET /api/productos ── */
@@ -45,14 +51,14 @@ export async function apiGet(params) {
 /* ── POST con JSON (reemplaza apiPostForm) ── */
 export async function apiPostForm(bodyObj, timeoutMs = 15000) {
   const action = bodyObj.action || "";
-  const creds  = { user: bodyObj.user || "", pass: bodyObj.pass || "" };
+  const token  = bodyObj.token || "";
 
   // Login
   if (action === "login") {
     return request(`${API_URL}/api/auth/login`, {
       method: "POST",
       headers: jsonHeaders(),
-      body: JSON.stringify(creds)
+      body: JSON.stringify({ user: bodyObj.user || "", pass: bodyObj.pass || "" })
     }, timeoutMs);
   }
 
@@ -60,8 +66,8 @@ export async function apiPostForm(bodyObj, timeoutMs = 15000) {
   if (action === "in") {
     return request(`${API_URL}/api/stock/in`, {
       method: "POST",
-      headers: jsonHeaders(),
-      body: JSON.stringify({ ...creds, codigo: bodyObj.codigo, marca: bodyObj.marca, cantidad: bodyObj.cantidad || 1, nota: bodyObj.nota || "" })
+      headers: jsonHeaders(token),
+      body: JSON.stringify({ codigo: bodyObj.codigo, marca: bodyObj.marca, cantidad: bodyObj.cantidad || 1, nota: bodyObj.nota || "" })
     }, timeoutMs);
   }
 
@@ -69,8 +75,8 @@ export async function apiPostForm(bodyObj, timeoutMs = 15000) {
   if (action === "out") {
     return request(`${API_URL}/api/stock/out`, {
       method: "POST",
-      headers: jsonHeaders(),
-      body: JSON.stringify({ ...creds, codigo: bodyObj.codigo, marca: bodyObj.marca, cantidad: bodyObj.cantidad || 1, nota: bodyObj.nota || "" })
+      headers: jsonHeaders(token),
+      body: JSON.stringify({ codigo: bodyObj.codigo, marca: bodyObj.marca, cantidad: bodyObj.cantidad || 1, nota: bodyObj.nota || "" })
     }, timeoutMs);
   }
 
@@ -84,9 +90,8 @@ export async function apiPostForm(bodyObj, timeoutMs = 15000) {
 
     return request(`${API_URL}/api/productos/${prod._id}`, {
       method: "PUT",
-      headers: jsonHeaders(),
+      headers: jsonHeaders(token),
       body: JSON.stringify({
-        ...creds,
         codigo:       bodyObj.nuevoCodigo  || bodyObj.codigo,
         marca:        bodyObj.nuevaMarca   || bodyObj.marca,
         stock:        bodyObj.nuevoStock,
@@ -99,8 +104,8 @@ export async function apiPostForm(bodyObj, timeoutMs = 15000) {
   if (action === "add") {
     return request(`${API_URL}/api/productos`, {
       method: "POST",
-      headers: jsonHeaders(),
-      body: JSON.stringify({ ...creds, codigo: bodyObj.codigo, marca: bodyObj.marca, stock: bodyObj.stock || 0, equivalencias: bodyObj.equivalencias || "" })
+      headers: jsonHeaders(token),
+      body: JSON.stringify({ codigo: bodyObj.codigo, marca: bodyObj.marca, stock: bodyObj.stock || 0, equivalencias: bodyObj.equivalencias || "" })
     }, timeoutMs);
   }
 
@@ -113,8 +118,7 @@ export async function apiPostForm(bodyObj, timeoutMs = 15000) {
 
     return request(`${API_URL}/api/productos/${prod._id}`, {
       method: "DELETE",
-      headers: jsonHeaders(),
-      body: JSON.stringify(creds)
+      headers: jsonHeaders(token)
     }, timeoutMs);
   }
 
@@ -122,10 +126,10 @@ export async function apiPostForm(bodyObj, timeoutMs = 15000) {
 }
 
 /* ── Beta: búsqueda en proveedores ── */
-export async function apiBetaProveedores(q, creds) {
+export async function apiBetaProveedores(q, token) {
   return request(`${API_URL}/api/proveedores`, {
     method: "POST",
-    headers: jsonHeaders(),
-    body: JSON.stringify({ user: creds.user, pass: creds.pass, q })
+    headers: jsonHeaders(token),
+    body: JSON.stringify({ q })
   }, 40000);
 }

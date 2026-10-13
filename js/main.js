@@ -1,4 +1,4 @@
-import { apiGet, apiPostForm, apiBetaProveedores } from "./api.js";
+import { apiGet, apiPostForm, apiBetaProveedores, authJsonHeaders } from "./api.js";
 import { API_URL } from "./config.js";
 import {
   $, fmtDate, escapeHtml,
@@ -38,12 +38,50 @@ function pushUrlParams() {
   history.replaceState(null, "", str ? `?${str}` : location.pathname);
 }
 
-/* ===== Creds ===== */
-function getCreds() {
-  return {
-    user: sessionStorage.getItem("rectifren_admin_user") || "",
-    pass: sessionStorage.getItem("rectifren_admin_pass") || ""
-  };
+/* ===== Sesión ===== */
+const ADMIN_SESSION_KEY = "rectifren_admin_session";
+let adminSession = null;
+let sessionExpiryTimer = null;
+
+function scheduleSessionExpiry() {
+  if (sessionExpiryTimer) clearTimeout(sessionExpiryTimer);
+  const remaining = (adminSession?.expiresAt || 0) - Date.now();
+  if (remaining <= 0) return;
+  sessionExpiryTimer = setTimeout(() => {
+    adminLogout();
+    showToast("La sesión venció. Ingresá nuevamente.", "info");
+  }, remaining);
+}
+
+function restoreAdminSession() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(ADMIN_SESSION_KEY) || "null");
+    if (saved?.token && Number.isFinite(saved.expiresAt) && saved.expiresAt > Date.now()) {
+      adminSession = saved;
+      scheduleSessionExpiry();
+      return true;
+    }
+  } catch { /* sesión inválida */ }
+  localStorage.removeItem(ADMIN_SESSION_KEY);
+  adminSession = null;
+  return false;
+}
+
+function getAdminToken() {
+  return adminSession?.expiresAt > Date.now() ? adminSession.token : "";
+}
+
+function saveAdminSession(token, expiresAt) {
+  adminSession = { token, expiresAt };
+  localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(adminSession));
+  scheduleSessionExpiry();
+}
+
+function clearAdminSession() {
+  if (sessionExpiryTimer) clearTimeout(sessionExpiryTimer);
+  sessionExpiryTimer = null;
+  adminSession = null;
+  localStorage.removeItem(ADMIN_SESSION_KEY);
 }
 
 function setBusyState(on, text) { busy = on; setBusy(on, text); }
@@ -52,6 +90,8 @@ function setAdminButtonState() {
   const btn = $("btnAdmin"); if (!btn) return;
   btn.textContent = isAdmin ? "Cerrar sesión" : "Administrador";
   btn.title       = isAdmin ? "Cerrar sesión de administrador" : "Ingresar como administrador";
+  const addButton = $("btnAddProduct");
+  if (addButton) addButton.style.display = isAdmin ? "flex" : "none";
 }
 
 function setLastUpdatedNow() {
@@ -204,10 +244,12 @@ async function adminLogin() {
       showToast("Credenciales incorrectas.", "error");
       return;
     }
-    sessionStorage.setItem("rectifren_admin_user", user);
-    sessionStorage.setItem("rectifren_admin_pass", pass);
+    if (!res.token || !Number.isFinite(res.expiresAt)) {
+      throw new Error("Respuesta de sesión inválida.");
+    }
+    saveAdminSession(res.token, res.expiresAt);
+    $("adminPass").value = "";
     isAdmin = true; setAdminButtonState();
-    const bap = $("btnAddProduct"); if(bap) bap.style.display="flex";
     closeLoginModal(); doRender();
     await loadMovs(); setLastUpdatedNow();
     showToast("Sesión de administrador iniciada.", "success");
@@ -220,10 +262,8 @@ async function adminLogin() {
 }
 
 function adminLogout() {
-  sessionStorage.removeItem("rectifren_admin_user");
-  sessionStorage.removeItem("rectifren_admin_pass");
+  clearAdminSession();
   isAdmin = false; setAdminButtonState();
-  const bap2 = $("btnAddProduct"); if(bap2) bap2.style.display="none";
   doRender(); loadMovs(); setLastUpdatedNow();
   showToast("Sesión cerrada correctamente.", "info");
 }
@@ -254,11 +294,11 @@ async function confirmNote() {
   const { act, codigo, marca } = pendingAction;
   const nota = $("noteInput")?.value.trim() || "";
   closeNoteModal();
-  const { user, pass } = getCreds();
-  if (!user || !pass) { showToast("No está autenticado como administrador.", "error"); return; }
+  const token = getAdminToken();
+  if (!token) { adminLogout(); showToast("La sesión venció. Ingresá nuevamente.", "error"); return; }
   setBusyState(true, "Aplicando cambio…");
   try {
-    const res = await apiPostForm({ action: act, user, pass, codigo, marca, cantidad: 1, nota });
+    const res = await apiPostForm({ action: act, token, codigo, marca, cantidad: 1, nota });
     if (!res.ok) { showToast(`Error: ${res.error || "No se pudo operar."}`, "error"); return; }
     highlightKey = { codigo, marca };
     showToast(`Stock ${act === "in" ? "aumentado" : "reducido"} para ${codigo}.`, "success");
@@ -287,8 +327,8 @@ function closeAddModal() {
 }
 
 async function confirmAdd() {
-  const { user, pass } = getCreds();
-  if (!user || !pass) { showToast("No está autenticado.", "error"); return; }
+  const token = getAdminToken();
+  if (!token) { adminLogout(); showToast("La sesión venció. Ingresá nuevamente.", "error"); return; }
   const codigo = $("addCodigo")?.value.trim();
   const marca  = $("addMarca")?.value.trim();
   const stock  = Number($("addStock")?.value || 0);
@@ -298,7 +338,7 @@ async function confirmAdd() {
   if (!Number.isFinite(stock) || stock < 0) { if(st) st.textContent="Stock inválido."; return; }
   try {
     setBusyState(true, "Agregando producto…");
-    const res = await apiPostForm({ action:"add", user, pass, codigo, marca, stock });
+    const res = await apiPostForm({ action:"add", token, codigo, marca, stock });
     if (!res.ok) { if(st) st.textContent=`Error: ${res.error||"No se pudo agregar."}`; return; }
     closeAddModal();
     showToast(`Producto ${codigo} agregado.`, "success");
@@ -326,11 +366,11 @@ async function confirmDel() {
   if (!pendingDelete) return;
   const { codigo, marca } = pendingDelete;
   closeDelModal();
-  const { user, pass } = getCreds();
-  if (!user || !pass) { showToast("No está autenticado.", "error"); return; }
+  const token = getAdminToken();
+  if (!token) { adminLogout(); showToast("La sesión venció. Ingresá nuevamente.", "error"); return; }
   try {
     setBusyState(true, "Eliminando producto…");
-    const res = await apiPostForm({ action:"delete", user, pass, codigo, marca });
+    const res = await apiPostForm({ action:"delete", token, codigo, marca });
     if (!res.ok) { showToast(`Error: ${res.error||"No se pudo eliminar."}`, "error"); return; }
     showToast(`Producto ${codigo} eliminado.`, "success");
     await loadStock(); await loadMovs(); setLastUpdatedNow();
@@ -526,8 +566,8 @@ async function vincularEquiv(equivalenteId, equivalenteTexto) {
   try {
     const res = await fetch(`${API_URL}/api/equivalencias/${equivProductoId}/vincular`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user: sessionStorage.getItem("rectifren_admin_user"), pass: sessionStorage.getItem("rectifren_admin_pass"), equivalenteId, equivalenteTexto })
+      headers: authJsonHeaders(getAdminToken()),
+      body: JSON.stringify({ equivalenteId, equivalenteTexto })
     });
     const data = await res.json();
     if (data.ok) {
@@ -546,8 +586,8 @@ async function desvincularEquiv(equivalenteId, equivalenteTexto) {
   try {
     const res = await fetch(`${API_URL}/api/equivalencias/${equivProductoId}/desvincular`, {
       method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user: sessionStorage.getItem("rectifren_admin_user"), pass: sessionStorage.getItem("rectifren_admin_pass"), equivalenteId, equivalenteTexto })
+      headers: authJsonHeaders(getAdminToken()),
+      body: JSON.stringify({ equivalenteId, equivalenteTexto })
     });
     const data = await res.json();
     if (data.ok) await loadEquivList();
@@ -601,13 +641,14 @@ async function saveMinimoModal() {
   if (!minimoProductoId) return;
   const val = Number($("minimoInput").value);
   if (isNaN(val) || val < 0) { $("minimoStatus").textContent = "Valor inválido."; return; }
-  const { user, pass } = getCreds();
+  const token = getAdminToken();
+  if (!token) { adminLogout(); showToast("La sesión venció. Ingresá nuevamente.", "error"); return; }
   try {
     setBusyState(true, "Guardando...");
     const res = await fetch(`${API_URL}/api/productos/${minimoProductoId}/minimo`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user, pass, stockMinimo: val })
+      headers: authJsonHeaders(token),
+      body: JSON.stringify({ stockMinimo: val })
     });
     const data = await res.json();
     if (!data.ok) { $("minimoStatus").textContent = `Error: ${data.error}`; return; }
@@ -628,8 +669,8 @@ function bindMinimoModal() {
 }
 
 async function saveEdit() {
-  const { user, pass } = getCreds();
-  if (!user || !pass) { showToast("No está autenticado como administrador.", "error"); return; }
+  const token = getAdminToken();
+  if (!token) { adminLogout(); showToast("La sesión venció. Ingresá nuevamente.", "error"); return; }
   const data = getEditModalData();
   if (!data.codigoOrig || !data.marcaOrig) { $("editStatus").textContent = "Error: datos incompletos."; return; }
   if (!data.nuevoCodigo) { $("editStatus").textContent = "El código no puede estar vacío."; return; }
@@ -638,7 +679,7 @@ async function saveEdit() {
   try {
     setBusyState(true, "Guardando cambios…");
     const res = await apiPostForm({
-      action: "set", user, pass,
+      action: "set", token,
       codigo: data.codigoOrig, marca: data.marcaOrig,
       nuevoCodigo: data.nuevoCodigo, nuevaMarca: data.nuevaMarca,
       nuevoStock: data.nuevoStock
@@ -990,7 +1031,9 @@ async function buscarBeta() {
       <div>Buscando en proveedores…<div class="muted">La primera búsqueda puede tardar unos segundos.</div></div>
     </div>`;
 
-  const resp = await apiBetaProveedores(q, getCreds());
+  const token = getAdminToken();
+  if (!token) { adminLogout(); showToast("La sesión venció. Ingresá nuevamente.", "error"); return; }
+  const resp = await apiBetaProveedores(q, token);
   btn.disabled = false;
 
   if (!resp.ok) {
@@ -1018,14 +1061,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initTheme();
   readUrlParams();
 
-  // Restaurar sesión admin si estaba logueado antes de recargar
-  const savedUser = sessionStorage.getItem("rectifren_admin_user");
-  const savedPass = sessionStorage.getItem("rectifren_admin_pass");
-  if (savedUser && savedPass) {
-    isAdmin = true;
-  } else {
-    isAdmin = false;
-  }
+  isAdmin = restoreAdminSession();
 
   setAdminButtonState();
   bindEvents();

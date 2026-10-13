@@ -1,6 +1,8 @@
 const express    = require("express");
 const mongoose   = require("mongoose");
 const cors       = require("cors");
+const helmet     = require("helmet");
+const rateLimit  = require("express-rate-limit");
 require("dotenv").config();
 
 const productosRouter     = require("./routes/productos");
@@ -13,10 +15,37 @@ const proveedoresRouter   = require("./routes/proveedores");
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+const allowedOrigins = (process.env.CORS_ORIGINS || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
+if (process.env.NODE_ENV === "production" && allowedOrigins.length === 0) {
+  console.warn("CORS_ORIGINS no está configurado: se rechazarán solicitudes desde navegadores.");
+}
+
+app.set("trust proxy", 1);
+app.use(helmet());
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error("Origen no autorizado."));
+  },
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
+app.use(express.json({ limit: "100kb" }));
+app.use(express.urlencoded({ extended: true, limit: "100kb" }));
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { ok: false, error: "Demasiados intentos. Probá de nuevo en 15 minutos." }
+});
+
+app.use("/api/auth/login",   loginLimiter);
 app.use("/api/auth",         authRouter);
 app.use("/api/productos",    productosRouter);
 app.use("/api/stock",        stockRouter);

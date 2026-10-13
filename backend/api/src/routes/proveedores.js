@@ -29,7 +29,7 @@ async function buscarEnInventario(codigo) {
   };
 }
 
-// POST /api/proveedores   body: { user, pass, q }   (BETA, requiere login)
+// POST /api/proveedores   body: { q }   (BETA, requiere sesión)
 router.post("/", auth, async (req, res) => {
   if (process.env.BETA_PROVEEDORES !== "true") {
     return res.status(404).json({ ok: false, error: "Ruta no encontrada." });

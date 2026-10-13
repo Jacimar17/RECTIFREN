@@ -1,6 +1,7 @@
 const express = require("express");
 const jwt     = require("jsonwebtoken");
 const router  = express.Router();
+const TOKEN_TTL_SECONDS = 6 * 60 * 60;
 
 router.post("/login", (req, res) => {
   const user = (req.body.user || "").trim();
@@ -17,8 +18,8 @@ router.post("/login", (req, res) => {
     return res.status(401).json({ ok: false, error: "Credenciales inválidas." });
   }
 
-  const token = jwt.sign({ admin: true }, process.env.JWT_SECRET, { expiresIn: "8h" });
-  res.json({ ok: true, token });
+  const token = jwt.sign({ admin: true }, process.env.JWT_SECRET, { expiresIn: TOKEN_TTL_SECONDS });
+  res.json({ ok: true, token, expiresAt: Date.now() + TOKEN_TTL_SECONDS * 1000 });
 });
 
 module.exports = router;
