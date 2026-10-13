@@ -1260,6 +1260,19 @@ tbody tr:nth-child(n+11) { animation-delay: .32s; }
 .beta-supplier-stock { display: inline-flex; align-items: center; gap: 7px; color: var(--text); font-size: 12px; font-weight: 600; }
 .beta-dot { width: 9px; height: 9px; flex: 0 0 9px; border-radius: 999px; display: inline-block; box-shadow: 0 0 0 3px rgba(255,255,255,.08); }
 .beta-inventory { margin-top: 2px; }
+.beta-detail-action { width: 100%; margin-top: 5px; }
+.beta-detail-toggle { padding: 7px 11px; color: var(--text); background: var(--lift); border: 1px solid var(--border2); border-radius: var(--radius-sm); font-size: 11px; font-weight: 700; cursor: pointer; }
+.beta-detail-toggle:hover { border-color: var(--rojo); }
+.beta-detail-results { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-top: 10px; }
+.beta-detail-provider { min-width: 0; padding: 10px; background: var(--lift); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.beta-detail-provider h4 { margin: 0 0 8px; color: var(--text); font-size: 12px; }
+.beta-detail-provider p { margin: 5px 0; font-size: 11px; }
+.beta-detail-item { display: flex; gap: 8px; padding: 8px 0; border-top: 1px solid var(--border); }
+.beta-detail-img { width: 50px; height: 50px; flex: 0 0 50px; object-fit: contain; background: #fff; border-radius: var(--radius-sm); }
+.beta-detail-info { min-width: 0; display: flex; flex-direction: column; gap: 3px; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
+.beta-detail-info strong { color: var(--text); }
+.beta-detail-info a { color: var(--rojo); font-weight: 700; }
+.beta-detail-error { color: var(--danger); }
 .beta-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--border2); font-size: 11px; }
 .beta-ok { color: var(--success); border-color: rgba(34,197,94,.45); background: rgba(34,197,94,.09); }
 .beta-no { color: var(--muted); background: var(--lift); }
@@ -1274,4 +1287,5 @@ tbody tr:nth-child(n+11) { animation-delay: .32s; }
   .beta-title { font-size: 14px; }
   .beta-provider { padding: 3px 6px; font-size: 9px; }
   .beta-price strong { font-size: 16px; }
+  .beta-detail-results { grid-template-columns: 1fr; }
 }

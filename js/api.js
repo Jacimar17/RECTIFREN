@@ -132,3 +132,11 @@ export async function apiBetaProveedores(q, token) {
     body: JSON.stringify({ q })
   }, 40000);
 }
+
+export async function apiDetalleProveedores(codigo, aimarCode, token) {
+  return request(`${API_URL}/api/proveedores/detalle`, {
+    method: "POST",
+    headers: jsonHeaders(token),
+    body: JSON.stringify({ codigo, aimarCode })
+  }, 45000);
+}
