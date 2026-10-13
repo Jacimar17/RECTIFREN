@@ -74,7 +74,7 @@
 .inventory-location-business { color: var(--text); background: var(--azul-soft); border-color: var(--azul); }
 .inventory-location-depot { color: var(--warn); border-color: var(--warn); }
 
-.family-sync-status:not([hidden]) {
+.litton-search-notice:not([hidden]) {
   margin: 12px 0;
   padding: 12px 14px;
   color: var(--text);
@@ -84,10 +84,6 @@
   font-size: 13px;
   line-height: 1.5;
 }
-.family-sync-status details { margin-top: 8px; }
-.family-sync-status summary { cursor: pointer; font-weight: 700; }
-.family-sync-status ul { margin: 8px 0 0; padding-left: 22px; }
-.family-sync-status li + li { margin-top: 4px; }
 .family-summary-list:empty { display: none; }
 .family-summary-list { display: grid; gap: 12px; margin: 0 0 16px; }
 .family-summary-card {

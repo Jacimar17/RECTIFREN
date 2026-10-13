@@ -9,71 +9,10 @@ const {
   resolverFamiliasInventario,
 } = require("../proveedores/familia-inventario");
 const buscarLitton = require("../proveedores/litton");
-const { sincronizarFamiliasLitton } = require("../proveedores/sincronizacion-litton");
-const { randomUUID } = require("crypto");
+const { resolverFamiliasLittonEnVivo } = require("../proveedores/familia-litton-en-vivo");
 const router     = express.Router();
 const SEARCH_LIMIT = 100;
 const FAMILY_RESULT_LIMIT = 300;
-let sincronizacionActiva = null;
-const trabajosSincronizacion = new Map();
-
-function aliasesIguales(a, b) {
-  const signature = (items) => (items || [])
-    .map(({ codigo = "", marca = "", productoLitton = "" }) => `${codigo}|${marca}|${productoLitton}`)
-    .sort();
-  return JSON.stringify(signature(a)) === JSON.stringify(signature(b));
-}
-
-async function ejecutarSincronizacionLitton(job) {
-  try {
-    const productos = await Producto.find()
-      .select("_id codigo CODIGO marca MARCA equivalencias equivalenciasCatalogo")
-      .lean();
-    job.total = productos.filter((producto) => /^RF[-/]?[A-Z0-9]+$/i.test(String(producto.codigo || producto.CODIGO || "").trim())).length;
-
-    const { equivalenciasPorId, summary } = await sincronizarFamiliasLitton(productos, {
-      buscarLitton,
-      obtenerDetalle: buscarLitton.obtenerDetalle,
-      onProgress: ({ stage, processed, total }) => {
-        job.stage = stage;
-        job.processed = processed;
-        job.total = total;
-      },
-    });
-
-    const operaciones = [];
-    for (const producto of productos) {
-      const id = String(producto._id);
-      const equivalenciasCatalogo = equivalenciasPorId.get(id);
-      if (!equivalenciasCatalogo) continue;
-      if (aliasesIguales(producto.equivalenciasCatalogo, equivalenciasCatalogo)) continue;
-      operaciones.push({
-        updateOne: {
-          filter: { _id: producto._id },
-          update: { $set: { equivalenciasCatalogo } },
-        },
-      });
-    }
-
-    for (let i = 0; i < operaciones.length; i += 100) {
-      job.stage = "saving";
-      job.processed = i;
-      job.total = operaciones.length;
-      await Producto.bulkWrite(operaciones.slice(i, i + 100), { ordered: false });
-    }
-
-    job.processed = operaciones.length;
-    job.status = "completed";
-    job.summary = { ...summary, productosActualizados: operaciones.length };
-    job.completedAt = new Date().toISOString();
-  } catch (error) {
-    job.status = "failed";
-    job.error = error.message || "No se pudo completar la sincronización.";
-    job.completedAt = new Date().toISOString();
-  } finally {
-    if (sincronizacionActiva === job.id) sincronizacionActiva = null;
-  }
-}
 
 /* Normaliza un documento sin importar si tiene campos en MAYUS o minus */
 function norm(p) {
@@ -86,6 +25,36 @@ function norm(p) {
     equivalencias: p.equivalencias || "",
     stockMinimo:   p.stockMinimo !== undefined ? p.stockMinimo : 2
   };
+}
+
+function fusionarFamilias(familias) {
+  const merged = [];
+  for (const familia of familias) {
+    const rows = new Map(familia.filas.map((row) => [row._id, row]));
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (let index = merged.length - 1; index >= 0; index--) {
+        if (!merged[index].filas.some((row) => rows.has(row._id))) continue;
+        const [overlap] = merged.splice(index, 1);
+        for (const row of overlap.filas) rows.set(row._id, row);
+        changed = true;
+      }
+    }
+    const filas = [...rows.values()].sort((a, b) =>
+      a.codigo.localeCompare(b.codigo, "es", { numeric: true, sensitivity: "base" })
+      || a.marca.localeCompare(b.marca, "es", { sensitivity: "base" })
+    );
+    const totales = filas.reduce((result, row) => {
+      const stock = Number(row.stock);
+      if (!Number.isFinite(stock)) return result;
+      result[row.ubicacion] += stock;
+      result.total += stock;
+      return result;
+    }, { NEGOCIO: 0, DEPOSITO_GALPON: 0, total: 0 });
+    merged.push({ id: filas.map((row) => row._id).sort()[0], filas, totales });
+  }
+  return merged;
 }
 
 /* Busca producto por codigo+marca soportando ambas convenciones */
@@ -106,37 +75,6 @@ router.get("/", async (req, res) => {
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
-});
-
-// POST /api/productos/sincronizar-familias-litton — importación masiva, requiere sesión
-router.post("/sincronizar-familias-litton", auth, (req, res) => {
-  if (sincronizacionActiva) {
-    const activeJob = trabajosSincronizacion.get(sincronizacionActiva);
-    return res.status(409).json({ ok: false, error: "Ya hay una sincronización en curso.", job: activeJob });
-  }
-
-  const job = {
-    id: randomUUID(),
-    status: "running",
-    stage: "loading",
-    processed: 0,
-    total: 0,
-    startedAt: new Date().toISOString(),
-  };
-  for (const [id, oldJob] of trabajosSincronizacion) {
-    if (oldJob.status !== "running") trabajosSincronizacion.delete(id);
-  }
-  sincronizacionActiva = job.id;
-  trabajosSincronizacion.set(job.id, job);
-  setImmediate(() => { void ejecutarSincronizacionLitton(job); });
-  res.status(202).json({ ok: true, job });
-});
-
-// GET /api/productos/sincronizar-familias-litton/:jobId — consulta estado de importación
-router.get("/sincronizar-familias-litton/:jobId", auth, (req, res) => {
-  const job = trabajosSincronizacion.get(req.params.jobId);
-  if (!job) return res.status(404).json({ ok: false, error: "Trabajo de sincronización no encontrado." });
-  res.json({ ok: true, job });
 });
 
 // GET /api/productos/search?q=
@@ -164,10 +102,22 @@ router.get("/search", async (req, res) => {
       .select("_id codigo CODIGO marca MARCA stock STOCK ubicacion equivalencias equivalenciasCatalogo equivalentesVinculados")
       .lean();
     const inventarioPorId = new Map(inventario.map((producto) => [String(producto._id), producto]));
-    const familias = resolverFamiliasInventario(inventario, seeds)
+    const expansionLitton = await resolverFamiliasLittonEnVivo(q, inventario, {
+      buscarLitton,
+      obtenerDetalle: buscarLitton.obtenerDetalle,
+    });
+    const familiasLocales = resolverFamiliasInventario(inventario, seeds);
+    const familias = fusionarFamilias([
+      ...familiasLocales,
+      ...expansionLitton.familias,
+    ])
       .filter((familia) => familia.filas.length > 1);
     const rowsById = new Map();
     for (const item of seeds) rowsById.set(String(item._id), item);
+    for (const id of expansionLitton.matchedIds) {
+      const original = inventarioPorId.get(id);
+      if (original) rowsById.set(id, original);
+    }
     for (const familia of familias) {
       for (const item of familia.filas) {
         const original = inventarioPorId.get(item._id);
@@ -185,7 +135,11 @@ router.get("/search", async (req, res) => {
       ok: true,
       data: results.map(norm),
       familias: familias.map(({ id, filas, totales }) => ({ id, filas, totales })),
-      matchedIds: seeds.map((item) => String(item._id)),
+      matchedIds: [...new Set([
+        ...seeds.map((item) => String(item._id)),
+        ...expansionLitton.matchedIds,
+      ])],
+      littonError: expansionLitton.error,
       total: results.length,
       hasMore,
       query: q,

@@ -42,7 +42,7 @@ export async function apiGet(params) {
 
   if (action === "search") {
     const q = encodeURIComponent(params.q || "");
-    return request(`${API_URL}/api/productos/search?q=${q}`);
+    return request(`${API_URL}/api/productos/search?q=${q}`, {}, 45000);
   }
 
   return { ok: false, error: "Acción no reconocida." };
@@ -82,7 +82,7 @@ export async function apiPostForm(bodyObj, timeoutMs = 15000) {
 
   // Ajuste / editar producto
   if (action === "set") {
-    const lista = await request(`${API_URL}/api/productos/search?q=${encodeURIComponent(bodyObj.codigo || "")}`);
+    const lista = await request(`${API_URL}/api/productos/search?q=${encodeURIComponent(bodyObj.codigo || "")}`, {}, 45000);
     if (!lista.ok) return lista;
     const prod = (lista.data || []).find(p => p.codigo === bodyObj.codigo && p.marca === bodyObj.marca);
     if (!prod) return { ok: false, error: "Producto no encontrado." };
@@ -117,7 +117,7 @@ export async function apiPostForm(bodyObj, timeoutMs = 15000) {
 
   // Eliminar producto
   if (action === "delete") {
-    const lista = await request(`${API_URL}/api/productos/search?q=${encodeURIComponent(bodyObj.codigo || "")}`);
+    const lista = await request(`${API_URL}/api/productos/search?q=${encodeURIComponent(bodyObj.codigo || "")}`, {}, 45000);
     if (!lista.ok) return lista;
     const prod = (lista.data || []).find(p => p.codigo === bodyObj.codigo && p.marca === bodyObj.marca);
     if (!prod) return { ok: false, error: "Producto no encontrado." };
@@ -146,18 +146,4 @@ export async function apiDetalleProveedores(codigo, aimarCode, token) {
     headers: jsonHeaders(token),
     body: JSON.stringify({ codigo, aimarCode })
   }, 45000);
-}
-
-export async function apiIniciarSincronizacionLitton(token) {
-  return request(`${API_URL}/api/productos/sincronizar-familias-litton`, {
-    method: "POST",
-    headers: jsonHeaders(token),
-    body: JSON.stringify({})
-  });
-}
-
-export async function apiEstadoSincronizacionLitton(jobId, token) {
-  return request(`${API_URL}/api/productos/sincronizar-familias-litton/${encodeURIComponent(jobId)}`, {
-    headers: jsonHeaders(token)
-  });
 }

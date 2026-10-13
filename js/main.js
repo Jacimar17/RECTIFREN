@@ -1,15 +1,12 @@
-import {
-  apiGet, apiPostForm,
-  apiIniciarSincronizacionLitton, apiEstadoSincronizacionLitton
-} from "./api.js";
+import { apiGet, apiPostForm } from "./api.js?v=20260645";
 import {
   $,
   renderStock, setBusy, setActiveChip,
-  showToast, updateStats, showSkeleton, updateChipCounts, renderCards, renderFamilySummaries, escapeHtml
+  showToast, updateStats, showSkeleton, updateChipCounts, renderCards, renderFamilySummaries
 } from "./ui.js";
 import { createEquivalencesController } from "./equivalences.js";
 import { createMovementController } from "./movements.js";
-import { bindBetaModal } from "./beta.js?v=20260644";
+import { bindBetaModal } from "./beta.js?v=20260645";
 import { createProductActions } from "./product-actions.js";
 
 let cache       = [];
@@ -25,9 +22,9 @@ let stockRequestId = 0;
 let searchHasMore = false;
 let inventoryFamilies = [];
 let familyMemberIds = new Set();
-let familySyncRunning = false;
+let inventoryLittonError = "";
 const AUTO_REFRESH_MS = 5 * 60 * 1000; // 5 minutos
-const SEARCH_DEBOUNCE_MS = 250;
+const SEARCH_DEBOUNCE_MS = 450;
 const movements = createMovementController({ getIsAdmin: () => isAdmin });
 const { loadMovs, openHistModal, bindMovSort, bindHistModal, closeHistModal } = movements;
 const { openEquivModal, bind: bindEquivModal } = createEquivalencesController({ getAdminToken });
@@ -118,8 +115,6 @@ function setAdminButtonState() {
   btn.title       = isAdmin ? "Cerrar sesión de administrador" : "Ingresar como administrador";
   const addButton = $("btnAddProduct");
   if (addButton) addButton.style.display = isAdmin ? "flex" : "none";
-  const syncButton = $("btnSyncFamilies");
-  if (syncButton) syncButton.style.display = isAdmin ? "inline-flex" : "none";
 }
 
 function setLastUpdatedNow() {
@@ -164,6 +159,13 @@ function doRender() {
     list: cache, isAdmin, viewFilter, query, highlightKey, sortCol, sortDir, rangeMin, rangeMax,
     familyMemberIds
   };
+  const littonNotice = $("littonSearchNotice");
+  if (littonNotice) {
+    littonNotice.hidden = !inventoryLittonError || !query;
+    littonNotice.textContent = inventoryLittonError
+      ? `No se pudo ampliar esta búsqueda con Litton; se muestran las coincidencias locales disponibles. ${inventoryLittonError}`
+      : "";
+  }
   renderFamilySummaries(query ? inventoryFamilies : []);
   renderStock(opts);
   renderCards(opts);
@@ -217,6 +219,7 @@ async function loadStock(query = $("search")?.value.trim() || "", { notify = fal
     cache = [];
     inventoryFamilies = [];
     familyMemberIds = new Set();
+    inventoryLittonError = "";
     updateChipCounts(cache);
     doRender();
     $("status").textContent = "Escribí un código o marca para buscar.";
@@ -229,6 +232,7 @@ async function loadStock(query = $("search")?.value.trim() || "", { notify = fal
     cache = [];
     inventoryFamilies = [];
     familyMemberIds = new Set();
+    inventoryLittonError = "";
     updateChipCounts(cache);
     doRender();
   }
@@ -244,6 +248,7 @@ async function loadStock(query = $("search")?.value.trim() || "", { notify = fal
     }
     cache = data.data || [];
     inventoryFamilies = Array.isArray(data.familias) ? data.familias : [];
+    inventoryLittonError = data.littonError || "";
     familyMemberIds = new Set([
       ...(Array.isArray(data.matchedIds) ? data.matchedIds.map(String) : []),
       ...inventoryFamilies.flatMap((family) =>
@@ -321,99 +326,6 @@ function adminLogout() {
   showToast("Sesión cerrada correctamente.", "info");
 }
 
-function formatFamilySyncProgress(job) {
-  const progress = job.total ? ` (${job.processed}/${job.total})` : "";
-  const messages = {
-    loading: "Preparando inventario para consultar Litton…",
-    search: "Buscando códigos internos en Litton…",
-    details: "Recuperando equivalencias oficiales del catálogo…",
-    saving: "Guardando vínculos de equivalencia…",
-  };
-  return `${messages[job.stage] || "Sincronizando equivalencias Litton…"}${progress}`;
-}
-
-function familySyncReport(summary) {
-  const ambiguousItems = summary.detalleAmbiguos || [];
-  const errorItems = summary.detalleErrores || [];
-  const ambiguous = ambiguousItems.map((item) =>
-    `<li>${escapeHtml(item.codigo)} · ${escapeHtml(item.marca || "Marca s/d")} — familias candidatas: ${escapeHtml((item.familias || []).join(", "))}</li>`
-  );
-  const errors = errorItems.map((item) =>
-    `<li>${escapeHtml(item.codigo || "Código s/d")} — ${escapeHtml(item.error || "Error sin detalle")}</li>`
-  );
-  const details = ambiguous.length || errors.length
-    ? `<details><summary>Ver ambigüedades y errores informados</summary>
-        ${ambiguous.length ? `<p><strong>Asociaciones omitidas por ambigüedad (${summary.ambiguos}):</strong></p><ul>${ambiguous.join("")}</ul>` : ""}
-        ${errors.length ? `<p><strong>Errores de consulta (${summary.errores}):</strong></p><ul>${errors.join("")}</ul>` : ""}
-        ${Number(summary.ambiguos) > ambiguous.length ? `<p>Se omitieron ${escapeHtml(String(Number(summary.ambiguos) - ambiguous.length))} ambigüedades adicionales del detalle.</p>` : ""}
-        ${Number(summary.errores) > errors.length ? `<p>Se omitieron ${escapeHtml(String(Number(summary.errores) - errors.length))} errores adicionales del detalle.</p>` : ""}
-      </details>`
-    : "";
-  return `<strong>Sincronización completada.</strong>
-    ${escapeHtml(String(summary.productosVinculados || 0))} productos asociados; ${escapeHtml(String(summary.sinCoincidencia || 0))} sin coincidencia; ${escapeHtml(String(summary.ambiguos || 0))} ambiguos omitidos; ${escapeHtml(String(summary.errores || 0))} errores.
-    Se actualizaron ${escapeHtml(String(summary.productosActualizados || 0))} filas de equivalencias. El stock y los movimientos no se modificaron.
-    ${details}`;
-}
-
-async function synchronizeLittonFamilies() {
-  const button = $("btnSyncFamilies");
-  const status = $("familySyncStatus");
-  if (!button || !status || familySyncRunning || !isAdmin || busy) return;
-
-  const token = getAdminToken();
-  if (!token) {
-    adminLogout();
-    showToast("La sesión venció. Ingresá nuevamente.", "error");
-    return;
-  }
-
-  familySyncRunning = true;
-  button.disabled = true;
-  status.hidden = false;
-  status.textContent = "Iniciando sincronización segura de equivalencias Litton…";
-  try {
-    let response = await apiIniciarSincronizacionLitton(token);
-    let job = response.job;
-    if (!response.ok && job?.status !== "running") {
-      throw new Error(response.error || "No se pudo iniciar la sincronización.");
-    }
-    if (!job?.id) throw new Error("El servidor no devolvió el identificador del trabajo.");
-
-    while (job.status === "running") {
-      status.textContent = formatFamilySyncProgress(job);
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      const currentToken = getAdminToken();
-      if (!currentToken) {
-        adminLogout();
-        throw new Error("La sesión venció durante la sincronización. Ingresá nuevamente para volver a consultar.");
-      }
-      response = await apiEstadoSincronizacionLitton(job.id, currentToken);
-      if (!response.ok) throw new Error(response.error || "No se pudo consultar el progreso.");
-      job = response.job;
-      if (!job) throw new Error("El servidor devolvió un estado de sincronización inválido.");
-    }
-
-    if (job.status !== "completed") throw new Error(job.error || "La sincronización no pudo completarse.");
-    status.innerHTML = familySyncReport(job.summary || {});
-    const partial = job.summary?.errores || job.summary?.ambiguos;
-    showToast(
-      partial
-        ? "La sincronización terminó con elementos omitidos. Revisá el detalle."
-        : "Equivalencias Litton sincronizadas. El stock no fue alterado.",
-      partial ? "info" : "success"
-    );
-    const query = $("search")?.value.trim() || "";
-    if (query) await loadStock(query);
-  } catch (error) {
-    status.hidden = false;
-    status.textContent = `No se pudo completar la sincronización: ${error.message || String(error)}`;
-    showToast(error.message || "Falló la sincronización de equivalencias Litton.", "error");
-  } finally {
-    familySyncRunning = false;
-    button.disabled = false;
-  }
-}
-
 /* ===== Modo compacto ===== */
 let compactMode = false;
 function toggleCompact() {
@@ -480,8 +392,6 @@ function bindEvents() {
     a.click(); URL.revokeObjectURL(url);
     showToast("Stock exportado correctamente.", "success");
   });
-
-  $("btnSyncFamilies")?.addEventListener("click", synchronizeLittonFamilies);
 
   $("btnAdmin").addEventListener("click", () => {
     if (busy) return;

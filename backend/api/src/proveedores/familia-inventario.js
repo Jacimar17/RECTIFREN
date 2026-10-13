@@ -49,7 +49,11 @@ function ubicacionEfectiva(producto) {
   return ubicacionPredeterminada(producto);
 }
 
-function resolverFamiliaInventario(productos, codigosIniciales) {
+function resolverFamiliaInventario(productos, codigosIniciales, {
+  initialCodes = [],
+  initialIds = [],
+  allowCodeMatch = () => true,
+} = {}) {
   const porId = new Map(productos.map((producto) => [String(producto._id), producto]));
   const porCodigo = new Map();
   const codigosPorProducto = new Map();
@@ -63,8 +67,8 @@ function resolverFamiliaInventario(productos, codigosIniciales) {
     }
   }
 
-  const codigosPendientes = codigosIniciales.map(normalizarCodigo).filter(Boolean);
-  const idsPendientes = [];
+  const codigosPendientes = [...codigosIniciales, ...initialCodes].map(normalizarCodigo).filter(Boolean);
+  const idsPendientes = initialIds.map(String);
   const visitadosCodigos = new Set();
   const visitadosIds = new Set();
   const encontrados = new Map();
@@ -75,7 +79,7 @@ function resolverFamiliaInventario(productos, codigosIniciales) {
       if (visitadosCodigos.has(codigo)) continue;
       visitadosCodigos.add(codigo);
       for (const producto of porCodigo.get(codigo) || []) {
-        idsPendientes.push(String(producto._id));
+        if (allowCodeMatch(producto, codigo)) idsPendientes.push(String(producto._id));
       }
     }
 
