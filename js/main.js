@@ -406,7 +406,7 @@ async function openHistModal(codigo, marca) {
         const isDel = m.accion === "delete" || m.accion === "DELETE";
         const color = isIn ? "color:var(--success)" : isDel ? "color:var(--danger)" : "color:var(--warn)";
         tr.innerHTML = `
-          <td>${escapeHtml(fmtDate(m.fecha))}</td>
+          <td>${escapeHtml(fmtDate(m.createdAt || m.fecha))}</td>
           <td style="${color};font-weight:700">${escapeHtml(m.accion)}</td>
           <td class="center">${Number(m.cantidad||0)}</td>
           <td class="center">${Number(m.stock_anterior||0)}</td>
@@ -702,7 +702,8 @@ function renderMovs(data) {
   tbody.innerHTML = "";
   let rows = [...data];
   rows.sort((a, b) => {
-    let va = a[movSortCol] ?? "", vb = b[movSortCol] ?? "";
+    let va = movSortCol === "fecha" ? (a.createdAt || a.fecha || "") : (a[movSortCol] ?? "");
+    let vb = movSortCol === "fecha" ? (b.createdAt || b.fecha || "") : (b[movSortCol] ?? "");
     if (movSortCol === "cantidad") { va = Number(va); vb = Number(vb); }
     if (movSortCol === "fecha")    { va = new Date(va).getTime(); vb = new Date(vb).getTime(); }
     const cmp = typeof va === "number" ? va - vb : String(va).localeCompare(String(vb), "es");
@@ -717,7 +718,7 @@ function renderMovs(data) {
     const isIn = (m.accion||"").toLowerCase() === "in";
     const col  = isIn ? "color:var(--success)" : "color:var(--warn)";
     tr.innerHTML = `
-      <td>${escapeHtml(fmtDate(m.fecha))}</td>
+      <td>${escapeHtml(fmtDate(m.createdAt || m.fecha))}</td>
       <td style="${col};font-weight:700">${escapeHtml(m.accion)}</td>
       <td>${escapeHtml(m.codigo)}</td>
       <td>${escapeHtml(m.marca)}</td>
