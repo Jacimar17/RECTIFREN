@@ -2,6 +2,7 @@ const express    = require("express");
 const Producto   = require("../models/Producto");
 const Movimiento = require("../models/Movimiento");
 const auth       = require("../middleware/auth");
+const { UBICACIONES, ubicacionEfectiva, ubicacionPredeterminada } = require("../proveedores/familia-inventario");
 const router     = express.Router();
 const SEARCH_LIMIT = 100;
 
@@ -12,6 +13,7 @@ function norm(p) {
     codigo:       p.codigo || p.CODIGO || "",
     marca:        p.marca  || p.MARCA  || "",
     stock:        p.stock  !== undefined && p.stock !== null ? p.stock : (p.STOCK !== undefined ? p.STOCK : 0),
+    ubicacion:    ubicacionEfectiva(p),
     equivalencias: p.equivalencias || "",
     stockMinimo:   p.stockMinimo !== undefined ? p.stockMinimo : 2
   };
@@ -67,11 +69,15 @@ router.post("/", auth, async (req, res) => {
   try {
     const { codigo, marca, stock = 0, equivalencias = "" } = req.body;
     if (!codigo || !marca) return res.status(400).json({ ok: false, error: "Faltan campos: codigo, marca." });
+    const ubicacion = req.body.ubicacion || ubicacionPredeterminada({ codigo });
+    if (!Object.values(UBICACIONES).includes(ubicacion)) {
+      return res.status(400).json({ ok: false, error: "La ubicación del producto no es válida." });
+    }
 
     const existe = await findProducto(codigo.trim(), marca.trim());
     if (existe) return res.status(409).json({ ok: false, error: `El producto ya existe: ${codigo} — ${marca}` });
 
-    const producto = await Producto.create({ codigo: codigo.trim(), marca: marca.trim(), stock: Number(stock), equivalencias });
+    const producto = await Producto.create({ codigo: codigo.trim(), marca: marca.trim(), stock: Number(stock), equivalencias, ubicacion });
     await Movimiento.create({ accion: "ALTA", productoId: producto._id, codigo: producto.codigo, marca: producto.marca, cantidad: Number(stock), stock_anterior: 0, stock_nuevo: Number(stock) });
 
     res.status(201).json({ ok: true, data: norm(producto) });
@@ -83,7 +89,10 @@ router.post("/", auth, async (req, res) => {
 // PUT /api/productos/:id
 router.put("/:id", auth, async (req, res) => {
   try {
-    const { codigo, marca, stock, equivalencias } = req.body;
+    const { codigo, marca, stock, equivalencias, ubicacion } = req.body;
+    if (ubicacion !== undefined && !Object.values(UBICACIONES).includes(ubicacion)) {
+      return res.status(400).json({ ok: false, error: "La ubicación del producto no es válida." });
+    }
     const producto = await Producto.findById(req.params.id);
     if (!producto) return res.status(404).json({ ok: false, error: "Producto no encontrado." });
 
@@ -93,6 +102,7 @@ router.put("/:id", auth, async (req, res) => {
     if (marca)                { producto.marca  = marca.trim();  producto.MARCA  = marca.trim(); }
     if (stock !== undefined)  { producto.stock  = Number(stock); producto.STOCK  = Number(stock); }
     if (equivalencias !== undefined) producto.equivalencias = equivalencias;
+    if (ubicacion !== undefined) producto.ubicacion = ubicacion;
 
     await producto.save();
 

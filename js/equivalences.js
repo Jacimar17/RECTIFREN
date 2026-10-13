@@ -128,6 +128,7 @@ export function createEquivalencesController({ getAdminToken }) {
       });
       const data = await response.json();
       if (data.ok) {
+        document.dispatchEvent(new Event("rectifren:inventory-updated"));
         $("equivStatus").textContent = "✅ Equivalencia agregada.";
         await loadEquivList();
       } else {
@@ -147,7 +148,10 @@ export function createEquivalencesController({ getAdminToken }) {
         body: JSON.stringify({ equivalenteId, equivalenteTexto })
       });
       const data = await response.json();
-      if (data.ok) await loadEquivList();
+      if (data.ok) {
+        document.dispatchEvent(new Event("rectifren:inventory-updated"));
+        await loadEquivList();
+      }
       else $("equivStatus").textContent = `Error: ${data.error}`;
     } catch (error) {
       $("equivStatus").textContent = `Error: ${error.message}`;

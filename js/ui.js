@@ -19,6 +19,12 @@ export function getStockState(item) {
   return "ok";
 }
 
+function ubicacionBadge(ubicacion) {
+  const enNegocio = ubicacion === "NEGOCIO";
+  const label = enNegocio ? "Negocio" : "Depósito/Galpón";
+  return `<span class="inventory-location-badge ${enNegocio ? "inventory-location-business" : "inventory-location-depot"}">${label}</span>`;
+}
+
 /* ===== Header columna acciones ===== */
 export function ensureAccionesHeader(isAdmin) {
   const theadRow = document.querySelector("table#stockTable thead tr");
@@ -165,9 +171,8 @@ export function showSkeleton(rows = 8) {
   const tbody = $("tbody");
   tbody.innerHTML = "";
   setStatsLoading();
-  const hasAdminCol = !!document.getElementById("thAcciones");
-  const cols = hasAdminCol ? 4 : 3;
-  const widths = [["55%"],["80%","65%","70%"],["35%"],["60%"]];
+  const cols = document.querySelectorAll("table#stockTable thead tr th").length;
+  const widths = [["55%"],["80%","65%","70%"],["35%"],["60%"],["60%"]];
 
   for (let i = 0; i < rows; i++) {
     const tr = document.createElement("tr");
@@ -183,7 +188,7 @@ export function showSkeleton(rows = 8) {
 }
 
 /* ===== Modal Editar ===== */
-export function openEditModal({ codigo, marca, actual }) {
+export function openEditModal({ codigo, marca, actual, ubicacion }) {
   $("editStatus").textContent = "";
   $("editActual").textContent = String(actual);
   $("editProductoOrig").textContent = `${codigo} — ${marca}`;
@@ -191,6 +196,8 @@ export function openEditModal({ codigo, marca, actual }) {
   const mi = $("editMarcaInput");  if (mi) mi.value = marca;
   const input = $("editNuevo");
   input.value = String(actual);
+  const location = $("editUbicacion");
+  if (location) location.value = ubicacion || "DEPOSITO_GALPON";
   const ov = $("editOverlay");
   ov.style.display = "flex";
   ov.setAttribute("aria-hidden","false");
@@ -214,7 +221,8 @@ export function getEditModalData() {
     actual:      Number(ov.dataset.actual || 0),
     nuevoCodigo: $("editCodigoInput")?.value.trim() || ov.dataset.codigo || "",
     nuevaMarca:  $("editMarcaInput")?.value.trim()  || ov.dataset.marca  || "",
-    nuevoStock:  Number($("editNuevo").value)
+    nuevoStock:  Number($("editNuevo").value),
+    ubicacion: $("editUbicacion")?.value || "DEPOSITO_GALPON"
   };
 }
 
@@ -265,7 +273,7 @@ export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, so
 
   if (working.length === 0) {
     const tr = document.createElement("tr");
-    const colspan = isAdmin ? 4 : 3;
+    const colspan = isAdmin ? 5 : 4;
     const message = q ? "Sin resultados para la búsqueda actual." : "Escribí un código o marca para buscar.";
     tr.innerHTML = `<td colspan="${colspan}" style="text-align:center; padding:28px; color:var(--muted)">${message}</td>`;
     tbody.appendChild(tr);
@@ -321,7 +329,7 @@ export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, so
             ${minusDisabled?"disabled":""}
             data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${stockNum}">−</button>
           <button class="mini" data-act="set" data-tooltip="Editar"
-            data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${stockNum}">✏️</button>
+            data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${stockNum}" data-u="${escapeHtml(item.ubicacion || "")}">✏️</button>
           <button class="mini" data-act="equiv" data-tooltip="Equivalencias"
             data-id="${item._id||""}" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}">🔗</button>
           <button class="mini" data-act="minimo" data-tooltip="Stock mínimo"
@@ -338,6 +346,7 @@ export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, so
       <td class="col-codigo">${highlight(item.codigo||"", q)}</td>
       <td class="col-marca">${highlight(item.marca||"", q)}</td>
       <td class="col-stock">${stockCell}</td>
+      <td class="col-ubicacion">${ubicacionBadge(item.ubicacion)}</td>
       ${acciones}
     `;
     tbody.appendChild(tr);
@@ -417,7 +426,7 @@ export function renderCards({ list, isAdmin, viewFilter, query, highlightKey, so
       <div class="stock-card-actions">
         <button class="mini success" data-act="in"  data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${stockNum}">+ Entrada</button>
         <button class="mini danger"  data-act="out" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${stockNum}" ${stockNum===0?"disabled":""}>− Salida</button>
-        <button class="mini"         data-act="set" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${stockNum}">✏️</button>
+        <button class="mini"         data-act="set" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${stockNum}" data-u="${escapeHtml(item.ubicacion || "")}">✏️</button>
         <button class="mini"         data-act="equiv"  data-id="${item._id||""}" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}">🔗</button>
         <button class="mini"         data-act="minimo" data-id="${item._id||""}" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-min="${item.stockMinimo!==undefined?item.stockMinimo:2}">⚠️</button>
         <button class="mini del"     data-act="del" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}">🗑</button>
@@ -428,6 +437,7 @@ export function renderCards({ list, isAdmin, viewFilter, query, highlightKey, so
         <div class="stock-card-info">
           <div class="stock-card-codigo">${highlight(item.codigo||"", q)} ${badge}</div>
           <div class="stock-card-marca">${highlight(item.marca||"", q)}</div>
+          <div class="stock-card-location">${ubicacionBadge(item.ubicacion)}</div>
         </div>
         <div class="stock-card-right">
           <div class="stock-card-stock ${sClass}">${stockNum}</div>

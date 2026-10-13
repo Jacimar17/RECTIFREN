@@ -5,6 +5,7 @@ const productoSchema = new mongoose.Schema(
     codigo:        { type: String, trim: true },
     marca:         { type: String, trim: true },
     stock:         { type: Number, default: 0, min: 0 },
+    ubicacion: { type: String, enum: ["NEGOCIO", "DEPOSITO_GALPON"] },
     equivalencias:   { type: String, default: "", trim: true },
     stockMinimo:     { type: Number, default: 2, min: 0 },
 

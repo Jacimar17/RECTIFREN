@@ -10,6 +10,7 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
   let lastLittonResponse = null;
   let selectedResultIndex = -1;
   let activeViewId = 0;
+  let inventoryVersion = 0;
   const detailCache = new Map();
   const detailRequests = new Map();
 
@@ -62,12 +63,6 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
     </span>`;
   }
 
-  function inventoryBadge(inventory, known = true) {
-    if (!known) return `<span class="beta-badge beta-no">Inventario no informado</span>`;
-    if (!inventory) return `<span class="beta-badge beta-no">No lo tenés</span>`;
-    return `<span class="beta-badge beta-ok">En tu inventario: <strong>${escapeHtml(String(inventory.stock ?? 0))} u.</strong></span>`;
-  }
-
   function providerStockBadge(item) {
     if (item.stockProveedor == null || item.stockProveedor === "") {
       return `<span class="beta-badge beta-stock-unknown">Stock no informado</span>`;
@@ -90,7 +85,7 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
         <div class="beta-code">${escapeHtml(code)}</div>
         <div class="beta-brand">${escapeHtml(item.marca || "Marca no informada")}</div>
         <div class="beta-name">${escapeHtml(item.nombre || "Sin descripción disponible")}</div>
-        <div class="beta-result-badges">${semaforo(item.stockProveedor)}${inventoryBadge(item.enInventario)}</div>
+        <div class="beta-result-badges">${semaforo(item.stockProveedor)}</div>
       </div>
       <div class="beta-result-price">${fmtPrecio(item.precio)}</div>
     </article>`;
@@ -122,7 +117,7 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
         <div class="beta-provider-code">${escapeHtml(code)}</div>
         <div class="beta-provider-price">${fmtPrecio(item.precio)}</div>
         <div class="beta-provider-meta">${escapeHtml(item.marca || "Marca no informada")}${item.nombre ? ` · ${escapeHtml(item.nombre)}` : ""}${measures ? ` · ${measures}` : ""}</div>
-        <div class="beta-provider-badges">${providerStockBadge(item)}${inventoryBadge(item.enInventario, Object.prototype.hasOwnProperty.call(item, "enInventario"))}</div>
+          <div class="beta-provider-badges">${providerStockBadge(item)}</div>
         ${link
           ? `<a class="beta-provider-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">Ver en ${provider}</a>`
           : `<span class="beta-provider-link beta-provider-link-disabled">Enlace no disponible</span>`}
@@ -160,11 +155,45 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
     }
   }
 
+  function updateInventoryFamily(family, error = "") {
+    const panel = results.querySelector(".beta-inventory-family-state");
+    if (!panel) return;
+    if (error) {
+      panel.innerHTML = `<p class="beta-detail-error">${escapeHtml(error)}</p>`;
+      return;
+    }
+    if (!family || !Array.isArray(family.filas) || !family.totales) {
+      panel.innerHTML = `<p class="beta-detail-error">No se pudo cargar el inventario de la familia.</p>`;
+      return;
+    }
+
+    const groups = [
+      ["NEGOCIO", "Stock en el negocio"],
+      ["DEPOSITO_GALPON", "Depósito/Galpón"],
+    ];
+    const sections = groups.map(([location, title]) => {
+      const items = family.filas.filter(item => item.ubicacion === location);
+      const rows = items.length
+        ? items.map(item => `<li><span><strong>${escapeHtml(item.codigo || "Código s/d")}</strong> · ${escapeHtml(item.marca || "Marca no informada")}</span><b>${escapeHtml(String(item.stock ?? 0))} u.</b></li>`).join("")
+        : `<li class="beta-family-empty">Sin productos en esta ubicación.</li>`;
+      return `<section class="beta-inventory-location">
+        <div class="beta-inventory-location-heading"><h4>${title}</h4><strong>${escapeHtml(String(family.totales[location] ?? 0))} u.</strong></div>
+        <ul>${rows}</ul>
+      </section>`;
+    }).join("");
+
+    panel.innerHTML = `<div class="beta-inventory-locations">${sections}</div>
+      <div class="beta-family-total"><span>Total de la familia</span><strong>${escapeHtml(String(family.totales.total ?? 0))} u.</strong></div>`;
+  }
+
   async function getProviderDetails(item) {
     const code = item.codigo || "";
-    if (detailCache.has(code)) return detailCache.get(code);
-    if (detailRequests.has(code)) return detailRequests.get(code);
+    const cached = detailCache.get(code);
+    if (cached?.version === inventoryVersion) return cached.response;
+    const requestKey = `${inventoryVersion}:${code}`;
+    if (detailRequests.has(requestKey)) return detailRequests.get(requestKey);
 
+    const requestVersion = inventoryVersion;
     const request = (async () => {
       const token = getAdminToken();
       if (!token) {
@@ -172,14 +201,16 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
         throw new Error("La sesión venció. Ingresá nuevamente.");
       }
       const response = await apiDetalleProveedores(code, item.aimarCode || code, token);
-      if (response.ok) detailCache.set(code, response);
+      if (response.ok && requestVersion === inventoryVersion) {
+        detailCache.set(code, { version: requestVersion, response });
+      }
       return response;
     })();
-    detailRequests.set(code, request);
+    detailRequests.set(requestKey, request);
     try {
       return await request;
     } finally {
-      detailRequests.delete(code);
+      detailRequests.delete(requestKey);
     }
   }
 
@@ -195,8 +226,12 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
           <div class="beta-price beta-price-large">${fmtPrecio(item.precio)}</div>
           <div class="beta-brand">${escapeHtml(item.marca || "Marca no informada")}</div>
           <div class="beta-name">${escapeHtml(item.nombre || "Sin descripción disponible")}</div>
-          <div class="beta-result-badges">${semaforo(item.stockProveedor)}${inventoryBadge(item.enInventario)}</div>
+          <div class="beta-result-badges">${semaforo(item.stockProveedor)}</div>
         </div>
+      </section>
+      <section class="beta-inventory-family">
+        <h2>En tu inventario</h2>
+        <div class="beta-inventory-family-state"><div class="beta-provider-loading"><div class="spinner" aria-hidden="true"></div><span>Buscando en tu inventario…</span></div></div>
       </section>
       <h2 class="beta-suppliers-title">Dónde conseguirla</h2>
       <div class="beta-suppliers-grid">
@@ -204,8 +239,11 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
         ${renderProviderSection("ATONOR")}
       </div>`;
 
-    if (detailCache.has(code)) {
-      updateProviderSections(detailCache.get(code));
+    const cached = detailCache.get(code);
+    if (cached?.version === inventoryVersion) {
+      const response = cached.response;
+      updateProviderSections(response);
+      updateInventoryFamily(response.inventarioFamilia, response.inventarioError || "");
       return;
     }
 
@@ -214,12 +252,15 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
       if (viewId !== activeViewId) return;
       if (!response.ok) {
         updateProviderSections(null, response.error || "No se pudieron consultar los proveedores.");
+        updateInventoryFamily(null, response.error || "No se pudo consultar el inventario de la familia.");
         return;
       }
       updateProviderSections(response);
+      updateInventoryFamily(response.inventarioFamilia, response.inventarioError || "");
     } catch (error) {
       if (viewId !== activeViewId) return;
       updateProviderSections(null, error.message || "Error al consultar los proveedores.");
+      updateInventoryFamily(null, error.message || "Error al consultar el inventario.");
     }
   }
 
@@ -345,5 +386,10 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
     } else if (overlay.getAttribute("aria-hidden") === "false" && !isBusy()) {
       closeBetaModal();
     }
+  });
+  document.addEventListener("rectifren:inventory-updated", () => {
+    inventoryVersion++;
+    detailCache.clear();
+    detailRequests.clear();
   });
 }

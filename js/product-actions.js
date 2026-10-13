@@ -19,6 +19,11 @@ export function createProductActions({
   let pendingAction = null;
   let pendingDelete = null;
   let minimoProductoId = null;
+  let addLocationTouched = false;
+
+  function defaultLocationForCode(codigo) {
+    return /^RF-/i.test(String(codigo || "").trim()) ? "NEGOCIO" : "DEPOSITO_GALPON";
+  }
 
   function openNoteModal(act, codigo, marca, stock) {
     pendingAction = { act, codigo, marca, stock };
@@ -60,6 +65,7 @@ export function createProductActions({
         showToast(`Error: ${response.error || "No se pudo operar."}`, "error");
         return;
       }
+      document.dispatchEvent(new Event("rectifren:inventory-updated"));
       setHighlightKey({ codigo, marca });
       showToast(`Stock ${act === "in" ? "aumentado" : "reducido"} para ${codigo}.`, "success");
       await loadStock();
@@ -77,6 +83,9 @@ export function createProductActions({
     });
     const stock = $("addStock");
     if (stock) stock.value = "0";
+    addLocationTouched = false;
+    const location = $("addUbicacion");
+    if (location) location.value = "DEPOSITO_GALPON";
     const status = $("addStatus");
     if (status) status.textContent = "";
     const overlay = $("addOverlay");
@@ -103,6 +112,7 @@ export function createProductActions({
     const codigo = $("addCodigo")?.value.trim();
     const marca = $("addMarca")?.value.trim();
     const stock = Number($("addStock")?.value || 0);
+    const ubicacion = $("addUbicacion")?.value || defaultLocationForCode(codigo);
     const status = $("addStatus");
     if (!codigo) { if (status) status.textContent = "El código es obligatorio."; return; }
     if (!marca) { if (status) status.textContent = "La marca es obligatoria."; return; }
@@ -112,11 +122,12 @@ export function createProductActions({
     }
     try {
       setBusyState(true, "Agregando producto…");
-      const response = await apiPostForm({ action: "add", token, codigo, marca, stock });
+      const response = await apiPostForm({ action: "add", token, codigo, marca, stock, ubicacion });
       if (!response.ok) {
         if (status) status.textContent = `Error: ${response.error || "No se pudo agregar."}`;
         return;
       }
+      document.dispatchEvent(new Event("rectifren:inventory-updated"));
       closeAddModal();
       showToast(`Producto ${codigo} agregado.`, "success");
       await loadStock();
@@ -162,6 +173,7 @@ export function createProductActions({
         showToast(`Error: ${response.error || "No se pudo eliminar."}`, "error");
         return;
       }
+      document.dispatchEvent(new Event("rectifren:inventory-updated"));
       showToast(`Producto ${codigo} eliminado.`, "success");
       await loadStock();
       await loadMovs();
@@ -251,12 +263,14 @@ export function createProductActions({
         marca: data.marcaOrig,
         nuevoCodigo: data.nuevoCodigo,
         nuevaMarca: data.nuevaMarca,
-        nuevoStock: data.nuevoStock
+        nuevoStock: data.nuevoStock,
+        ubicacion: data.ubicacion
       });
       if (!response.ok) {
         $("editStatus").textContent = `Error: ${response.error || "No se pudo guardar."}`;
         return;
       }
+      document.dispatchEvent(new Event("rectifren:inventory-updated"));
       closeEditModal();
       setHighlightKey({ codigo: data.nuevoCodigo, marca: data.nuevaMarca });
       showToast("Producto actualizado correctamente.", "success");
@@ -276,8 +290,9 @@ export function createProductActions({
       const codigo = button.getAttribute("data-c");
       const marca = button.getAttribute("data-m");
       const stock = Number(button.getAttribute("data-s") || 0);
+      const ubicacion = button.getAttribute("data-u") || "DEPOSITO_GALPON";
       if (action === "in" || action === "out") { openNoteModal(action, codigo, marca, stock); return; }
-      if (action === "set") { openEditModal({ codigo, marca, actual: stock }); return; }
+      if (action === "set") { openEditModal({ codigo, marca, actual: stock, ubicacion }); return; }
       if (action === "del") { openDelModal(codigo, marca); return; }
       if (action === "equiv") {
         void openEquivModal(button.getAttribute("data-id"), codigo, marca);
@@ -331,6 +346,10 @@ export function createProductActions({
       $("btnCloseAdd")?.addEventListener("click", () => { if (!isBusy()) closeAddModal(); });
       $("btnCancelAdd")?.addEventListener("click", () => { if (!isBusy()) closeAddModal(); });
       $("btnConfirmAdd")?.addEventListener("click", () => { if (!isBusy()) void confirmAdd(); });
+      $("addCodigo")?.addEventListener("input", event => {
+        if (!addLocationTouched) $("addUbicacion").value = defaultLocationForCode(event.target.value);
+      });
+      $("addUbicacion")?.addEventListener("change", () => { addLocationTouched = true; });
       addOverlay.addEventListener("click", event => {
         if (event.target === addOverlay && !isBusy()) closeAddModal();
       });

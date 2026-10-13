@@ -2,6 +2,11 @@ const express  = require("express");
 const Producto = require("../models/Producto");
 const auth     = require("../middleware/auth");
 const router   = express.Router();
+const {
+  codigosEquivalentes,
+  normalizarCodigo,
+  resolverFamiliaInventario,
+} = require("../proveedores/familia-inventario");
 
 // Proveedores activos. Acá vamos sumando Aimar y ATONOR.
 const PROVEEDORES = [
@@ -11,25 +16,18 @@ const PROVEEDORES = [
 const buscarAimar = require("../proveedores/aimar");
 const buscarAtonor = require("../proveedores/atonor");
 
-function escapeRegex(s) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+async function cargarInventario() {
+  return Producto.find()
+    .select("_id codigo CODIGO marca MARCA stock STOCK ubicacion equivalencias equivalentesVinculados")
+    .lean();
 }
 
-// Busca en tu inventario por código exacto o dentro de equivalencias
-async function buscarEnInventario(codigo) {
-  if (!codigo) return null;
-  const exacto  = new RegExp(`^${escapeRegex(codigo)}$`, "i");
-  const enEquiv = new RegExp(escapeRegex(codigo), "i");
-  const p = await Producto.findOne({
-    $or: [{ codigo: exacto }, { CODIGO: exacto }, { equivalencias: enEquiv }],
-  });
-  if (!p) return null;
-  return {
-    _id:    p._id,
-    codigo: p.codigo || p.CODIGO || "",
-    marca:  p.marca  || p.MARCA  || "",
-    stock:  p.stock ?? p.STOCK ?? 0,
-  };
+function extraerCodigosFamilia(codigo, aimarCode, data) {
+  const codigos = [codigo, aimarCode];
+  for (const producto of [...(data.aimar || []), ...(data.atonor || [])]) {
+    codigos.push(producto.codigo, producto.aimarCode, ...codigosEquivalentes(producto.equivalencias));
+  }
+  return [...new Set(codigos.map(normalizarCodigo).filter(Boolean))];
 }
 
 function textoEntrada(value) {
@@ -67,7 +65,10 @@ router.post("/detalle", auth, async (req, res, next) => {
       data[i === 0 ? "aimar" : "atonor"] = respuesta.value;
     }
 
-    res.json({ ok: true, codigo, data, errores });
+    const inventario = await cargarInventario();
+    const codigos = extraerCodigosFamilia(codigo, aimarCode, data);
+    const inventarioFamilia = resolverFamiliaInventario(inventario, codigos);
+    res.json({ ok: true, codigo, data, errores, inventarioFamilia });
   } catch (error) {
     next(error);
   }
@@ -96,10 +97,15 @@ router.post("/", auth, async (req, res, next) => {
       results.push(...r.value.map(item => ({ proveedor: nombre, ...item })));
     }
 
-    const data = await Promise.all(results.map(async item => ({
-      ...item,
-      enInventario: await buscarEnInventario(item.codigo),
-    })));
+    const inventario = await cargarInventario();
+    const data = results.map(item => {
+      const familia = resolverFamiliaInventario(inventario, [item.codigo]);
+      const codigoExacto = normalizarCodigo(item.codigo);
+      const match = familia.filas.find(fila => normalizarCodigo(fila.codigo) === codigoExacto)
+        || familia.filas[0]
+        || null;
+      return { ...item, enInventario: match };
+    });
     res.json({ ok: true, query: q, total: data.length, data, errores });
   } catch (error) {
     next(error);

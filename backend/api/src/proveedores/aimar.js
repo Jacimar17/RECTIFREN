@@ -99,6 +99,7 @@ function mapear(p) {
     precio:         redondear(d.precio_final ?? d.precio),
     stockProveedor: Number(d.stock) || 0,
     medidas:        [d.largo, d.altura, d.espesor].filter(Boolean).join(" x "),
+    equivalencias:  d.equivalencias || [],
     imagen:         img && !/sin_imagen/i.test(img) ? img : null,
     link:           p.link || null,
   };

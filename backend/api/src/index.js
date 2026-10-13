@@ -11,6 +11,7 @@ const movimientosRouter   = require("./routes/movimientos");
 const authRouter          = require("./routes/auth");
 const equivalenciasRouter = require("./routes/equivalencias");
 const proveedoresRouter   = require("./routes/proveedores");
+const migrarUbicacionesFaltantes = require("./migrations/ubicaciones");
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -62,8 +63,15 @@ app.use((err, req, res, next) => { console.error(err); res.status(500).json({ ok
 
 mongoose
   .connect(process.env.MONGODB_URI)
-  .then(() => {
+  .then(async () => {
     console.log("✅ Conectado a MongoDB Atlas");
+    try {
+      const migrados = await migrarUbicacionesFaltantes();
+      if (migrados) console.log(`✅ Ubicaciones iniciales asignadas a ${migrados} productos`);
+    } catch (err) {
+      console.error("❌ Error al completar ubicaciones del inventario:", err.message);
+      process.exit(1);
+    }
     app.listen(PORT, () => console.log(`🚀 API en puerto ${PORT}`));
   })
   .catch((err) => { console.error("❌ Error MongoDB:", err.message); process.exit(1); });

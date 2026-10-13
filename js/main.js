@@ -6,7 +6,7 @@ import {
 } from "./ui.js";
 import { createEquivalencesController } from "./equivalences.js";
 import { createMovementController } from "./movements.js";
-import { bindBetaModal } from "./beta.js?v=20260642";
+import { bindBetaModal } from "./beta.js?v=20260643";
 import { createProductActions } from "./product-actions.js";
 
 let cache       = [];
@@ -354,8 +354,8 @@ function bindEvents() {
   const btnExport = $("btnExport");
   if (btnExport) btnExport.addEventListener("click", () => {
     if (!cache.length) { showToast("No hay datos para exportar.", "info"); return; }
-    const rows = [["CODIGO","MARCA","STOCK"]];
-    for (const item of cache) rows.push([item.codigo||"", item.marca||"", String(item.stock||0)]);
+    const rows = [["CODIGO","MARCA","STOCK","UBICACION"]];
+    for (const item of cache) rows.push([item.codigo||"", item.marca||"", String(item.stock||0), item.ubicacion === "NEGOCIO" ? "Negocio" : "Depósito/Galpón"]);
     const csv  = rows.map(r => r.map(c => `"${String(c).replaceAll('"','""')}"`).join(",")).join("\r\n");
     const blob = new Blob(["\uFEFF"+csv], { type:"text/csv;charset=utf-8;" });
     const url  = URL.createObjectURL(blob);

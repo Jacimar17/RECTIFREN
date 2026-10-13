@@ -94,6 +94,7 @@ export async function apiPostForm(bodyObj, timeoutMs = 15000) {
         codigo:       bodyObj.nuevoCodigo  || bodyObj.codigo,
         marca:        bodyObj.nuevaMarca   || bodyObj.marca,
         stock:        bodyObj.nuevoStock,
+        ubicacion:    bodyObj.ubicacion,
         equivalencias: bodyObj.equivalencias || ""
       })
     }, timeoutMs);
@@ -104,7 +105,13 @@ export async function apiPostForm(bodyObj, timeoutMs = 15000) {
     return request(`${API_URL}/api/productos`, {
       method: "POST",
       headers: jsonHeaders(token),
-      body: JSON.stringify({ codigo: bodyObj.codigo, marca: bodyObj.marca, stock: bodyObj.stock || 0, equivalencias: bodyObj.equivalencias || "" })
+      body: JSON.stringify({
+        codigo: bodyObj.codigo,
+        marca: bodyObj.marca,
+        stock: bodyObj.stock || 0,
+        equivalencias: bodyObj.equivalencias || "",
+        ubicacion: bodyObj.ubicacion
+      })
     }, timeoutMs);
   }
 

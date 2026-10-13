@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RECTIFREN | Inventario</title>
   <link rel="icon" type="image/png" href="assets/logo_rectifren.png" />
-  <link rel="stylesheet" href="css/styles.css?v=20260642">
+  <link rel="stylesheet" href="css/styles.css?v=20260643">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e8380d">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -115,6 +115,7 @@
               <th class="col-codigo sortable" data-col="codigo">CODIGO <span class="sort-icon">↕</span></th>
               <th class="col-marca sortable" data-col="marca">MARCA <span class="sort-icon">↕</span></th>
               <th class="col-stock sortable" data-col="stock">STOCK <span class="sort-icon">↕</span></th>
+              <th class="col-ubicacion sortable" data-col="ubicacion">UBICACIÓN <span class="sort-icon">↕</span></th>
             </tr>
           </thead>
           <tbody id="tbody"></tbody>
@@ -212,6 +213,13 @@
           <div>
             <label class="muted" for="editNuevo">Nuevo stock</label>
             <input id="editNuevo" type="number" min="0" step="1" placeholder="Stock" />
+          </div>
+          <div>
+            <label class="muted" for="editUbicacion">Ubicación</label>
+            <select id="editUbicacion" class="select">
+              <option value="NEGOCIO">Negocio</option>
+              <option value="DEPOSITO_GALPON">Depósito/Galpón</option>
+            </select>
           </div>
         </div>
         <div class="hint">
@@ -366,6 +374,11 @@
         <input id="addMarca" placeholder="Ej: BREMBO" autocomplete="off" />
         <label class="muted" for="addStock">Stock inicial</label>
         <input id="addStock" type="number" min="0" step="1" placeholder="0" value="0" />
+        <label class="muted" for="addUbicacion">Ubicación</label>
+        <select id="addUbicacion" class="select">
+          <option value="NEGOCIO">Negocio</option>
+          <option value="DEPOSITO_GALPON">Depósito/Galpón</option>
+        </select>
         <div class="modalActions">
           <button id="btnCancelAdd">Cancelar</button>
           <button id="btnConfirmAdd" class="primary">Agregar</button>
@@ -451,6 +464,6 @@
     </div>
   </div>
 
-  <script type="module" src="js/main.js?v=20260642"></script>
+  <script type="module" src="js/main.js?v=20260643"></script>
 </body>
 </html>
