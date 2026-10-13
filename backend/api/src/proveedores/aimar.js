@@ -1,5 +1,5 @@
 // Proveedor: Aimar Repuestos (listado interno get_products.php)
-const URL_BASE = "https://www.aimarrepuestos.com.ar/get_products.php";
+const URL_BASE = "https://www.aimarrepuestos.com.ar/api/products/get_products.php";
 const URL_PAGINA = "https://www.aimarrepuestos.com.ar/productos";
 const LIMITE = 12;
 const MAX_PAGINAS = 5;
