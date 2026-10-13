@@ -1,4 +1,4 @@
-import { apiGet, apiPostForm } from "./api.js?v=20260645";
+import { apiGet, apiPostForm } from "./api.js?v=20260647";
 import {
   $,
   renderStock, setBusy, setActiveChip,
@@ -6,7 +6,7 @@ import {
 } from "./ui.js";
 import { createEquivalencesController } from "./equivalences.js";
 import { createMovementController } from "./movements.js";
-import { bindBetaModal } from "./beta.js?v=20260645";
+import { bindBetaModal } from "./beta.js?v=20260647";
 import { createProductActions } from "./product-actions.js";
 
 let cache       = [];

@@ -110,20 +110,20 @@ async function resolverFamiliasLittonEnVivo(query, inventario, {
 
   const errores = [];
   const details = await mapConcurrent(resultados, concurrency, async (item) => {
+    let detalle;
     try {
-      const detalle = await obtenerDetalle(item.codigo);
-      if (normalizarCodigo(detalle.code) !== normalizarCodigo(item.codigo)) {
-        throw new Error(`La ficha Litton de ${item.codigo} devolvió otro código.`);
-      }
-      const codigoBuscado = item.busquedaUsada || query;
-      if (!fichaConfirmaBusqueda(detalle, codigoBuscado)) {
-        throw new Error(`La ficha Litton de ${item.codigo} no confirma la equivalencia buscada.`);
-      }
-      return { item, detalle };
+      detalle = await obtenerDetalle(item.codigo);
     } catch (error) {
       errores.push(`${item.codigo || "Producto Litton"}: ${error.message || String(error)}`);
       return null;
     }
+    if (normalizarCodigo(detalle?.code) !== normalizarCodigo(item.codigo)) {
+      errores.push(`${item.codigo || "Producto Litton"}: La ficha Litton devolvió otro código.`);
+      return null;
+    }
+    const codigoBuscado = item.busquedaUsada || query;
+    if (!fichaConfirmaBusqueda(detalle, codigoBuscado)) return null;
+    return { item, detalle };
   });
 
   const familias = [];

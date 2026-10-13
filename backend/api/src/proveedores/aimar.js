@@ -3,6 +3,7 @@ const URL_BASE = "https://www.aimarrepuestos.com.ar/api/products/get_products.ph
 const URL_PAGINA = "https://www.aimarrepuestos.com.ar/productos";
 const LIMITE = 12;
 const MAX_PAGINAS = 5;
+const { coincideEquivalencia } = require("./busqueda-familia-litton");
 
 // Cabeceras parecidas a las de un navegador
 const NAVEGADOR = {
@@ -129,11 +130,17 @@ async function buscarTermino(titulo) {
 }
 
 module.exports = async function buscarAimar(codigo) {
-  for (const t of terminos(codigo)) {
-    const items = await buscarTermino(t);
-    if (items.length) return items;
-  }
-  return [];
+  return buscarCoincidencia(codigo);
 };
 
+async function buscarCoincidencia(codigo, consultar = buscarTermino) {
+  for (const t of terminos(codigo)) {
+    const items = await consultar(t);
+    const coincidencias = items.filter((item) => coincideEquivalencia(item, codigo));
+    if (coincidencias.length) return coincidencias;
+  }
+  return [];
+}
+
 module.exports.terminos = terminos;
+module.exports.buscarCoincidencia = buscarCoincidencia;

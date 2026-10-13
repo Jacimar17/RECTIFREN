@@ -27,6 +27,25 @@ const inventory = [
   { _id: "manual-link", codigo: "OTRO-CODIGO", marca: "GENERICA", stock: 0, equivalencias: "PD/528", ubicacion: "NEGOCIO" },
 ];
 
+const inventory59 = [
+  { _id: "rf-frasle-59", codigo: "RF-59", marca: "FRASLE", stock: 7, ubicacion: "NEGOCIO" },
+  { _id: "rf-frima-59", codigo: "RF-59", marca: "FRI-MA", stock: 5, ubicacion: "NEGOCIO" },
+  { _id: "rf-litton-59", codigo: "RF-59", marca: "LITTON", stock: 6, ubicacion: "NEGOCIO" },
+  { _id: "rf-trw-59", codigo: "RF-59", marca: "TRW", stock: 5, ubicacion: "NEGOCIO" },
+  { _id: "trw-01030", codigo: "TRW01030", marca: "TRW", stock: 12, ubicacion: "DEPOSITO_GALPON" },
+];
+
+function detail59(code) {
+  return {
+    code,
+    subcategory: "LITTON",
+    substitutes: [
+      { value: "PD/59", code: "FRASLE" },
+      { value: "RCPT01030", code: "TRW - BRASIL" },
+    ],
+  };
+}
+
 test("expands query 528 through Litton and totals RF and verified TRW stock by location", async () => {
   const before = inventory.map(({ _id, codigo, stock, ubicacion }) => ({ _id, codigo, stock, ubicacion }));
   const lookedUp = [];
@@ -63,6 +82,35 @@ test("expands query 528 through Litton and totals RF and verified TRW stock by l
     inventory.map(({ _id, codigo, stock, ubicacion }) => ({ _id, codigo, stock, ubicacion })),
     before
   );
+});
+
+test("ignores unrelated Litton candidates for PD/59 and preserves its located family", async () => {
+  const result = await resolverFamiliasLittonEnVivo("PD/59", inventory59, {
+    buscarLitton: async () => [
+      { codigo: "108922", busquedaUsada: "PD/59" },
+      { codigo: "070400", busquedaUsada: "PD/59" },
+      { codigo: "077700", busquedaUsada: "PD/59" },
+      { codigo: "44959NA", busquedaUsada: "PD/59" },
+    ],
+    obtenerDetalle: async (code) => code === "44959NA"
+      ? detail59(code)
+      : { code, subcategory: "LITTON", substitutes: [{ value: "OTRO-CODIGO", code: "LPR" }] },
+  });
+
+  assert.equal(result.error, "");
+  assert.deepEqual(result.matchedIds.sort(), [
+    "rf-frasle-59",
+    "rf-frima-59",
+    "rf-litton-59",
+    "rf-trw-59",
+    "trw-01030",
+  ]);
+  assert.equal(result.familias.length, 1);
+  assert.deepEqual(result.familias[0].totales, {
+    NEGOCIO: 23,
+    DEPOSITO_GALPON: 12,
+    total: 35,
+  });
 });
 
 test("accepts TRW/RCPT only for an exact suffix and TRW-confirmed supplier brand", () => {
@@ -117,6 +165,6 @@ test("keeps verified stock families when another Litton detail fails or is unver
 
   assert.equal(result.familias.length, 1);
   assert.deepEqual(result.familias[0].totales, { NEGOCIO: 31, DEPOSITO_GALPON: 9, total: 40 });
-  assert.match(result.error, /098800: La ficha Litton.*no confirma/);
   assert.match(result.error, /44980NA: Ficha no disponible/);
+  assert.doesNotMatch(result.error, /098800/);
 });

@@ -109,14 +109,19 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
   function renderProviderItem(item, provider) {
     const code = item.codigo || "Código s/d";
     const link = safeHttpUrl(item.link);
-    const measures = item.medidas ? `<span>${escapeHtml(item.medidas)}</span>` : "";
-    return `<article class="beta-provider-card">
+    const measures = item.medidas ? `<span class="beta-provider-measures">${escapeHtml(item.medidas)}</span>` : "";
+    const providerClass = provider.toLowerCase();
+    const matchCode = item.codigoConsultado
+      ? `<div class="beta-provider-match">Coincidencia por <strong>${escapeHtml(item.codigoConsultado)}</strong></div>`
+      : "";
+    return `<article class="beta-provider-card beta-provider-card-${providerClass}">
       ${photoMarkup(item.imagen, code, "beta-provider-photo")}
       <div class="beta-provider-card-content">
         <div class="beta-provider-code">${escapeHtml(code)}</div>
         <div class="beta-provider-price">${fmtPrecio(item.precio)}</div>
+        ${matchCode}
         <div class="beta-provider-meta">${escapeHtml(item.marca || "Marca no informada")}${item.nombre ? ` · ${escapeHtml(item.nombre)}` : ""}${measures ? ` · ${measures}` : ""}</div>
-          <div class="beta-provider-badges">${providerStockBadge(item)}</div>
+        <div class="beta-provider-badges">${providerStockBadge(item)}</div>
         ${link
           ? `<a class="beta-provider-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">Ver en ${provider}</a>`
           : `<span class="beta-provider-link beta-provider-link-disabled">Enlace no disponible</span>`}
@@ -126,17 +131,27 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
 
   function renderProviderSection(provider) {
     const loading = `<div class="beta-provider-loading"><div class="spinner" aria-hidden="true"></div><span>Buscando en ${provider}…</span></div>`;
-    return `<section class="beta-provider-section" data-provider="${provider}">
-      <h3>${provider}</h3>
+    return `<section class="beta-provider-section beta-provider-section-${provider.toLowerCase()}" data-provider="${provider}">
+      <header class="beta-provider-heading">
+        <span class="beta-provider-heading-mark" aria-hidden="true"></span>
+        <div><h3>${provider}</h3><p>Disponibilidad y precios</p></div>
+      </header>
       <div class="beta-provider-state">${loading}</div>
     </section>`;
   }
 
   function updateProviderSections(response, responseError = "") {
     const errors = response?.errores || [];
+    const familyCodes = results.querySelector(".beta-family-codes");
+    if (familyCodes) {
+      const codes = Array.isArray(response?.equivalencias) ? response.equivalencias : [];
+      familyCodes.innerHTML = codes.length
+        ? `<span class="beta-family-label">Códigos de la familia</span><div class="beta-family-code-list">${codes.map((item) => `<span class="beta-family-code">${escapeHtml(item.codigo)}</span>`).join("")}</div>`
+        : "";
+    }
     const groups = [
-      ["Aimar", response?.data?.aimar || []],
-      ["ATONOR", response?.data?.atonor || []]
+      ["ATONOR", response?.data?.atonor || []],
+      ["Aimar", response?.data?.aimar || []]
     ];
     for (const [provider, items] of groups) {
       const section = results.querySelector(`[data-provider="${provider}"] .beta-provider-state`);
@@ -165,7 +180,7 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
         adminLogout();
         throw new Error("La sesión venció. Ingresá nuevamente.");
       }
-      const response = await apiDetalleProveedores(code, item.aimarCode || code, token);
+      const response = await apiDetalleProveedores(code, token);
       if (response.ok) detailCache.set(code, response);
       return response;
     })();
@@ -181,21 +196,27 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
     selectedResultIndex = index;
     const viewId = ++activeViewId;
     const code = item.codigo || "";
+    const category = item.categoria
+      ? `<div class="beta-main-category"><span>Categoría</span><strong>${escapeHtml(item.categoria)}</strong></div>`
+      : "";
     results.innerHTML = `<button type="button" class="beta-back-button">← Volver a resultados</button>
-      <section class="beta-main-product">
+      <section class="beta-main-product" aria-labelledby="beta-main-product-code">
         ${photoMarkup(item.imagen, code, "beta-main-photo")}
         <div class="beta-main-info">
-          <div class="beta-code beta-code-large">${escapeHtml(code || "Código s/d")}</div>
+          <span class="beta-section-eyebrow">Catálogo Litton</span>
+          <h2 id="beta-main-product-code" class="beta-code beta-code-large">${escapeHtml(code || "Código s/d")}</h2>
           <div class="beta-price beta-price-large">${fmtPrecio(item.precio)}</div>
           <div class="beta-brand">${escapeHtml(item.marca || "Marca no informada")}</div>
           <div class="beta-name">${escapeHtml(item.nombre || "Sin descripción disponible")}</div>
+          ${category}
           <div class="beta-result-badges">${semaforo(item.stockProveedor)}</div>
+          <div class="beta-family-codes" aria-live="polite"></div>
         </div>
       </section>
       <h2 class="beta-suppliers-title">Dónde conseguirla</h2>
       <div class="beta-suppliers-grid">
-        ${renderProviderSection("Aimar")}
         ${renderProviderSection("ATONOR")}
+        ${renderProviderSection("Aimar")}
       </div>`;
 
     if (detailCache.has(code)) {

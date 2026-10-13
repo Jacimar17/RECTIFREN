@@ -1,20 +1,22 @@
 const express  = require("express");
 const auth     = require("../middleware/auth");
 const router   = express.Router();
+const buscarLitton = require("../proveedores/litton");
 
 // Proveedores activos. Acá vamos sumando Aimar y ATONOR.
 const PROVEEDORES = [
-  { nombre: "Litton", buscar: require("../proveedores/litton") },
+  { nombre: "Litton", buscar: buscarLitton },
 ];
 
 const buscarAimar = require("../proveedores/aimar");
 const buscarAtonor = require("../proveedores/atonor");
+const { buscarFamiliaLitton } = require("../proveedores/busqueda-familia-litton");
 
 function textoEntrada(value) {
   return typeof value === "string" ? value.trim().slice(0, 100) : "";
 }
 
-// POST /api/proveedores/detalle body: { codigo, aimarCode } (BETA, requiere sesión)
+// POST /api/proveedores/detalle body: { codigo } (BETA, requiere sesión)
 router.post("/detalle", auth, async (req, res, next) => {
   if (process.env.BETA_PROVEEDORES !== "true") {
     return res.status(404).json({ ok: false, error: "Ruta no encontrada." });
@@ -22,32 +24,16 @@ router.post("/detalle", auth, async (req, res, next) => {
 
   try {
     const codigo = textoEntrada(req.body.codigo);
-    const aimarCode = textoEntrada(req.body.aimarCode) || codigo;
     if (!codigo) return res.status(400).json({ ok: false, error: "Falta el código del producto." });
 
-    const consultas = await Promise.allSettled([
-      buscarAimar(aimarCode),
-      buscarAtonor(codigo),
-    ]);
-    const data = { aimar: [], atonor: [] };
-    const errores = [];
-    const proveedores = ["Aimar", "ATONOR"];
-
-    for (let i = 0; i < consultas.length; i++) {
-      const respuesta = consultas[i];
-      if (respuesta.status === "rejected") {
-        errores.push({
-          proveedor: proveedores[i],
-          error: String(respuesta.reason?.message || respuesta.reason),
-        });
-        continue;
-      }
-      data[i === 0 ? "aimar" : "atonor"] = respuesta.value;
-    }
-
-    res.json({ ok: true, codigo, data, errores });
+    const familia = await buscarFamiliaLitton(codigo, {
+      obtenerDetalleLitton: buscarLitton.obtenerDetalle,
+      buscarAimar,
+      buscarAtonor,
+    });
+    res.json({ ok: true, ...familia });
   } catch (error) {
-    next(error);
+    res.status(502).json({ ok: false, error: error.message || "No se pudo consultar la familia Litton." });
   }
 });
 
