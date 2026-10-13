@@ -1,7 +1,12 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { buscarFamiliaLitton } = require("../src/proveedores/busqueda-familia-litton");
+const {
+  buscarFamiliaLitton,
+  coincideEquivalencia,
+} = require("../src/proveedores/busqueda-familia-litton");
 const buscarAimar = require("../src/proveedores/aimar");
+const buscarAtonor = require("../src/proveedores/atonor");
+const normalizarCodigo = require("../src/proveedores/normalizar-codigo");
 
 const detail = {
   code: "44980NA",
@@ -36,7 +41,7 @@ test("queries Aimar and ATONOR for each unique Litton family code and unifies ex
     buscarAtonor: async (code) => {
       queried.ATONOR.push(code);
       if (code === "PD/528") {
-        return [{ codigo: "PD528", marca: "ATONOR" }];
+        return [{ codigo: "PD-528", marca: "ATONOR" }];
       }
       return [];
     },
@@ -53,7 +58,7 @@ test("queries Aimar and ATONOR for each unique Litton family code and unifies ex
     { codigo: "LPR528", marca: "LPR", equivalencias: ["05P1379"], codigoConsultado: "05P1379" },
   ]);
   assert.deepEqual(result.data.atonor, [
-    { codigo: "PD528", marca: "ATONOR", codigoConsultado: "PD/528" },
+    { codigo: "PD-528", marca: "ATONOR", codigoConsultado: "PD/528" },
   ]);
   assert.deepEqual(result.errores, []);
 });
@@ -106,4 +111,41 @@ test("Aimar continues past a numeric-prefix page until it finds the exact family
     codigo: "LPR-1379",
     equivalencias: ["05P1379"],
   }]);
+});
+
+test("normalizes punctuation and separators while requiring complete code equality", () => {
+  assert.equal(normalizarCodigo(" 0988 00 "), "098800");
+  assert.equal(normalizarCodigo("HQ-2227A"), "HQ2227A");
+  assert.equal(normalizarCodigo("N. 1375"), "N1375");
+  assert.equal(normalizarCodigo("PD/528"), normalizarCodigo("PD-528"));
+  assert.equal(buscarAtonor.coincide("0988 00", "098800"), true);
+  assert.equal(buscarAtonor.coincide("HQ2227A", "HQ-2227A"), true);
+  assert.equal(buscarAtonor.coincide("PD528", "PD/528"), true);
+  assert.equal(buscarAtonor.coincide("13176", "3176"), false);
+  assert.equal(buscarAtonor.coincide("HQ-2227A1", "HQ2227A"), false);
+  assert.equal(coincideEquivalencia({ codigo: "HQ.2227A" }, "HQ-2227A"), true);
+  assert.equal(coincideEquivalencia({ codigo: "13176" }, "3176"), false);
+  assert.equal(coincideEquivalencia({ codigo: "OTHER", equivalencias: ["0988.00"] }, "0988 00"), true);
+});
+
+test("searches compact and original ATONOR terms until the exact normalized code matches", async () => {
+  const terms = [];
+  const result = await buscarAtonor.buscarCoincidencia("0988 00", async (term) => {
+    terms.push(term);
+    if (term === "098800") return [{ codigo: "1098800", marca: "Otro repuesto" }];
+    if (term === "0988 00") return [
+      { codigo: "0988-00", marca: "Correcto" },
+      { codigo: "0988 007", marca: "Código parcial" },
+    ];
+    return [];
+  });
+
+  assert.deepEqual(terms, ["098800", "0988 00"]);
+  assert.deepEqual(result, [{ codigo: "0988-00", marca: "Correcto" }]);
+});
+
+test("generates compact and source-form ATONOR search terms without numeric-prefix guesses", () => {
+  assert.deepEqual(buscarAtonor.terminos("0988 00"), ["098800", "0988 00"]);
+  assert.deepEqual(buscarAtonor.terminos("HQ-2227A"), ["HQ2227A", "HQ-2227A"]);
+  assert.deepEqual(buscarAtonor.terminos("PD/528"), ["PD528", "PD/528"]);
 });

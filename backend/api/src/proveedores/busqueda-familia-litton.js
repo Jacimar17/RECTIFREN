@@ -1,6 +1,4 @@
-function normalizarCodigo(value) {
-  return String(value ?? "").trim().toUpperCase().replace(/[-/]/g, "");
-}
+const normalizarCodigo = require("./normalizar-codigo");
 
 function extraerEquivalencias(detalle) {
   const equivalencias = new Map();

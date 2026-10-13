@@ -2,23 +2,18 @@ const BASE = "https://atonor.com.ar/";
 const SETTINGS = encodeURIComponent(
   JSON.stringify({ search_source: "product", results_order_by: "title", catalog_visibility: true })
 );
-
-const normalizar = value => String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+const normalizarCodigo = require("./normalizar-codigo");
 
 function terminos(codigo) {
   const value = String(codigo || "").trim();
-  const digits = (value.match(/^\d+/) || [""])[0];
-  const terms = [];
-  if (digits.length === 5) terms.push(digits.slice(0, 4));
-  if (digits) terms.push(digits);
-  if (value) terms.push(value);
-  return [...new Set(terms)];
+  const compact = normalizarCodigo(value);
+  return [...new Set([compact, value].filter(Boolean))];
 }
 
 function coincide(codigoAtonor, codigoBuscado) {
-  const atonor = normalizar(codigoAtonor);
-  const buscado = normalizar(codigoBuscado);
-  return Boolean(buscado && atonor.includes(buscado));
+  const atonor = normalizarCodigo(codigoAtonor);
+  const buscado = normalizarCodigo(codigoBuscado);
+  return Boolean(buscado && atonor === buscado);
 }
 
 function textoPlano(html) {
@@ -103,15 +98,21 @@ async function consultar(term) {
   }
 }
 
-module.exports = async function buscarAtonor(codigo) {
+async function buscarCoincidencia(codigo, consultarTermino = consultar) {
   for (const term of terminos(codigo)) {
-    const html = await consultar(term);
-    const items = parsear(html).filter(item => coincide(item.codigo, codigo));
+    const html = await consultarTermino(term);
+    const items = (Array.isArray(html) ? html : parsear(html))
+      .filter(item => coincide(item.codigo, codigo));
     if (items.length) return items;
   }
   return [];
+}
+
+module.exports = async function buscarAtonor(codigo) {
+  return buscarCoincidencia(codigo);
 };
 
 module.exports.terminos = terminos;
 module.exports.parsear = parsear;
 module.exports.coincide = coincide;
+module.exports.buscarCoincidencia = buscarCoincidencia;
