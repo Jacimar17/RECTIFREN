@@ -82,8 +82,7 @@ export async function apiPostForm(bodyObj, timeoutMs = 15000) {
 
   // Ajuste / editar producto
   if (action === "set") {
-    // Necesitamos el _id — buscamos el producto primero
-    const lista = await request(`${API_URL}/api/productos`);
+    const lista = await request(`${API_URL}/api/productos/search?q=${encodeURIComponent(bodyObj.codigo || "")}`);
     if (!lista.ok) return lista;
     const prod = (lista.data || []).find(p => p.codigo === bodyObj.codigo && p.marca === bodyObj.marca);
     if (!prod) return { ok: false, error: "Producto no encontrado." };
@@ -111,7 +110,7 @@ export async function apiPostForm(bodyObj, timeoutMs = 15000) {
 
   // Eliminar producto
   if (action === "delete") {
-    const lista = await request(`${API_URL}/api/productos`);
+    const lista = await request(`${API_URL}/api/productos/search?q=${encodeURIComponent(bodyObj.codigo || "")}`);
     if (!lista.ok) return lista;
     const prod = (lista.data || []).find(p => p.codigo === bodyObj.codigo && p.marca === bodyObj.marca);
     if (!prod) return { ok: false, error: "Producto no encontrado." };

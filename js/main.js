@@ -16,7 +16,11 @@ let pendingAction = null; // { act, codigo, marca, stock }
 let sortCol     = null;
 let sortDir     = "asc";
 let autoRefreshTimer = null;
+let searchTimer = null;
+let stockRequestId = 0;
+let searchHasMore = false;
 const AUTO_REFRESH_MS = 5 * 60 * 1000; // 5 minutos
+const SEARCH_DEBOUNCE_MS = 250;
 
 /* ===== URL params ===== */
 function readUrlParams() {
@@ -119,7 +123,20 @@ let rangeMin = null;
 let rangeMax = null;
 
 function doRender() {
-  const opts = { list: cache, isAdmin, viewFilter, query: $("search")?.value || "", highlightKey, sortCol, sortDir, rangeMin, rangeMax };
+  const query = $("search")?.value.trim() || "";
+  const statsRow = $("statsRow");
+  if (statsRow) statsRow.style.display = query ? "" : "none";
+  const labels = document.querySelectorAll("#statsRow .stat-label");
+  const defaultLabels = ["Total productos", "Unidades totales", "Sin stock", "Bajo stock", "En stock"];
+  const searchLabels = ["Coincidencias cargadas", "Unidades encontradas", "Sin stock", "Bajo stock", "Con stock"];
+  labels.forEach((label, index) => { label.textContent = query ? searchLabels[index] : defaultLabels[index]; });
+  ["fAll", "fOut", "fLow", "btnAdvSearch"].forEach(id => {
+    const control = $(id);
+    if (control) control.disabled = !query;
+  });
+  const exportButton = $("btnExport");
+  if (exportButton) exportButton.disabled = !query || cache.length === 0;
+  const opts = { list: cache, isAdmin, viewFilter, query, highlightKey, sortCol, sortDir, rangeMin, rangeMax };
   renderStock(opts);
   renderCards(opts);
   pushUrlParams();
@@ -154,19 +171,9 @@ function checkNewOutOfStock(oldCache, newCache) {
 function startAutoRefresh() {
   stopAutoRefresh();
   autoRefreshTimer = setInterval(async () => {
-    if (busy) return;
-    try {
-      const data = await apiGet({ action: "list" });
-      if (data.ok) {
-        const oldCache = [...cache];
-        cache = data.data || [];
-        checkNewOutOfStock(oldCache, cache);
-        updateStats(cache);
-        updateChipCounts(cache);
-        doRender();
-        setLastUpdatedNow();
-      }
-    } catch { /* silencioso */ }
+    const query = $("search")?.value.trim() || "";
+    if (busy || !query) return;
+    await loadStock(query, { notify: true });
   }, AUTO_REFRESH_MS);
 }
 
@@ -175,23 +182,49 @@ function stopAutoRefresh() {
 }
 
 /* ===== Carga stock ===== */
-async function loadStock() {
-  $("status").textContent = "Cargando...";
-  showSkeleton(10);
+async function loadStock(query = $("search")?.value.trim() || "", { notify = false } = {}) {
+  const requestId = ++stockRequestId;
+  if (!query) {
+    searchHasMore = false;
+    cache = [];
+    updateChipCounts(cache);
+    doRender();
+    $("status").textContent = "Escribí un código o marca para buscar.";
+    return;
+  }
+
+  const oldCache = [...cache];
+  searchHasMore = false;
+  if (!notify) {
+    cache = [];
+    updateChipCounts(cache);
+    doRender();
+  }
+  $("status").textContent = `Buscando "${query}"...`;
+  if (!notify) showSkeleton(10);
   try {
-    const data = await apiGet({ action: "list" });
+    const data = await apiGet({ action: "search", q: query });
+    if (requestId !== stockRequestId) return;
     if (!data.ok) {
       $("status").textContent = `Error: ${data.error || "No se pudo cargar."}`;
       showToast(data.error || "No se pudo cargar el stock.", "error");
       return;
     }
     cache = data.data || [];
+    searchHasMore = Boolean(data.hasMore);
     updateStats(cache);
     updateChipCounts(cache);
     doRender();
+    if (searchHasMore) {
+      $("status").textContent += " Se muestran hasta 100; afiná la búsqueda.";
+    }
+    if (notify && $("search")?.value.trim() === query) {
+      checkNewOutOfStock(oldCache, cache);
+    }
     setLastUpdatedNow();
     if (highlightKey) setTimeout(() => { highlightKey = null; }, 1200);
   } catch (err) {
+    if (requestId !== stockRequestId) return;
     $("status").textContent = `Error: ${String(err)}`;
     showToast("Error de conexión al cargar el stock.", "error");
   }
@@ -764,7 +797,19 @@ function bindEvents() {
     const val = $("search").value;
     const btn = $("btnClearSearch");
     if (btn) btn.style.display = val ? "flex" : "none";
-    doRender();
+    stockRequestId++;
+    clearTimeout(searchTimer);
+    if (!val.trim()) {
+      rangeMin = null;
+      rangeMax = null;
+      if ($("rangeMin")) $("rangeMin").value = "";
+      if ($("rangeMax")) $("rangeMax").value = "";
+      if ($("rangeFilter")) $("rangeFilter").style.display = "none";
+      if ($("btnAdvSearch")) $("btnAdvSearch").textContent = "⚡ Filtro stock";
+      loadStock("");
+      return;
+    }
+    searchTimer = setTimeout(() => loadStock(val.trim()), SEARCH_DEBOUNCE_MS);
   });
 
   const btnClear = $("btnClearSearch");
@@ -772,7 +817,7 @@ function bindEvents() {
     $("search").value = "";
     btnClear.style.display = "none";
     $("search").focus();
-    doRender();
+    $("search").dispatchEvent(new Event("input"));
   });
 
   const btnExport = $("btnExport");
@@ -1069,10 +1114,9 @@ document.addEventListener("DOMContentLoaded", () => {
   bindEquivModal();
   bindMinimoModal();
   bindBetaModal();
-  loadStock().then(() => {
-    startAutoRefresh();
-    if (isAdmin) loadMovs();
-  });
+  loadStock();
+  startAutoRefresh();
+  if (isAdmin) loadMovs();
   setLastUpdatedNow();
   setTimeout(requestNotifPermission, 3000);
 });

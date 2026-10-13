@@ -3,6 +3,7 @@ const Producto   = require("../models/Producto");
 const Movimiento = require("../models/Movimiento");
 const auth       = require("../middleware/auth");
 const router     = express.Router();
+const SEARCH_LIMIT = 100;
 
 /* Normaliza un documento sin importar si tiene campos en MAYUS o minus */
 function norm(p) {
@@ -39,17 +40,23 @@ router.get("/", async (req, res) => {
 // GET /api/productos/search?q=
 router.get("/search", async (req, res) => {
   try {
+    if (req.query.q !== undefined && typeof req.query.q !== "string") {
+      return res.status(400).json({ ok: false, error: "El término de búsqueda no es válido." });
+    }
     const q = (req.query.q || "").trim();
     if (!q) return res.json({ ok: true, data: [] });
-    const regex = new RegExp(q, "i");
+    if (q.length > 100) return res.status(400).json({ ok: false, error: "La búsqueda no puede superar 100 caracteres." });
+    const regex = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
     const data = await Producto.find({
       $or: [
         { codigo: regex }, { CODIGO: regex },
         { marca:  regex }, { MARCA:  regex },
         { equivalencias: regex }
       ]
-    });
-    res.json({ ok: true, data: data.map(norm), total: data.length, query: q });
+    }).limit(SEARCH_LIMIT + 1);
+    const hasMore = data.length > SEARCH_LIMIT;
+    const results = data.slice(0, SEARCH_LIMIT);
+    res.json({ ok: true, data: results.map(norm), total: results.length, hasMore, query: q });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }

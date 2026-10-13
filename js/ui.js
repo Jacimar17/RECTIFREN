@@ -266,9 +266,8 @@ export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, so
   if (working.length === 0) {
     const tr = document.createElement("tr");
     const colspan = isAdmin ? 4 : 3;
-    tr.innerHTML = `<td colspan="${colspan}" style="text-align:center; padding:28px; color:var(--muted)">
-      Sin resultados para la búsqueda actual.
-    </td>`;
+    const message = q ? "Sin resultados para la búsqueda actual." : "Escribí un código o marca para buscar.";
+    tr.innerHTML = `<td colspan="${colspan}" style="text-align:center; padding:28px; color:var(--muted)">${message}</td>`;
     tbody.appendChild(tr);
   }
 
@@ -345,7 +344,9 @@ export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, so
   }
 
   const filteredUnits = working.reduce((acc, i) => acc + Number(i.stock || 0), 0);
-  $("status").textContent = `Mostrando ${working.length} de ${list.length} productos · ${filteredUnits} unidades en vista.`;
+  $("status").textContent = q
+    ? `Mostrando ${working.length} de ${list.length} coincidencias · ${filteredUnits} unidades en vista.`
+    : "Escribí un código o marca para buscar.";
 }
 
 export function setActiveChip(id) {
@@ -390,7 +391,8 @@ export function renderCards({ list, isAdmin, viewFilter, query, highlightKey, so
   }
 
   if (working.length === 0) {
-    grid.innerHTML = `<div style="text-align:center;padding:32px;color:var(--muted)">Sin resultados.</div>`;
+    const message = q ? "Sin resultados para la búsqueda actual." : "Escribí un código o marca para buscar.";
+    grid.innerHTML = `<div style="text-align:center;padding:32px;color:var(--muted)">${message}</div>`;
     return;
   }
 
