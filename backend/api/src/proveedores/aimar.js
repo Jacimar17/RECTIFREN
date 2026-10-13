@@ -1,19 +1,49 @@
+// Proveedor: Aimar Repuestos (listado interno get_products.php)
 const URL_BASE = "https://www.aimarrepuestos.com.ar/get_products.php";
-const PAGE_SIZE = 12;
-const MAX_PAGES = 5;
+const URL_PAGINA = "https://www.aimarrepuestos.com.ar/productos";
+const LIMITE = 12;
+const MAX_PAGINAS = 5;
 
+// Cabeceras parecidas a las de un navegador
+const NAVEGADOR = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+  "Accept-Language": "es-AR,es;q=0.9",
+};
+
+// Aimar usa sesión (cookie): se visita la página una vez y se reutiliza 10 minutos
+let sesion = { cookie: "", hasta: 0 };
+
+async function obtenerCookie() {
+  if (sesion.cookie && Date.now() < sesion.hasta) return sesion.cookie;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    const res = await fetch(URL_PAGINA, { headers: NAVEGADOR, signal: ctrl.signal });
+    const cookies = typeof res.headers.getSetCookie === "function" ? res.headers.getSetCookie() : [];
+    const valor = cookies.map((c) => c.split(";")[0]).join("; ");
+    sesion = { cookie: valor, hasta: Date.now() + 10 * 60 * 1000 };
+    return valor;
+  } catch {
+    return "";
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+// Términos a probar para un código de Litton: 44980NA -> 44980
 function terminos(codigo) {
-  const value = String(codigo || "").trim();
-  const digits = (value.match(/^\d+/) || [""])[0];
-  const terms = [];
-  if (digits) terms.push(digits);
-  if (value && !terms.includes(value)) terms.push(value);
-  return terms;
+  const c = String(codigo || "").trim();
+  const digitos = (c.match(/^\d+/) || [""])[0];
+  const lista = [];
+  if (digitos) lista.push(digitos);
+  if (c && !lista.includes(c)) lista.push(c);
+  return lista;
 }
 
 async function pedirPagina(titulo, pagina) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10000);
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 10000);
   try {
     const body = new URLSearchParams({
       orden: "1",
@@ -23,77 +53,83 @@ async function pedirPagina(titulo, pagina) {
       largo: "",
       title: titulo,
     });
-    const start = (pagina - 1) * PAGE_SIZE;
-    const response = await fetch(`${URL_BASE}?start=${start}&limit=${PAGE_SIZE}&order=1`, {
+    const start = (pagina - 1) * LIMITE;
+    const cookie = await obtenerCookie();
+    const headers = {
+      ...NAVEGADOR,
+      Accept: "application/json, text/javascript, */*; q=0.01",
+      "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+      "X-Requested-With": "XMLHttpRequest",
+      Origin: "https://www.aimarrepuestos.com.ar",
+      Referer: `${URL_PAGINA}?orden=1&page=1&title=${encodeURIComponent(titulo)}`,
+    };
+    if (cookie) headers.Cookie = cookie;
+
+    const res = await fetch(`${URL_BASE}?start=${start}&limit=${LIMITE}&order=1`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-        "X-Requested-With": "XMLHttpRequest",
-        Origin: "https://www.aimarrepuestos.com.ar",
-        Referer: "https://www.aimarrepuestos.com.ar/productos",
-      },
+      headers,
       body,
-      signal: controller.signal,
+      signal: ctrl.signal,
     });
-    if (!response.ok) throw new Error(`Aimar respondió ${response.status}`);
-    return await response.json();
-  } catch (error) {
-    if (error.name === "AbortError") throw new Error("Aimar tardó demasiado en responder");
-    throw error;
+    if (!res.ok) {
+      const detalle = (await res.text().catch(() => "")).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 150);
+      throw new Error(`Aimar respondió ${res.status}${detalle ? ": " + detalle : ""}`);
+    }
+    return await res.json();
+  } catch (e) {
+    if (e.name === "AbortError") throw new Error("Aimar tardó demasiado en responder");
+    throw e;
   } finally {
-    clearTimeout(timeout);
+    clearTimeout(t);
   }
 }
 
-function numeroPrecio(value) {
-  if (typeof value === "number") return Number.isFinite(value) ? Math.round(value * 100) / 100 : null;
-  let normalized = String(value || "").trim();
-  if (!normalized) return null;
-  if (normalized.includes(",")) normalized = normalized.replace(/\./g, "").replace(",", ".");
-  const number = Number(normalized);
-  return Number.isFinite(number) ? Math.round(number * 100) / 100 : null;
+function redondear(n) {
+  const v = Number(n);
+  return Number.isFinite(v) ? Math.round(v * 100) / 100 : null;
 }
 
-function mapear(product) {
-  const data = product.data || {};
-  const image = product.images?.[0]?.url;
-  const stock = data.stock == null || data.stock === "" ? null : Number(data.stock);
+function mapear(p) {
+  const d = p.data || {};
+  const img = p.images && p.images[0] && p.images[0].url;
   return {
-    codigo: data.codigo || "",
-    nombre: (data.description || "").trim(),
-    marca: (data.rubro_titulo || "").trim(),
-    precio: numeroPrecio(data.precio_final ?? data.precio),
-    stockProveedor: Number.isFinite(stock) ? stock : null,
-    medidas: [data.largo, data.altura, data.espesor].filter(Boolean).join(" x "),
-    imagen: image && !/sin_imagen/i.test(image) ? image : null,
-    link: product.link || null,
+    codigo:         d.codigo,
+    nombre:         (d.description || "").trim(),
+    marca:          (d.rubro_titulo || "").trim(),
+    precio:         redondear(d.precio_final ?? d.precio),
+    stockProveedor: Number(d.stock) || 0,
+    medidas:        [d.largo, d.altura, d.espesor].filter(Boolean).join(" x "),
+    imagen:         img && !/sin_imagen/i.test(img) ? img : null,
+    link:           p.link || null,
   };
 }
 
 async function buscarTermino(titulo) {
-  const firstPage = await pedirPagina(titulo, 1);
-  let products = firstPage.products || [];
-  const pageCount = Math.min(Math.max(Number(firstPage.pages) || 1, 1), MAX_PAGES);
-  if (pageCount > 1) {
-    const pages = await Promise.all(
-      Array.from({ length: pageCount - 1 }, (_, index) => pedirPagina(titulo, index + 2))
+  const primera = await pedirPagina(titulo, 1);
+  let filas = primera.products || [];
+  const paginas = Math.min(Number(primera.pages) || 1, MAX_PAGINAS);
+
+  if (paginas > 1) {
+    const resto = await Promise.allSettled(
+      Array.from({ length: paginas - 1 }, (_, i) => pedirPagina(titulo, i + 2))
     );
-    for (const page of pages) products = products.concat(page.products || []);
+    for (const r of resto) {
+      if (r.status === "fulfilled") filas = filas.concat(r.value.products || []);
+    }
   }
 
-  const unique = new Map();
-  for (const product of products) {
-    const data = product.data || {};
-    const mapped = mapear(product);
-    const key = data.cod || data.id || `${mapped.codigo}|${mapped.marca}`;
-    if (mapped.codigo && !unique.has(key)) unique.set(key, mapped);
+  // El listado repite el mismo producto una vez por cada vehículo: se deja uno solo
+  const vistos = new Map();
+  for (const p of filas) {
+    const clave = p.data && (p.data.cod || p.data.id);
+    if (clave && !vistos.has(clave)) vistos.set(clave, mapear(p));
   }
-  return [...unique.values()];
+  return [...vistos.values()];
 }
 
 module.exports = async function buscarAimar(codigo) {
-  for (const term of terminos(codigo)) {
-    const items = await buscarTermino(term);
+  for (const t of terminos(codigo)) {
+    const items = await buscarTermino(t);
     if (items.length) return items;
   }
   return [];
