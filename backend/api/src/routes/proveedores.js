@@ -1,12 +1,6 @@
 const express  = require("express");
-const Producto = require("../models/Producto");
 const auth     = require("../middleware/auth");
 const router   = express.Router();
-const {
-  codigosEquivalentes,
-  normalizarCodigo,
-  resolverFamiliaInventario,
-} = require("../proveedores/familia-inventario");
 
 // Proveedores activos. Acá vamos sumando Aimar y ATONOR.
 const PROVEEDORES = [
@@ -15,20 +9,6 @@ const PROVEEDORES = [
 
 const buscarAimar = require("../proveedores/aimar");
 const buscarAtonor = require("../proveedores/atonor");
-
-async function cargarInventario() {
-  return Producto.find()
-    .select("_id codigo CODIGO marca MARCA stock STOCK ubicacion equivalencias equivalentesVinculados")
-    .lean();
-}
-
-function extraerCodigosFamilia(codigo, aimarCode, data) {
-  const codigos = [codigo, aimarCode];
-  for (const producto of [...(data.aimar || []), ...(data.atonor || [])]) {
-    codigos.push(producto.codigo, producto.aimarCode, ...codigosEquivalentes(producto.equivalencias));
-  }
-  return [...new Set(codigos.map(normalizarCodigo).filter(Boolean))];
-}
 
 function textoEntrada(value) {
   return typeof value === "string" ? value.trim().slice(0, 100) : "";
@@ -65,10 +45,7 @@ router.post("/detalle", auth, async (req, res, next) => {
       data[i === 0 ? "aimar" : "atonor"] = respuesta.value;
     }
 
-    const inventario = await cargarInventario();
-    const codigos = extraerCodigosFamilia(codigo, aimarCode, data);
-    const inventarioFamilia = resolverFamiliaInventario(inventario, codigos);
-    res.json({ ok: true, codigo, data, errores, inventarioFamilia });
+    res.json({ ok: true, codigo, data, errores });
   } catch (error) {
     next(error);
   }
@@ -97,16 +74,7 @@ router.post("/", auth, async (req, res, next) => {
       results.push(...r.value.map(item => ({ proveedor: nombre, ...item })));
     }
 
-    const inventario = await cargarInventario();
-    const data = results.map(item => {
-      const familia = resolverFamiliaInventario(inventario, [item.codigo]);
-      const codigoExacto = normalizarCodigo(item.codigo);
-      const match = familia.filas.find(fila => normalizarCodigo(fila.codigo) === codigoExacto)
-        || familia.filas[0]
-        || null;
-      return { ...item, enInventario: match };
-    });
-    res.json({ ok: true, query: q, total: data.length, data, errores });
+    res.json({ ok: true, query: q, total: results.length, data: results, errores });
   } catch (error) {
     next(error);
   }

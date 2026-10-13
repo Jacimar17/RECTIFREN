@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RECTIFREN | Inventario</title>
   <link rel="icon" type="image/png" href="assets/logo_rectifren.png" />
-  <link rel="stylesheet" href="css/styles.css?v=20260643">
+  <link rel="stylesheet" href="css/styles.css?v=20260644">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e8380d">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -100,9 +100,13 @@
           <button id="btnExport" class="btn-export" title="Exportar a CSV">⬇ Exportar</button>
           <button id="btnCompact" class="btn-export" title="Modo compacto">☰ Compacto</button>
           <button id="btnAdvSearch" class="btn-export" title="Búsqueda por rango de stock">⚡ Filtro stock</button>
+          <button id="btnSyncFamilies" class="btn-export" type="button" style="display:none" title="Importar equivalencias oficiales de Litton">⟳ Sincronizar equivalencias</button>
           <button id="btnAddProduct" class="btn-add" style="display:none" title="Agregar producto">＋ Producto</button>
         </div>
       </div>
+
+      <div id="familySyncStatus" class="family-sync-status" role="status" aria-live="polite" hidden></div>
+      <section id="familySummary" class="family-summary-list" aria-label="Familias de códigos encontradas"></section>
 
       <!-- Cards mobile -->
       <div id="cardGrid"></div>
@@ -464,6 +468,6 @@
     </div>
   </div>
 
-  <script type="module" src="js/main.js?v=20260643"></script>
+  <script type="module" src="js/main.js?v=20260644"></script>
 </body>
 </html>

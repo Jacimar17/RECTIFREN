@@ -1,5 +1,6 @@
 // Proveedor: Litton Brakes (catálogo público con equivalencias)
 const BASE = "https://orders-dot-littonbrakes-services.rj.r.appspot.com/public/products/simple-search";
+const PRODUCTO_BASE = "https://orders-dot-littonbrakes-services.rj.r.appspot.com/public/products";
 const IMG  = "https://d3h8dra63998td.cloudfront.net/products/jpg/";
 
 const MAX_RESULTADOS = 15;          // más que esto = búsqueda demasiado general
@@ -53,6 +54,25 @@ async function consultar(q) {
   }
 }
 
+async function obtenerDetalle(codigo) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    const res = await fetch(`${PRODUCTO_BASE}/${encodeURIComponent(codigo)}`, { signal: ctrl.signal });
+    if (!res.ok) throw new Error(`Litton respondió ${res.status} al consultar ${codigo}`);
+    const detail = await res.json();
+    if (!detail || typeof detail.code !== "string") {
+      throw new Error(`Litton devolvió una ficha inválida para ${codigo}`);
+    }
+    return detail;
+  } catch (e) {
+    if (e.name === "AbortError") throw new Error(`Litton tardó demasiado al consultar ${codigo}`);
+    throw e;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 module.exports = async function buscarLitton(entrada) {
   let muyGeneral = 0;
 
@@ -79,3 +99,5 @@ module.exports = async function buscarLitton(entrada) {
   }
   return [];
 };
+
+module.exports.obtenerDetalle = obtenerDetalle;

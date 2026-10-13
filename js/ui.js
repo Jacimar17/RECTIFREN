@@ -242,7 +242,7 @@ function sortByCodigo(list) {
 }
 
 /* ===== Render ===== */
-export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, sortCol, sortDir, rangeMin, rangeMax }) {
+export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, sortCol, sortDir, rangeMin, rangeMax, familyMemberIds }) {
   ensureAccionesHeader(isAdmin);
   const q = (query||"").trim().toLowerCase();
   const tbody = $("tbody");
@@ -250,8 +250,11 @@ export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, so
 
   let working = sortByCodigo(list);
 
+  const familyIds = familyMemberIds instanceof Set ? familyMemberIds : new Set();
   if (q) working = working.filter(x =>
-    (x.codigo||"").toLowerCase().includes(q) || (x.marca||"").toLowerCase().includes(q)
+    (x.codigo||"").toLowerCase().includes(q)
+    || (x.marca||"").toLowerCase().includes(q)
+    || familyIds.has(String(x._id))
   );
 
   if (viewFilter === "out") working = working.filter(it => getStockState(it) === "out");
@@ -371,8 +374,40 @@ export function updateChipCounts(list) {
   const fLow = $("fLow"); if (fLow) fLow.textContent = `Bajo stock${low ? ` (${low})` : ""}`;
 }
 
+export function renderFamilySummaries(families) {
+  const container = $("familySummary");
+  if (!container) return;
+  if (!Array.isArray(families) || !families.length) {
+    container.innerHTML = "";
+    return;
+  }
+
+  container.innerHTML = families.map((family) => {
+    const rows = family.filas.map((item) => {
+      const location = item.ubicacion === "NEGOCIO" ? "NEGOCIO" : "DEPOSITO_GALPON";
+      return `<li class="family-summary-row">
+        <span class="family-summary-product"><strong>${escapeHtml(item.codigo || "Código s/d")}</strong> · ${escapeHtml(item.marca || "Marca no informada")}</span>
+        ${ubicacionBadge(location)}
+        <span class="family-summary-stock">${escapeHtml(String(item.stock ?? 0))} u.</span>
+      </li>`;
+    }).join("");
+    const totals = family.totales || {};
+    return `<article class="family-summary-card">
+      <div class="family-summary-heading">
+        <h2>Familia de códigos en tu inventario</h2>
+        <div class="family-summary-totals">
+          <span>Negocio: <strong>${escapeHtml(String(totals.NEGOCIO ?? 0))} u.</strong></span>
+          <span>Depósito/Galpón: <strong>${escapeHtml(String(totals.DEPOSITO_GALPON ?? 0))} u.</strong></span>
+          <span>Total: <strong>${escapeHtml(String(totals.total ?? 0))} u.</strong></span>
+        </div>
+      </div>
+      <ul class="family-summary-rows">${rows}</ul>
+    </article>`;
+  }).join("");
+}
+
 /* ===== Render mobile cards ===== */
-export function renderCards({ list, isAdmin, viewFilter, query, highlightKey, sortCol, sortDir, rangeMin, rangeMax }) {
+export function renderCards({ list, isAdmin, viewFilter, query, highlightKey, sortCol, sortDir, rangeMin, rangeMax, familyMemberIds }) {
   const grid = document.getElementById("cardGrid");
   if (!grid) return;
   grid.innerHTML = "";
@@ -382,8 +417,11 @@ export function renderCards({ list, isAdmin, viewFilter, query, highlightKey, so
     String(a.codigo||"").localeCompare(String(b.codigo||""),"es",{numeric:true,sensitivity:"base"})
   );
 
+  const familyIds = familyMemberIds instanceof Set ? familyMemberIds : new Set();
   if (q) working = working.filter(x =>
-    (x.codigo||"").toLowerCase().includes(q) || (x.marca||"").toLowerCase().includes(q)
+    (x.codigo||"").toLowerCase().includes(q)
+    || (x.marca||"").toLowerCase().includes(q)
+    || familyIds.has(String(x._id))
   );
   if (viewFilter === "out") working = working.filter(i => getStockState(i) === "out");
   if (viewFilter === "low") working = working.filter(i => getStockState(i) === "low");

@@ -74,6 +74,39 @@
 .inventory-location-business { color: var(--text); background: var(--azul-soft); border-color: var(--azul); }
 .inventory-location-depot { color: var(--warn); border-color: var(--warn); }
 
+.family-sync-status:not([hidden]) {
+  margin: 12px 0;
+  padding: 12px 14px;
+  color: var(--text);
+  background: var(--raised);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.family-sync-status details { margin-top: 8px; }
+.family-sync-status summary { cursor: pointer; font-weight: 700; }
+.family-sync-status ul { margin: 8px 0 0; padding-left: 22px; }
+.family-sync-status li + li { margin-top: 4px; }
+.family-summary-list:empty { display: none; }
+.family-summary-list { display: grid; gap: 12px; margin: 0 0 16px; }
+.family-summary-card {
+  min-width: 0;
+  padding: 16px;
+  background: var(--raised);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+}
+.family-summary-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 18px; }
+.family-summary-heading h2 { margin: 0; color: var(--text); font-size: 17px; }
+.family-summary-totals { display: flex; flex-wrap: wrap; gap: 8px; color: var(--muted); font-size: 12px; }
+.family-summary-totals strong { color: var(--text); }
+.family-summary-rows { display: grid; gap: 7px; margin: 12px 0 0; padding: 0; list-style: none; }
+.family-summary-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px 14px; padding-top: 8px; border-top: 1px solid var(--border); font-size: 13px; }
+.family-summary-product { min-width: 0; overflow-wrap: anywhere; color: var(--text); }
+.family-summary-product strong { font-weight: 800; }
+.family-summary-stock { white-space: nowrap; font-weight: 800; color: var(--text); }
+
 html[data-theme="light"] {
   --bg:      #f2f4f9;
   --surface: #e8ebf3;
@@ -1545,26 +1578,6 @@ tbody tr:nth-child(n+11) { animation-delay: .32s; }
 .beta-provider-link:hover { background: var(--rojo-h); }
 .beta-provider-link-disabled { color: var(--muted); background: var(--lift); }
 .beta-detail-error { margin: 8px 0; color: var(--danger); }
-.beta-inventory-family {
-  margin-top: 22px;
-  padding: 18px;
-  background: var(--raised);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-}
-.beta-inventory-family > h2 { margin: 0 0 14px; color: var(--text); font-size: 20px; }
-.beta-inventory-locations { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-.beta-inventory-location { min-width: 0; padding: 14px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm); }
-.beta-inventory-location-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.beta-inventory-location-heading h4 { margin: 0; color: var(--text); font-size: 15px; }
-.beta-inventory-location-heading strong { color: var(--success); font-size: 17px; white-space: nowrap; }
-.beta-inventory-location ul { display: grid; gap: 7px; margin: 12px 0 0; padding: 0; list-style: none; }
-.beta-inventory-location li { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; color: var(--muted); font-size: 12px; line-height: 1.4; }
-.beta-inventory-location li strong { color: var(--text); }
-.beta-inventory-location li b { color: var(--text); white-space: nowrap; }
-.beta-inventory-location li.beta-family-empty { color: var(--muted); }
-.beta-family-total { display: flex; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); color: var(--text); font-weight: 700; }
-.beta-family-total strong { color: var(--rojo); font-size: 18px; }
 .beta-lightbox {
   position: fixed;
   inset: 0;
@@ -1594,7 +1607,6 @@ tbody tr:nth-child(n+11) { animation-delay: .32s; }
 
 @media (max-width: 900px) {
   .beta-suppliers-grid { grid-template-columns: 1fr; }
-  .beta-inventory-locations { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
   .beta-header { padding: 14px 16px; }
@@ -1616,4 +1628,7 @@ tbody tr:nth-child(n+11) { animation-delay: .32s; }
   .beta-searchbar { gap: 8px; }
   .beta-searchbar button { min-width: 88px; min-height: 48px; }
   .beta-lightbox { padding: 7vh 4vw; }
+  .family-summary-card { padding: 12px; }
+  .family-summary-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .family-summary-row .inventory-location-badge { grid-column: 1 / -1; grid-row: 2; width: fit-content; }
 }

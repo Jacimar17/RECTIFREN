@@ -147,3 +147,17 @@ export async function apiDetalleProveedores(codigo, aimarCode, token) {
     body: JSON.stringify({ codigo, aimarCode })
   }, 45000);
 }
+
+export async function apiIniciarSincronizacionLitton(token) {
+  return request(`${API_URL}/api/productos/sincronizar-familias-litton`, {
+    method: "POST",
+    headers: jsonHeaders(token),
+    body: JSON.stringify({})
+  });
+}
+
+export async function apiEstadoSincronizacionLitton(jobId, token) {
+  return request(`${API_URL}/api/productos/sincronizar-familias-litton/${encodeURIComponent(jobId)}`, {
+    headers: jsonHeaders(token)
+  });
+}

@@ -9,9 +9,32 @@ function normalizarCodigo(value) {
 
 function codigosEquivalentes(value) {
   const values = Array.isArray(value) ? value : [value];
-  return values.flatMap((entry) =>
-    String(entry ?? "").split(/[,;\n|]+/).map((code) => code.trim()).filter(Boolean)
-  );
+  return values.flatMap((entry) => {
+    const value = entry && typeof entry === "object"
+      ? entry.codigo || entry.code || entry.value
+      : entry;
+    return String(value ?? "").split(/[,;\n|]+/).map((code) => code.trim()).filter(Boolean);
+  });
+}
+
+function codigosProducto(producto) {
+  return [
+    producto.codigo,
+    producto.CODIGO,
+    ...codigosEquivalentes(producto.equivalencias),
+    ...codigosEquivalentes(producto.equivalenciasCatalogo),
+  ].map(normalizarCodigo).filter(Boolean);
+}
+
+function calcularTotales(filas) {
+  return filas.reduce((acc, fila) => {
+    const stock = Number(fila.stock);
+    if (Number.isFinite(stock)) {
+      acc[fila.ubicacion] += stock;
+      acc.total += stock;
+    }
+    return acc;
+  }, { [UBICACIONES.NEGOCIO]: 0, [UBICACIONES.DEPOSITO_GALPON]: 0, total: 0 });
 }
 
 function ubicacionPredeterminada(producto) {
@@ -32,11 +55,7 @@ function resolverFamiliaInventario(productos, codigosIniciales) {
   const codigosPorProducto = new Map();
 
   for (const producto of productos) {
-    const codigos = [
-      producto.codigo,
-      producto.CODIGO,
-      ...codigosEquivalentes(producto.equivalencias),
-    ].map(normalizarCodigo).filter(Boolean);
+    const codigos = codigosProducto(producto);
     codigosPorProducto.set(String(producto._id), codigos);
     for (const codigo of codigos) {
       if (!porCodigo.has(codigo)) porCodigo.set(codigo, []);
@@ -86,20 +105,46 @@ function resolverFamiliaInventario(productos, codigosIniciales) {
     || a.marca.localeCompare(b.marca, "es", { sensitivity: "base" })
   );
 
-  const totales = filas.reduce((acc, fila) => {
-    const stock = Number.isFinite(fila.stock) ? fila.stock : 0;
-    acc[fila.ubicacion] += stock;
-    acc.total += stock;
-    return acc;
-  }, { [UBICACIONES.NEGOCIO]: 0, [UBICACIONES.DEPOSITO_GALPON]: 0, total: 0 });
+  return { filas, totales: calcularTotales(filas) };
+}
 
-  return { filas, totales };
+function resolverFamiliasInventario(productos, semillas) {
+  const familias = [];
+  for (const semilla of semillas) {
+    const familia = resolverFamiliaInventario(productos, codigosProducto(semilla));
+    if (!familia.filas.length) continue;
+
+    const ids = new Set(familia.filas.map((fila) => fila._id));
+    let huboSolapamiento = true;
+    while (huboSolapamiento) {
+      huboSolapamiento = false;
+      for (let i = familias.length - 1; i >= 0; i--) {
+        if (!familias[i].filas.some((fila) => ids.has(fila._id))) continue;
+        const anterior = familias.splice(i, 1)[0];
+        for (const fila of anterior.filas) {
+          if (!ids.has(fila._id)) familia.filas.push(fila);
+          ids.add(fila._id);
+        }
+        huboSolapamiento = true;
+      }
+    }
+    familia.filas.sort((a, b) =>
+      a.codigo.localeCompare(b.codigo, "es", { numeric: true, sensitivity: "base" })
+      || a.marca.localeCompare(b.marca, "es", { sensitivity: "base" })
+    );
+    familia.totales = calcularTotales(familia.filas);
+    familia.id = [...ids].sort()[0];
+    familias.push(familia);
+  }
+  return familias;
 }
 
 module.exports = {
   UBICACIONES,
   codigosEquivalentes,
+  codigosProducto,
   normalizarCodigo,
+  resolverFamiliasInventario,
   resolverFamiliaInventario,
   ubicacionEfectiva,
   ubicacionPredeterminada,

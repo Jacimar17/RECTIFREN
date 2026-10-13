@@ -7,6 +7,11 @@ const productoSchema = new mongoose.Schema(
     stock:         { type: Number, default: 0, min: 0 },
     ubicacion: { type: String, enum: ["NEGOCIO", "DEPOSITO_GALPON"] },
     equivalencias:   { type: String, default: "", trim: true },
+    equivalenciasCatalogo: [{
+      codigo: { type: String, trim: true },
+      marca: { type: String, trim: true, default: "" },
+      productoLitton: { type: String, trim: true, default: "" },
+    }],
     stockMinimo:     { type: Number, default: 2, min: 0 },
 
     // Referencias a otros productos del inventario
