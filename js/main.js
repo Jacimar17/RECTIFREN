@@ -1,11 +1,14 @@
-import { apiGet, apiPostForm, apiBetaProveedores, authJsonHeaders } from "./api.js";
+import { apiGet, apiPostForm, authJsonHeaders } from "./api.js";
 import { API_URL } from "./config.js";
 import {
-  $, fmtDate, escapeHtml,
+  $,
   renderStock, setBusy, setActiveChip,
   openEditModal, closeEditModal, getEditModalData,
   showToast, updateStats, showSkeleton, updateChipCounts, renderCards
 } from "./ui.js";
+import { createEquivalencesController } from "./equivalences.js";
+import { createMovementController } from "./movements.js";
+import { bindBetaModal } from "./beta.js";
 
 let cache       = [];
 let isAdmin     = false;
@@ -21,6 +24,9 @@ let stockRequestId = 0;
 let searchHasMore = false;
 const AUTO_REFRESH_MS = 5 * 60 * 1000; // 5 minutos
 const SEARCH_DEBOUNCE_MS = 250;
+const movements = createMovementController({ getIsAdmin: () => isAdmin });
+const { loadMovs, openHistModal, bindMovSort, bindHistModal, closeHistModal } = movements;
+const { openEquivModal, bind: bindEquivModal } = createEquivalencesController({ getAdminToken });
 
 /* ===== URL params ===== */
 function readUrlParams() {
@@ -230,25 +236,6 @@ async function loadStock(query = $("search")?.value.trim() || "", { notify = fal
   }
 }
 
-/* ===== Movimientos ===== */
-async function loadMovs() {
-  const panel = $("movPanel"); if (!panel) return;
-  if (!isAdmin) { panel.style.display = "none"; return; }
-  panel.style.display = "block";
-  const range  = $("movRange").value;
-  const status = $("movStatus");
-  status.textContent = "Cargando movimientos...";
-  try {
-    const data = await apiGet({ action: "movements", range });
-    if (!data.ok) { status.textContent = `Error: ${data.error || "No se pudo cargar."}`; return; }
-    movCache = data.data || [];
-    renderMovs(movCache);
-    status.textContent = `Movimientos: ${movCache.length}`;
-  } catch (err) {
-    status.textContent = `Error: ${String(err)}`;
-  }
-}
-
 /* ===== Login ===== */
 function openLoginModal() {
   $("loginStatus").textContent = "";
@@ -415,51 +402,6 @@ async function deleteProduct(codigo, marca) {
 }
 
 
-/* ===== Historial por producto ===== */
-async function openHistModal(codigo, marca) {
-  const ov = $("histOverlay"); if (!ov) return;
-  $("histCodigo").textContent = codigo;
-  $("histMarca").textContent  = marca;
-  $("histTitle").textContent  = `Historial — ${codigo}`;
-  $("histStatus").textContent = "Cargando…";
-  $("histTbody").innerHTML    = "";
-  ov.style.display = "flex"; ov.setAttribute("aria-hidden","false");
-  try {
-    const data = await apiGet({ action: "movements", range: "month" });
-    const all  = (data.ok ? data.data || [] : [])
-      .filter(m => m.codigo === codigo && m.marca === marca);
-    const tbody = $("histTbody");
-    tbody.innerHTML = "";
-    if (all.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted)">Sin movimientos recientes.</td></tr>`;
-    } else {
-      for (const m of all) {
-        const tr = document.createElement("tr");
-        const isIn  = m.accion === "in"  || m.accion === "IN";
-        const isDel = m.accion === "delete" || m.accion === "DELETE";
-        const color = isIn ? "color:var(--success)" : isDel ? "color:var(--danger)" : "color:var(--warn)";
-        tr.innerHTML = `
-          <td>${escapeHtml(fmtDate(m.createdAt || m.fecha))}</td>
-          <td style="${color};font-weight:700">${escapeHtml(m.accion)}</td>
-          <td class="center">${Number(m.cantidad||0)}</td>
-          <td class="center">${Number(m.stock_anterior||0)}</td>
-          <td class="center">${Number(m.stock_nuevo||0)}</td>
-          <td>${escapeHtml(m.nota||"")}</td>
-        `;
-        tbody.appendChild(tr);
-      }
-    }
-    $("histStatus").textContent = `${all.length} movimiento(s) en los últimos 30 días.`;
-  } catch (err) {
-    $("histStatus").textContent = `Error: ${String(err)}`;
-  }
-}
-
-function closeHistModal() {
-  const ov = $("histOverlay"); if (!ov) return;
-  ov.style.display = "none"; ov.setAttribute("aria-hidden","true");
-}
-
 /* ===== Modo compacto ===== */
 let compactMode = false;
 function toggleCompact() {
@@ -467,185 +409,6 @@ function toggleCompact() {
   document.body.classList.toggle("compact", compactMode);
   const btn = $("btnCompact");
   if (btn) btn.textContent = compactMode ? "☰ Normal" : "☰ Compacto";
-}
-
-
-/* ===== Equivalencias ===== */
-let equivProductoId   = null;
-let equivSearchTimer  = null;
-
-async function openEquivModal(id, codigo, marca) {
-  equivProductoId = id;
-  $("equivCodigo").textContent = codigo;
-  $("equivMarca").textContent  = marca;
-  $("equivSearch").value       = "";
-  $("equivStatus").textContent = "";
-  $("equivSuggestions").style.display = "none";
-  $("equivList").innerHTML = '<div class="muted" style="font-size:13px">Cargando...</div>';
-
-  const ov = $("equivOverlay");
-  ov.style.display = "flex";
-  ov.setAttribute("aria-hidden","false");
-  setTimeout(() => $("equivSearch")?.focus(), 80);
-
-  await loadEquivList();
-}
-
-function closeEquivModal() {
-  const ov = $("equivOverlay");
-  ov.style.display = "none";
-  ov.setAttribute("aria-hidden","true");
-  equivProductoId = null;
-}
-
-async function loadEquivList() {
-  if (!equivProductoId) return;
-  try {
-    const res = await fetch(`${API_URL}/api/equivalencias/${equivProductoId}`);
-    const data = await res.json();
-    const list = $("equivList");
-    list.innerHTML = "";
-
-    if (!data.ok) { list.innerHTML = `<div class="muted">Error cargando equivalencias.</div>`; return; }
-
-    const { vinculados, textoLibre } = data;
-
-    if (!vinculados.length && !textoLibre.length) {
-      list.innerHTML = `<div class="muted" style="font-size:13px">Sin equivalencias cargadas aún.</div>`;
-      return;
-    }
-
-    // Productos vinculados del stock
-    for (const p of vinculados) {
-      const s = Number(p.stock || 0);
-      const sc = s === 0 ? "out" : s <= 2 ? "low" : "ok";
-      const div = document.createElement("div");
-      div.className = "equiv-item";
-      div.innerHTML = `
-        <div class="equiv-item-info">
-          <div class="equiv-item-code">${escapeHtml(p.codigo)}</div>
-          <div class="equiv-item-meta">${escapeHtml(p.marca)} · En stock</div>
-        </div>
-        <div class="equiv-item-stock ${sc}">${s}</div>
-        <button class="equiv-item-del" data-vid="${p._id}" title="Quitar vínculo">✕</button>
-      `;
-      div.querySelector(".equiv-item-del").addEventListener("click", () => desvincularEquiv(p._id, null));
-      list.appendChild(div);
-    }
-
-    // Texto libre
-    for (const txt of textoLibre) {
-      const div = document.createElement("div");
-      div.className = "equiv-item";
-      div.innerHTML = `
-        <div class="equiv-item-info">
-          <div class="equiv-item-code">${escapeHtml(txt)}</div>
-          <div class="equiv-item-meta" style="color:var(--warn)">Texto libre (no está en stock)</div>
-        </div>
-        <button class="equiv-item-del" title="Quitar">✕</button>
-      `;
-      div.querySelector(".equiv-item-del").addEventListener("click", () => desvincularEquiv(null, txt));
-      list.appendChild(div);
-    }
-  } catch(e) {
-    $("equivList").innerHTML = `<div class="muted">Error: ${e.message}</div>`;
-  }
-}
-
-async function buscarEquivSuggestions(q) {
-  const box = $("equivSuggestions");
-  if (!q || q.length < 1) { box.style.display = "none"; return; }
-  try {
-    const res  = await fetch(`${API_URL}/api/equivalencias/search?q=${encodeURIComponent(q)}`);
-    const data = await res.json();
-    box.innerHTML = "";
-
-    const items = (data.data || []).filter(p => p._id !== equivProductoId);
-
-    for (const p of items) {
-      const s  = Number(p.stock || 0);
-      const sc = s === 0 ? "out" : s <= 2 ? "low" : "ok";
-      const div = document.createElement("div");
-      div.className = "equiv-suggestion-item";
-      div.innerHTML = `
-        <div>
-          <span class="sug-code">${escapeHtml(p.codigo)}</span>
-          <span class="sug-marca"> · ${escapeHtml(p.marca)}</span>
-        </div>
-        <span class="sug-stock ${sc}">${s}</span>
-      `;
-      div.addEventListener("click", () => vincularEquiv(p._id, null));
-      box.appendChild(div);
-    }
-
-    // Opción texto libre
-    const free = document.createElement("div");
-    free.className = "equiv-suggestion-free";
-    free.textContent = `Guardar "${q}" como texto (no está en stock)`;
-    free.addEventListener("click", () => vincularEquiv(null, q));
-    box.appendChild(free);
-
-    box.style.display = items.length > 0 || q ? "block" : "none";
-  } catch(e) {
-    box.style.display = "none";
-  }
-}
-
-async function vincularEquiv(equivalenteId, equivalenteTexto) {
-  if (!equivProductoId) return;
-  $("equivSuggestions").style.display = "none";
-  $("equivSearch").value = "";
-  $("equivStatus").textContent = "Guardando...";
-  try {
-    const res = await fetch(`${API_URL}/api/equivalencias/${equivProductoId}/vincular`, {
-      method: "POST",
-      headers: authJsonHeaders(getAdminToken()),
-      body: JSON.stringify({ equivalenteId, equivalenteTexto })
-    });
-    const data = await res.json();
-    if (data.ok) {
-      $("equivStatus").textContent = "✅ Equivalencia agregada.";
-      await loadEquivList();
-    } else {
-      $("equivStatus").textContent = `Error: ${data.error}`;
-    }
-  } catch(e) {
-    $("equivStatus").textContent = `Error: ${e.message}`;
-  }
-}
-
-async function desvincularEquiv(equivalenteId, equivalenteTexto) {
-  if (!equivProductoId) return;
-  try {
-    const res = await fetch(`${API_URL}/api/equivalencias/${equivProductoId}/desvincular`, {
-      method: "DELETE",
-      headers: authJsonHeaders(getAdminToken()),
-      body: JSON.stringify({ equivalenteId, equivalenteTexto })
-    });
-    const data = await res.json();
-    if (data.ok) await loadEquivList();
-    else $("equivStatus").textContent = `Error: ${data.error}`;
-  } catch(e) {
-    $("equivStatus").textContent = `Error: ${e.message}`;
-  }
-}
-
-function bindEquivModal() {
-  $("btnCloseEquiv")?.addEventListener("click",  closeEquivModal);
-  $("btnCloseEquiv2")?.addEventListener("click", closeEquivModal);
-  $("equivOverlay")?.addEventListener("click", e => { if(e.target === $("equivOverlay")) closeEquivModal(); });
-
-  $("equivSearch")?.addEventListener("input", e => {
-    clearTimeout(equivSearchTimer);
-    equivSearchTimer = setTimeout(() => buscarEquivSuggestions(e.target.value.trim()), 250);
-  });
-
-  // Cerrar sugerencias al clickear afuera
-  document.addEventListener("click", e => {
-    if (!$("equivOverlay")?.contains(e.target)) {
-      $("equivSuggestions").style.display = "none";
-    }
-  });
 }
 
 
@@ -723,58 +486,6 @@ async function saveEdit() {
     showToast(`Producto actualizado correctamente.`, "success");
     await loadStock(); await loadMovs(); setLastUpdatedNow();
   } finally { setBusyState(false); }
-}
-
-/* ===== Sort movimientos ===== */
-let movSortCol = "fecha";
-let movSortDir = "desc";
-let movCache   = [];
-
-function renderMovs(data) {
-  const tbody = $("movTbody"); if (!tbody) return;
-  tbody.innerHTML = "";
-  let rows = [...data];
-  rows.sort((a, b) => {
-    let va = movSortCol === "fecha" ? (a.createdAt || a.fecha || "") : (a[movSortCol] ?? "");
-    let vb = movSortCol === "fecha" ? (b.createdAt || b.fecha || "") : (b[movSortCol] ?? "");
-    if (movSortCol === "cantidad") { va = Number(va); vb = Number(vb); }
-    if (movSortCol === "fecha")    { va = new Date(va).getTime(); vb = new Date(vb).getTime(); }
-    const cmp = typeof va === "number" ? va - vb : String(va).localeCompare(String(vb), "es");
-    return movSortDir === "desc" ? -cmp : cmp;
-  });
-  if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--muted)">Sin movimientos.</td></tr>`;
-    return;
-  }
-  for (const m of rows) {
-    const tr = document.createElement("tr");
-    const isIn = (m.accion||"").toLowerCase() === "in";
-    const col  = isIn ? "color:var(--success)" : "color:var(--warn)";
-    tr.innerHTML = `
-      <td>${escapeHtml(fmtDate(m.createdAt || m.fecha))}</td>
-      <td style="${col};font-weight:700">${escapeHtml(m.accion)}</td>
-      <td>${escapeHtml(m.codigo)}</td>
-      <td>${escapeHtml(m.marca)}</td>
-      <td class="center">${Number(m.cantidad||0)}</td>
-      <td class="center">${Number(m.stock_anterior||0)}</td>
-      <td class="center">${Number(m.stock_nuevo||0)}</td>
-      <td>${escapeHtml(m.nota||"")}</td>
-    `;
-    tbody.appendChild(tr);
-  }
-}
-
-function bindMovSort() {
-  document.querySelectorAll("th.mov-sortable").forEach(th => {
-    th.addEventListener("click", () => {
-      const col = th.dataset.mcol;
-      if (movSortCol === col) movSortDir = movSortDir === "asc" ? "desc" : "asc";
-      else { movSortCol = col; movSortDir = col === "fecha" ? "desc" : "asc"; }
-      document.querySelectorAll("th.mov-sortable").forEach(t => t.classList.remove("mov-sort-asc","mov-sort-desc"));
-      th.classList.add(movSortDir === "asc" ? "mov-sort-asc" : "mov-sort-desc");
-      renderMovs(movCache);
-    });
-  });
 }
 
 /* ===== Sort headers ===== */
@@ -934,12 +645,6 @@ function bindEvents() {
   }
 
   // Historial modal
-  const histOv = $("histOverlay");
-  if (histOv) {
-    $("btnCloseHist")?.addEventListener("click", () => closeHistModal());
-    histOv.addEventListener("click", e => { if(e.target===histOv) closeHistModal(); });
-  }
-
   // Row/card click -> historial (manejado en handleStockAction)
 
   // Compact toggle
@@ -999,109 +704,6 @@ function bindEvents() {
   bindSortHeaders();
 }
 
-/* ===== Beta: búsqueda en proveedores ===== */
-function openBetaModal() {
-  $("betaStatus").textContent = "";
-  $("betaOverlay").style.display = "flex";
-  $("betaOverlay").setAttribute("aria-hidden", "false");
-  setTimeout(() => $("betaSearch")?.focus(), 80);
-}
-
-function closeBetaModal() {
-  $("betaOverlay").style.display = "none";
-  $("betaOverlay").setAttribute("aria-hidden", "true");
-}
-
-function fmtPrecio(n) {
-  const v = Number(n);
-  if (!isFinite(v)) return "—";
-  return v.toLocaleString("es-AR", { style: "currency", currency: "ARS" });
-}
-
-function semaforo(l) {
-  const colores = { V: "var(--success)", A: "var(--warn)", R: "var(--danger)" };
-  const color = colores[l] || "var(--muted)";
-  return `<span class="beta-dot" style="background:${color}" title="Semáforo de stock del proveedor (${escapeHtml(l || "—")})"></span>`;
-}
-
-function renderBetaResults(resp) {
-  const items   = resp.data || [];
-  const errores = resp.errores || [];
-  let html = "";
-
-  for (const e of errores) {
-    html += `<div class="hint beta-error"><strong>${escapeHtml(e.proveedor)}:</strong> ${escapeHtml(e.error)}</div>`;
-  }
-  if (!items.length && !errores.length) {
-    html += `<div class="hint">No encontré resultados. Probá con otro código.</div>`;
-  }
-
-  for (const it of items) {
-    const inv = it.enInventario;
-    const invHtml = inv
-      ? `<span class="beta-badge beta-ok">En tu inventario: ${escapeHtml(String(inv.stock))} u. (${escapeHtml(inv.marca)})</span>`
-      : `<span class="beta-badge beta-no">No lo tenés</span>`;
-    const img = it.imagen
-      ? `<img class="beta-img" src="${escapeHtml(it.imagen)}" alt="" loading="lazy" />`
-      : `<div class="beta-img"></div>`;
-
-    html += `
-      <div class="beta-item">
-        ${img}
-        <div class="beta-info">
-          <div class="beta-title">${escapeHtml(it.codigo)} · ${escapeHtml(it.marca || it.proveedor)}</div>
-          <div class="beta-name">${escapeHtml(it.nombre || "")}</div>
-          <div class="beta-row">
-            <strong>${fmtPrecio(it.precio)}</strong>
-            ${semaforo(it.stockProveedor)}
-            ${invHtml}
-          </div>
-          <div class="muted tiny">Fuente: ${escapeHtml(it.proveedor)}</div>
-        </div>
-      </div>`;
-  }
-  $("betaResults").innerHTML = html;
-}
-
-async function buscarBeta() {
-  const q = $("betaSearch").value.trim();
-  if (!q) { $("betaStatus").textContent = "Escribí un código o producto."; return; }
-  if (!isAdmin) { showToast("Ingresá como administrador para usar la beta.", "error"); return; }
-
-  const btn = $("btnBetaSearch");
-  btn.disabled = true;
-  $("betaStatus").textContent = "";
-  $("betaResults").innerHTML = `
-    <div class="beta-loading">
-      <div class="spinner"></div>
-      <div>Buscando en proveedores…<div class="muted">La primera búsqueda puede tardar unos segundos.</div></div>
-    </div>`;
-
-  const token = getAdminToken();
-  if (!token) { adminLogout(); showToast("La sesión venció. Ingresá nuevamente.", "error"); return; }
-  const resp = await apiBetaProveedores(q, token);
-  btn.disabled = false;
-
-  if (!resp.ok) {
-    $("betaResults").innerHTML = "";
-    $("betaStatus").textContent = resp.error || "Error en la búsqueda.";
-    return;
-  }
-  renderBetaResults(resp);
-  $("betaStatus").textContent = `${resp.total} resultado(s) para "${q}"`;
-}
-
-function bindBetaModal() {
-  const ov = $("betaOverlay");
-  if (!ov) return;
-  $("btnBeta")?.addEventListener("click", () => { if (!busy) openBetaModal(); });
-  $("btnCloseBeta")?.addEventListener("click", () => { if (!busy) closeBetaModal(); });
-  $("btnCloseBeta2")?.addEventListener("click", () => { if (!busy) closeBetaModal(); });
-  $("btnBetaSearch")?.addEventListener("click", buscarBeta);
-  $("betaSearch")?.addEventListener("keydown", e => { if (e.key === "Enter") buscarBeta(); });
-  ov.addEventListener("click", e => { if (e.target === ov && !busy) closeBetaModal(); });
-}
-
 /* ===== Init ===== */
 document.addEventListener("DOMContentLoaded", () => {
   initTheme();
@@ -1111,9 +713,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   setAdminButtonState();
   bindEvents();
+  bindHistModal();
   bindEquivModal();
   bindMinimoModal();
-  bindBetaModal();
+  bindBetaModal({
+    getIsAdmin: () => isAdmin,
+    getAdminToken,
+    adminLogout,
+    isBusy: () => busy
+  });
   loadStock();
   startAutoRefresh();
   if (isAdmin) loadMovs();
