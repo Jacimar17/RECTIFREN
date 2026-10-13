@@ -24,9 +24,16 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
   }
 
   function semaforo(level) {
-    const colors = { V: "var(--success)", A: "var(--warn)", R: "var(--danger)" };
-    const color = colors[level] || "var(--muted)";
-    return `<span class="beta-dot" style="background:${color}" title="Semáforo de stock del proveedor (${escapeHtml(level || "—")})"></span>`;
+    const availability = {
+      V: { label: "Disponible", color: "var(--success)", className: "beta-available" },
+      A: { label: "Stock limitado", color: "var(--warn)", className: "beta-limited" },
+      R: { label: "Sin stock", color: "var(--danger)", className: "beta-unavailable" }
+    };
+    const status = availability[level] || { label: "Sin información", color: "var(--muted)", className: "" };
+    return `<span class="beta-supplier-stock ${status.className}" title="Disponibilidad informada por el proveedor">
+      <span class="beta-dot" style="background:${status.color}" aria-hidden="true"></span>
+      <span>${status.label}</span>
+    </span>`;
   }
 
   function renderResults(response) {
@@ -42,23 +49,29 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
     for (const item of items) {
       const inventory = item.enInventario;
       const inventoryHtml = inventory
-        ? `<span class="beta-badge beta-ok">En tu inventario: ${escapeHtml(String(inventory.stock))} u. (${escapeHtml(inventory.marca)})</span>`
-        : `<span class="beta-badge beta-no">No lo tenés</span>`;
+        ? `<span class="beta-badge beta-ok">En inventario <strong>${escapeHtml(String(inventory.stock))} u.</strong> · ${escapeHtml(inventory.marca)}</span>`
+        : `<span class="beta-badge beta-no">No está en tu inventario</span>`;
       const image = item.imagen
         ? `<img class="beta-img" src="${escapeHtml(item.imagen)}" alt="" loading="lazy" />`
-        : `<div class="beta-img"></div>`;
+        : `<div class="beta-img beta-img-empty" aria-hidden="true">▧</div>`;
       html += `
         <div class="beta-item">
-          ${image}
+          <div class="beta-image-wrap">${image}</div>
           <div class="beta-info">
-            <div class="beta-title">${escapeHtml(item.codigo)} · ${escapeHtml(item.marca || item.proveedor)}</div>
-            <div class="beta-name">${escapeHtml(item.nombre || "")}</div>
-            <div class="beta-row">
-              <strong>${fmtPrecio(item.precio)}</strong>
-              ${semaforo(item.stockProveedor)}
-              ${inventoryHtml}
+            <div class="beta-heading">
+              <div class="beta-title">${escapeHtml(item.codigo || "Código s/d")}</div>
+              <span class="beta-provider">${escapeHtml(item.proveedor || "Proveedor")}</span>
             </div>
-            <div class="muted tiny">Fuente: ${escapeHtml(item.proveedor)}</div>
+            <div class="beta-brand">${escapeHtml(item.marca || "Marca no informada")}</div>
+            <div class="beta-name">${escapeHtml(item.nombre || "Sin descripción disponible")}</div>
+            <div class="beta-details">
+              <div class="beta-price">
+                <span class="beta-meta-label">Precio</span>
+                <strong>${fmtPrecio(item.precio)}</strong>
+              </div>
+              ${semaforo(item.stockProveedor)}
+            </div>
+            <div class="beta-inventory">${inventoryHtml}</div>
           </div>
         </div>`;
     }
