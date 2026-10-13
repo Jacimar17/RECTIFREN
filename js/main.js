@@ -6,7 +6,7 @@ import {
 } from "./ui.js";
 import { createEquivalencesController } from "./equivalences.js";
 import { createMovementController } from "./movements.js";
-import { bindBetaModal } from "./beta.js";
+import { bindBetaModal } from "./beta.js?v=20260641";
 import { createProductActions } from "./product-actions.js";
 
 let cache       = [];
@@ -434,6 +434,7 @@ function bindEvents() {
 
   document.addEventListener("keydown", e => {
     if (e.key === "Escape" && !busy) {
+      if ($("betaLightbox")?.getAttribute("aria-hidden") === "false") return;
       if ($("modalOverlay").style.display === "flex") closeLoginModal();
       productActions.closeOpenModals();
       if ($("equivOverlay")?.style.display  === "flex") closeEquivModal();

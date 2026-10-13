@@ -3,7 +3,15 @@ import { $, escapeHtml, showToast } from "./ui.js";
 
 export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }) {
   const overlay = $("betaOverlay");
-  if (!overlay) return;
+  const results = $("betaResults");
+  const lightbox = $("betaLightbox");
+  if (!overlay || !results || !lightbox) return;
+
+  let lastLittonResponse = null;
+  let selectedResultIndex = -1;
+  let activeViewId = 0;
+  const detailCache = new Map();
+  const detailRequests = new Map();
 
   function openBetaModal() {
     $("betaStatus").textContent = "";
@@ -13,6 +21,7 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
   }
 
   function closeBetaModal() {
+    closeLightbox();
     overlay.style.display = "none";
     overlay.setAttribute("aria-hidden", "true");
   }
@@ -21,6 +30,23 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
     const price = Number(value);
     if (!Number.isFinite(price)) return "—";
     return price.toLocaleString("es-AR", { style: "currency", currency: "ARS" });
+  }
+
+  function safeHttpUrl(value) {
+    return typeof value === "string" && /^https?:\/\//i.test(value) ? value : "";
+  }
+
+  function photoMarkup(value, code, sizeClass = "") {
+    const url = safeHttpUrl(value);
+    const label = escapeHtml(code || "Foto del producto");
+    if (!url) {
+      return `<div class="beta-photo-frame ${sizeClass}">
+        <div class="beta-photo-placeholder"><span aria-hidden="true">📷</span><span>Foto no disponible</span></div>
+      </div>`;
+    }
+    return `<div class="beta-photo-frame ${sizeClass}">
+      <img class="beta-photo-image beta-zoomable" src="${escapeHtml(url)}" alt="${label}" data-caption="${label}" loading="lazy">
+    </div>`;
   }
 
   function semaforo(level) {
@@ -36,87 +62,38 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
     </span>`;
   }
 
-  function renderDetalleItem(item) {
-    const stock = item.stockProveedor == null
-      ? "Stock sin informar"
-      : `Stock informado: ${escapeHtml(String(item.stockProveedor))} u.`;
-    const image = item.imagen
-      ? `<img class="beta-detail-img" src="${escapeHtml(item.imagen)}" alt="" loading="lazy">`
-      : "";
-    const link = item.link
-      ? `<a href="${escapeHtml(item.link)}" target="_blank" rel="noopener noreferrer">Ver producto</a>`
-      : "";
-    return `<article class="beta-detail-item">
-      ${image}
-      <div class="beta-detail-info">
-        <strong>${escapeHtml(item.codigo || "Código s/d")}</strong>
-        <span>${escapeHtml(item.marca || "Marca no informada")}</span>
-        <span>${escapeHtml(item.nombre || "Sin descripción")}</span>
-        <span>${fmtPrecio(item.precio)} · ${stock}</span>
-        ${link}
+  function inventoryBadge(inventory, known = true) {
+    if (!known) return `<span class="beta-badge beta-no">Inventario no informado</span>`;
+    if (!inventory) return `<span class="beta-badge beta-no">No lo tenés</span>`;
+    return `<span class="beta-badge beta-ok">En tu inventario: <strong>${escapeHtml(String(inventory.stock ?? 0))} u.</strong></span>`;
+  }
+
+  function providerStockBadge(item) {
+    if (item.stockProveedor == null || item.stockProveedor === "") {
+      return `<span class="beta-badge beta-stock-unknown">Stock no informado</span>`;
+    }
+    const stock = Number(item.stockProveedor);
+    if (!Number.isFinite(stock)) {
+      return `<span class="beta-badge beta-stock-unknown">Stock no informado</span>`;
+    }
+    if (Number.isFinite(stock) && stock > 0) {
+      return `<span class="beta-badge beta-ok">${escapeHtml(String(stock))} u.</span>`;
+    }
+    return `<span class="beta-badge beta-stock-empty">Sin stock</span>`;
+  }
+
+  function renderResultCard(item, index) {
+    const code = item.codigo || "Código s/d";
+    return `<article class="beta-result-card" tabindex="0" role="button" data-result-index="${index}" aria-label="Ver detalle de ${escapeHtml(code)}">
+      ${photoMarkup(item.imagen, code, "beta-result-photo")}
+      <div class="beta-result-info">
+        <div class="beta-code">${escapeHtml(code)}</div>
+        <div class="beta-price">${fmtPrecio(item.precio)}</div>
+        <div class="beta-brand">${escapeHtml(item.marca || "Marca no informada")}</div>
+        <div class="beta-name">${escapeHtml(item.nombre || "Sin descripción disponible")}</div>
+        <div class="beta-result-badges">${semaforo(item.stockProveedor)}${inventoryBadge(item.enInventario)}</div>
       </div>
     </article>`;
-  }
-
-  function renderDetalles(response) {
-    const groups = [
-      ["Aimar", response.data?.aimar || []],
-      ["ATONOR", response.data?.atonor || []],
-    ];
-    const errors = response.errores || [];
-    let html = "";
-
-    for (const [name, items] of groups) {
-      const error = errors.find(item => item.proveedor === name);
-      html += `<section class="beta-detail-provider">
-        <h4>${name}</h4>
-        ${error
-          ? `<p class="beta-detail-error">${escapeHtml(error.error)}</p>`
-          : items.length
-            ? items.map(renderDetalleItem).join("")
-            : `<p class="muted">Sin coincidencias.</p>`}
-      </section>`;
-    }
-    return html;
-  }
-
-  async function consultarDetalles(button) {
-    const code = button.dataset.providerCode || "";
-    const aimarCode = button.dataset.aimarCode || code;
-    const panel = button.parentElement.querySelector(".beta-detail-results");
-    if (!panel) return;
-
-    if (button.getAttribute("aria-expanded") === "true") {
-      panel.hidden = true;
-      button.setAttribute("aria-expanded", "false");
-      return;
-    }
-
-    button.setAttribute("aria-expanded", "true");
-    panel.hidden = false;
-    if (panel.dataset.loaded === "true") return;
-
-    button.disabled = true;
-    panel.innerHTML = `<p class="muted">Consultando Aimar y ATONOR…</p>`;
-    try {
-      const token = getAdminToken();
-      if (!token) {
-        adminLogout();
-        panel.innerHTML = `<p class="beta-detail-error">La sesión venció. Ingresá nuevamente.</p>`;
-        return;
-      }
-      const response = await apiDetalleProveedores(code, aimarCode, token);
-      if (!response.ok) {
-        panel.innerHTML = `<p class="beta-detail-error">${escapeHtml(response.error || "No se pudieron consultar los proveedores.")}</p>`;
-        return;
-      }
-      panel.innerHTML = renderDetalles(response);
-      panel.dataset.loaded = "true";
-    } catch (error) {
-      panel.innerHTML = `<p class="beta-detail-error">Error: ${escapeHtml(error.message)}</p>`;
-    } finally {
-      button.disabled = false;
-    }
   }
 
   function renderResults(response) {
@@ -127,46 +104,150 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
       html += `<div class="hint beta-error"><strong>${escapeHtml(error.proveedor)}:</strong> ${escapeHtml(error.error)}</div>`;
     }
     if (!items.length && !errors.length) {
-      html += `<div class="hint">No encontré resultados. Probá con otro código.</div>`;
+      html += `<div class="beta-empty-state">No encontré resultados. Probá con otro código.</div>`;
     }
-    for (const item of items) {
-      const inventory = item.enInventario;
-      const inventoryHtml = inventory
-        ? `<span class="beta-badge beta-ok">En inventario <strong>${escapeHtml(String(inventory.stock))} u.</strong> · ${escapeHtml(inventory.marca)}</span>`
-        : `<span class="beta-badge beta-no">No está en tu inventario</span>`;
-      const image = item.imagen
-        ? `<img class="beta-img" src="${escapeHtml(item.imagen)}" alt="" loading="lazy" />`
-        : `<div class="beta-img beta-img-empty" aria-hidden="true">▧</div>`;
-      html += `
-        <div class="beta-item">
-          <div class="beta-image-wrap">${image}</div>
-          <div class="beta-info">
-            <div class="beta-heading">
-              <div class="beta-title">${escapeHtml(item.codigo || "Código s/d")}</div>
-              <span class="beta-provider">${escapeHtml(item.proveedor || "Proveedor")}</span>
-            </div>
-            <div class="beta-brand">${escapeHtml(item.marca || "Marca no informada")}</div>
-            <div class="beta-name">${escapeHtml(item.nombre || "Sin descripción disponible")}</div>
-            <div class="beta-details">
-              <div class="beta-price">
-                <span class="beta-meta-label">Precio</span>
-                <strong>${fmtPrecio(item.precio)}</strong>
-              </div>
-              ${semaforo(item.stockProveedor)}
-            </div>
-            <div class="beta-inventory">${inventoryHtml}</div>
-            <div class="beta-detail-action">
-              <button type="button" class="beta-detail-toggle" aria-expanded="false"
-                data-provider-code="${escapeHtml(item.codigo || "")}"
-                data-aimar-code="${escapeHtml(item.aimarCode || item.codigo || "")}">
-                Consultar Aimar y ATONOR
-              </button>
-              <div class="beta-detail-results" hidden></div>
-            </div>
-          </div>
-        </div>`;
+    if (items.length) {
+      html += `<div class="beta-results-grid">${items.map(renderResultCard).join("")}</div>`;
     }
-    $("betaResults").innerHTML = html;
+    results.innerHTML = html;
+  }
+
+  function renderProviderItem(item, provider) {
+    const code = item.codigo || "Código s/d";
+    const link = safeHttpUrl(item.link);
+    const measures = item.medidas ? `<span>${escapeHtml(item.medidas)}</span>` : "";
+    return `<article class="beta-provider-card">
+      ${photoMarkup(item.imagen, code, "beta-provider-photo")}
+      <div class="beta-provider-card-content">
+        <div class="beta-provider-code">${escapeHtml(code)}</div>
+        <div class="beta-provider-price">${fmtPrecio(item.precio)}</div>
+        <div class="beta-provider-meta">${escapeHtml(item.marca || "Marca no informada")}${item.nombre ? ` · ${escapeHtml(item.nombre)}` : ""}${measures ? ` · ${measures}` : ""}</div>
+        <div class="beta-provider-badges">${providerStockBadge(item)}${inventoryBadge(item.enInventario, Object.prototype.hasOwnProperty.call(item, "enInventario"))}</div>
+        ${link
+          ? `<a class="beta-provider-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">Ver en ${provider}</a>`
+          : `<span class="beta-provider-link beta-provider-link-disabled">Enlace no disponible</span>`}
+      </div>
+    </article>`;
+  }
+
+  function renderProviderSection(provider) {
+    const loading = `<div class="beta-provider-loading"><div class="spinner" aria-hidden="true"></div><span>Buscando en ${provider}…</span></div>`;
+    return `<section class="beta-provider-section" data-provider="${provider}">
+      <h3>${provider}</h3>
+      <div class="beta-provider-state">${loading}</div>
+    </section>`;
+  }
+
+  function updateProviderSections(response, responseError = "") {
+    const errors = response?.errores || [];
+    const groups = [
+      ["Aimar", response?.data?.aimar || []],
+      ["ATONOR", response?.data?.atonor || []]
+    ];
+    for (const [provider, items] of groups) {
+      const section = results.querySelector(`[data-provider="${provider}"] .beta-provider-state`);
+      if (!section) continue;
+      const providerError = errors.find(item => item.proveedor === provider);
+      if (providerError) {
+        section.innerHTML = `<p class="beta-detail-error">${escapeHtml(providerError.error)}</p>`;
+      } else if (responseError) {
+        section.innerHTML = `<p class="beta-detail-error">${escapeHtml(responseError)}</p>`;
+      } else if (items.length) {
+        section.innerHTML = items.map(item => renderProviderItem(item, provider)).join("");
+      } else {
+        section.innerHTML = `<p class="beta-empty-state">Sin coincidencias en ${provider}</p>`;
+      }
+    }
+  }
+
+  async function getProviderDetails(item) {
+    const code = item.codigo || "";
+    if (detailCache.has(code)) return detailCache.get(code);
+    if (detailRequests.has(code)) return detailRequests.get(code);
+
+    const request = (async () => {
+      const token = getAdminToken();
+      if (!token) {
+        adminLogout();
+        throw new Error("La sesión venció. Ingresá nuevamente.");
+      }
+      const response = await apiDetalleProveedores(code, item.aimarCode || code, token);
+      if (response.ok) detailCache.set(code, response);
+      return response;
+    })();
+    detailRequests.set(code, request);
+    try {
+      return await request;
+    } finally {
+      detailRequests.delete(code);
+    }
+  }
+
+  async function showDetails(item, index) {
+    selectedResultIndex = index;
+    const viewId = ++activeViewId;
+    const code = item.codigo || "";
+    results.innerHTML = `<button type="button" class="beta-back-button">← Volver a resultados</button>
+      <section class="beta-main-product">
+        ${photoMarkup(item.imagen, code, "beta-main-photo")}
+        <div class="beta-main-info">
+          <div class="beta-code beta-code-large">${escapeHtml(code || "Código s/d")}</div>
+          <div class="beta-price beta-price-large">${fmtPrecio(item.precio)}</div>
+          <div class="beta-brand">${escapeHtml(item.marca || "Marca no informada")}</div>
+          <div class="beta-name">${escapeHtml(item.nombre || "Sin descripción disponible")}</div>
+          <div class="beta-result-badges">${semaforo(item.stockProveedor)}${inventoryBadge(item.enInventario)}</div>
+        </div>
+      </section>
+      <h2 class="beta-suppliers-title">Dónde conseguirla</h2>
+      <div class="beta-suppliers-grid">
+        ${renderProviderSection("Aimar")}
+        ${renderProviderSection("ATONOR")}
+      </div>`;
+
+    if (detailCache.has(code)) {
+      updateProviderSections(detailCache.get(code));
+      return;
+    }
+
+    try {
+      const response = await getProviderDetails(item);
+      if (viewId !== activeViewId) return;
+      if (!response.ok) {
+        updateProviderSections(null, response.error || "No se pudieron consultar los proveedores.");
+        return;
+      }
+      updateProviderSections(response);
+    } catch (error) {
+      if (viewId !== activeViewId) return;
+      updateProviderSections(null, error.message || "Error al consultar los proveedores.");
+    }
+  }
+
+  function showResultsAndRestoreFocus() {
+    ++activeViewId;
+    if (!lastLittonResponse) return;
+    renderResults(lastLittonResponse);
+    const selected = results.querySelector(`[data-result-index="${selectedResultIndex}"]`);
+    selected?.focus();
+  }
+
+  function openLightbox(image) {
+    const source = safeHttpUrl(image.currentSrc || image.src);
+    if (!source) return;
+    const lightboxImage = lightbox.querySelector(".beta-lightbox-image");
+    lightboxImage.src = source;
+    lightboxImage.alt = image.alt || "";
+    lightbox.querySelector(".beta-lightbox-caption").textContent = image.dataset.caption || image.alt || "";
+    lightbox.style.display = "flex";
+    lightbox.setAttribute("aria-hidden", "false");
+    lightbox.querySelector(".beta-lightbox-close").focus();
+  }
+
+  function closeLightbox() {
+    lightbox.style.display = "none";
+    lightbox.setAttribute("aria-hidden", "true");
+    const image = lightbox.querySelector(".beta-lightbox-image");
+    image.removeAttribute("src");
   }
 
   async function buscarBeta() {
@@ -177,11 +258,7 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
     const button = $("btnBetaSearch");
     button.disabled = true;
     $("betaStatus").textContent = "";
-    $("betaResults").innerHTML = `
-      <div class="beta-loading">
-        <div class="spinner"></div>
-        <div>Buscando en proveedores…<div class="muted">La primera búsqueda puede tardar unos segundos.</div></div>
-      </div>`;
+    results.innerHTML = `<div class="beta-search-loading"><div class="spinner" aria-hidden="true"></div><span>Buscando en Litton…</span></div>`;
 
     try {
       const token = getAdminToken();
@@ -192,14 +269,16 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
       }
       const response = await apiBetaProveedores(query, token);
       if (!response.ok) {
-        $("betaResults").innerHTML = "";
+        results.innerHTML = "";
         $("betaStatus").textContent = response.error || "Error en la búsqueda.";
         return;
       }
+      lastLittonResponse = response;
+      selectedResultIndex = -1;
       renderResults(response);
       $("betaStatus").textContent = `${response.total} resultado(s) para "${query}"`;
     } catch (error) {
-      $("betaResults").innerHTML = "";
+      results.innerHTML = "";
       $("betaStatus").textContent = `Error: ${error.message}`;
     } finally {
       button.disabled = false;
@@ -208,16 +287,63 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
 
   $("btnBeta")?.addEventListener("click", () => { if (!isBusy()) openBetaModal(); });
   $("btnCloseBeta")?.addEventListener("click", () => { if (!isBusy()) closeBetaModal(); });
-  $("btnCloseBeta2")?.addEventListener("click", () => { if (!isBusy()) closeBetaModal(); });
   $("btnBetaSearch")?.addEventListener("click", buscarBeta);
   $("betaResults")?.addEventListener("click", event => {
-    const button = event.target.closest(".beta-detail-toggle");
-    if (button) consultarDetalles(button);
+    if (event.target.closest(".beta-back-button")) {
+      showResultsAndRestoreFocus();
+      return;
+    }
+    const card = event.target.closest(".beta-result-card");
+    if (card) {
+      const index = Number(card.dataset.resultIndex);
+      const item = lastLittonResponse?.data?.[index];
+      if (item) showDetails(item, index);
+    }
+  });
+  $("betaResults")?.addEventListener("keydown", event => {
+    const card = event.target.closest(".beta-result-card");
+    if (!card || (event.key !== "Enter" && event.key !== " ")) return;
+    event.preventDefault();
+    const index = Number(card.dataset.resultIndex);
+    const item = lastLittonResponse?.data?.[index];
+    if (item) showDetails(item, index);
   });
   $("betaSearch")?.addEventListener("keydown", event => {
     if (event.key === "Enter" && !isBusy()) buscarBeta();
   });
+  overlay.addEventListener("error", event => {
+    const image = event.target.closest?.(".beta-zoomable");
+    if (!image) return;
+    const placeholder = document.createElement("div");
+    placeholder.className = "beta-photo-placeholder";
+    placeholder.innerHTML = `<span aria-hidden="true">📷</span><span>Foto no disponible</span>`;
+    image.replaceWith(placeholder);
+  }, true);
   overlay.addEventListener("click", event => {
+    const zoomable = event.target.closest?.(".beta-zoomable");
+    if (zoomable) {
+      event.preventDefault();
+      event.stopPropagation();
+      openLightbox(zoomable);
+      return;
+    }
+    if (event.target === lightbox || event.target.closest?.(".beta-lightbox-close")) {
+      closeLightbox();
+      return;
+    }
     if (event.target === overlay && !isBusy()) closeBetaModal();
+  }, true);
+  lightbox.addEventListener("click", event => {
+    if (event.target === lightbox || event.target.closest?.(".beta-lightbox-close")) closeLightbox();
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key !== "Escape") return;
+    if (lightbox.getAttribute("aria-hidden") === "false") {
+      event.preventDefault();
+      event.stopPropagation();
+      closeLightbox();
+    } else if (overlay.getAttribute("aria-hidden") === "false" && !isBusy()) {
+      closeBetaModal();
+    }
   });
 }
