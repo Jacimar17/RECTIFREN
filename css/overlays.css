@@ -1,0 +1,225 @@
+   MODALS
+   ============================================================ */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  z-index: 50;
+  backdrop-filter: blur(8px);
+}
+
+.modal {
+  width: 100%;
+  max-width: 440px;
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow), var(--shadow-glow-b);
+  padding: 22px;
+  transform: translateY(16px) scale(0.98);
+  opacity: 0;
+  animation: popIn .22s cubic-bezier(.34,1.56,.64,1) forwards;
+  position: relative;
+  overflow: hidden;
+}
+
+.modal::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--azul), var(--rojo));
+}
+
+.modalWide { max-width: 560px; }
+
+@keyframes popIn { to { transform: translateY(0) scale(1); opacity: 1; } }
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 18px;
+}
+
+.modalTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.modalClose {
+  border-radius: var(--radius-xs);
+  padding: 6px 10px;
+  color: var(--muted);
+  font-size: 16px;
+}
+
+.modalClose:hover { color: var(--text); }
+
+.modalBody { display: grid; gap: 14px; }
+.modalActions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
+
+.hint {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+  padding: 10px 14px;
+  background: var(--raised);
+  border-radius: var(--radius-xs);
+  border-left: 2px solid var(--azul);
+}
+
+.edit-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.edit-grid label { display: block; margin-bottom: 4px; }
+#editUbicacion, #addUbicacion { width: 100%; min-height: 40px; }
+
+.editInfo {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--raised);
+}
+
+.editInfo .muted { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+.editValue { font-family: var(--font-display); font-size: 16px; font-weight: 800; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Range filter */
+.range-filter { display: flex; align-items: center; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.range-input { width: 72px !important; padding: 5px 8px !important; font-size: 12px !important; }
+
+/* ============================================================
+   BUSY OVERLAY
+   ============================================================ */
+.busyOverlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 80;
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(10px);
+}
+
+.busyCard {
+  width: min(480px, calc(100% - 36px));
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 22px 24px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  transform: translateY(8px);
+  opacity: 0;
+  animation: popIn .18s ease-out forwards;
+}
+
+.spinner {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 3px solid var(--border2);
+  border-top-color: var(--rojo);
+  animation: spin .7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.busyText { font-family: var(--font-display); font-weight: 800; font-size: 17px; letter-spacing: 0.3px; }
+.busySub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+/* ============================================================
+   FLASH / ANIMACIONES
+   ============================================================ */
+tr.row-flash { animation: flashRow 1.4s ease-out 1; }
+
+@keyframes flashRow {
+  0%   { box-shadow: inset 0 0 0 9999px rgba(26,63,143,0.25); }
+  60%  { box-shadow: inset 0 0 0 9999px rgba(26,63,143,0.10); }
+  100% { box-shadow: inset 0 0 0 9999px rgba(26,63,143,0); }
+}
+
+/* Highlight búsqueda */
+mark.hl {
+  background: rgba(212,43,43,0.2);
+  color: var(--text);
+  border-radius: 3px;
+  padding: 0 2px;
+  font-weight: 700;
+}
+
+/* Refresh dot */
+.refresh-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+  margin-left: 6px;
+  vertical-align: middle;
+  animation: pulseDot 2.5s ease-in-out infinite;
+}
+
+@keyframes pulseDot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.3;transform:scale(.6)} }
+
+/* ============================================================
+   STAT CARDS PULSANTES
+   ============================================================ */
+@keyframes pulseHigh {
+  0%,100% { box-shadow:none; border-color: rgba(239,68,68,0.25); }
+  50%      { box-shadow: 0 0 0 4px rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.6); }
+}
+
+@keyframes pulseMedium {
+  0%,100% { box-shadow:none; border-color: rgba(245,158,11,0.25); }
+  50%      { box-shadow: 0 0 0 3px rgba(245,158,11,0.10); border-color: rgba(245,158,11,0.5); }
+}
+
+.stat-card.stat-pulse-high   { animation: pulseHigh   1.8s ease-in-out infinite; }
+.stat-card.stat-pulse-medium { animation: pulseMedium 2.5s ease-in-out infinite; }
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+.site-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 28px;
+  padding: 18px 22px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  position: relative;
+  overflow: hidden;
+}
+
+.site-footer::before {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, var(--rojo), var(--azul), transparent);
+  opacity: 0.4;
+}
+
+.footer-brand { display: flex; align-items: center; gap: 12px; }
+.footer-logo { width: 38px; height: 38px; object-fit: contain; border-radius: 8px; background: #fff; padding: 4px; border: 1px solid var(--border2); }
+.footer-name { font-family: var(--font-display); font-size: 16px; font-weight: 900; letter-spacing: 1.5px; text-transform: uppercase; }
+.footer-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }

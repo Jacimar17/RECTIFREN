@@ -173,5 +173,5 @@ export function createEquivalencesController({ getAdminToken }) {
     });
   }
 
-  return { openEquivModal, bind };
+  return { openEquivModal, closeEquivModal, bind };
 }

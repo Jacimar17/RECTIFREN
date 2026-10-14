@@ -1,0 +1,121 @@
+.beta-empty-state { padding: 18px; color: var(--muted); background: var(--raised); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.beta-search-loading, .beta-provider-loading {
+  min-height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 18px;
+  color: var(--muted);
+}
+.beta-back-button {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 8px 14px;
+  color: var(--text);
+  background: var(--lift);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.beta-back-button:hover { border-color: var(--rojo); }
+.beta-main-product {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  padding: 20px;
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.beta-main-info { flex: 1; }
+.beta-suppliers-title { margin: 24px 0 14px; color: var(--text); font-size: 21px; }
+.beta-suppliers-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.beta-provider-section { min-width: 0; padding: 16px; background: var(--raised); border: 1px solid var(--border); border-radius: var(--radius); }
+.beta-provider-section h3 { margin: 0 0 12px; color: var(--text); font-size: 18px; }
+.beta-provider-card {
+  min-width: 0;
+  display: flex;
+  gap: 14px;
+  padding: 14px 0;
+  border-top: 1px solid var(--border);
+}
+.beta-provider-card:first-of-type { padding-top: 0; border-top: 0; }
+.beta-provider-card-content { flex: 1; }
+.beta-provider-code { font-size: 22px; }
+.beta-provider-price { font-size: 22px; }
+.beta-provider-meta { color: var(--muted); font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+.beta-provider-link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 4px;
+  padding: 8px 14px;
+  color: #fff;
+  background: var(--rojo);
+  border: 0;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+}
+.beta-provider-link:hover { background: var(--rojo-h); }
+.beta-provider-link-disabled { color: var(--muted); background: var(--lift); }
+.beta-detail-error { margin: 8px 0; color: var(--danger); }
+.beta-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 5vh 5vw;
+  background: rgba(0,0,0,.92);
+}
+.beta-lightbox-figure { max-width: 90vw; max-height: 85vh; margin: 0; text-align: center; }
+.beta-lightbox-image { display: block; max-width: 90vw; max-height: 80vh; object-fit: contain; }
+.beta-lightbox-caption { margin-top: 12px; color: #fff; font-size: 16px; font-weight: 700; }
+.beta-lightbox-close {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  min-width: 44px;
+  min-height: 44px;
+  color: #fff;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,.5);
+  border-radius: 999px;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  .beta-suppliers-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .beta-header { padding: 14px 16px; }
+  .beta-branding { gap: 10px; }
+  .beta-brand-logo { width: 46px; height: 46px; flex-basis: 46px; }
+  .beta-topbar .modalTitle { font-size: 19px; }
+  .beta-description { font-size: 12px; }
+  .beta-content { padding: 16px; }
+  .beta-footer { min-height: 44px; padding: 8px 16px; }
+  .beta-results-grid { grid-template-columns: 1fr; }
+  .beta-result-card { grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 14px; }
+  .beta-result-photo { width: min(100%, 220px); height: min(55vw, 220px); justify-self: center; }
+  .beta-result-price { justify-self: start; text-align: left; }
+  .beta-main-product { flex-direction: column; align-items: stretch; gap: 18px; padding: 14px; }
+  .beta-main-photo { width: min(100%, 260px); height: min(65vw, 260px); align-self: center; }
+  .beta-code-large, .beta-price-large { font-size: 30px; }
+  .beta-provider-card { flex-direction: column; }
+  .beta-provider-photo { width: min(100%, 180px); height: min(48vw, 180px); align-self: flex-start; }
+  .beta-searchbar { gap: 8px; }
+  .beta-searchbar button { min-width: 88px; min-height: 48px; }
+  .beta-lightbox { padding: 7vh 4vw; }
+  .family-summary-card { padding: 12px; }
+  .family-summary-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .family-summary-row .inventory-location-badge { grid-column: 1 / -1; grid-row: 2; width: fit-content; }
+}

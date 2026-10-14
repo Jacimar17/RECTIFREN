@@ -1,0 +1,220 @@
+/* Beta provider comparison: slate palette with a distinct Litton feature card. */
+#betaOverlay.modalOverlay {
+  --bg: #0f172a;
+  --card: #111c31;
+  --raised: #1e293b;
+  --lift: #263449;
+  --text: #f1f5f9;
+  --muted: #cbd5e1;
+  --border: #334155;
+  --border2: #475569;
+  --rojo: #f43f5e;
+  --rojo-h: #e11d48;
+  --success: #4ade80;
+  --warn: #facc15;
+  --danger: #fb7185;
+  padding: 0;
+  color: var(--text);
+  background: #0f172a;
+  backdrop-filter: none;
+}
+
+#betaOverlay .beta-header,
+#betaOverlay .beta-footer {
+  color: var(--text);
+  background: #0f172a;
+  border-color: #334155;
+}
+
+#betaOverlay .beta-content { color: var(--text); }
+#betaOverlay .beta-search-input { background: #1e293b; border-color: #475569; }
+#betaOverlay .beta-searchbar input { color: #f8fafc; }
+#betaOverlay .beta-searchbar input::placeholder { color: #94a3b8; }
+#betaOverlay .beta-searchbar button { background: #e11d48; }
+#betaOverlay .beta-searchbar button:hover { background: #be123c; }
+#betaOverlay .beta-result-card,
+#betaOverlay .beta-provider-section,
+#betaOverlay .beta-empty-state { color: #f1f5f9; background: #111c31; border-color: #334155; }
+#betaOverlay .beta-result-card:hover,
+#betaOverlay .beta-result-card:focus-visible { border-color: #facc15; }
+#betaOverlay .beta-photo-frame { background: #f8fafc; }
+#betaOverlay .beta-photo-placeholder { color: #cbd5e1; background: #334155; }
+#betaOverlay .beta-code,
+#betaOverlay .beta-provider-code { color: #f8fafc; }
+#betaOverlay .beta-result-price,
+#betaOverlay .beta-price { color: #facc15; }
+#betaOverlay .beta-brand,
+#betaOverlay .beta-name,
+#betaOverlay .beta-provider-meta,
+#betaOverlay .beta-description { color: #cbd5e1; }
+#betaOverlay .beta-supplier-stock { color: #e2e8f0; }
+#betaOverlay .beta-stock-unknown,
+#betaOverlay .beta-no { color: #cbd5e1; background: #263449; border-color: #475569; }
+#betaOverlay .beta-back-button { color: #f1f5f9; background: #1e293b; border-color: #475569; }
+#betaOverlay .beta-back-button:hover,
+#betaOverlay .beta-back-button:focus-visible { border-color: #facc15; }
+
+#betaOverlay .beta-main-product {
+  align-items: stretch;
+  gap: clamp(22px, 4vw, 48px);
+  padding: clamp(20px, 3vw, 36px);
+  color: #f8fafc;
+  background: linear-gradient(120deg, #1e293b 0%, #111c31 76%);
+  border: 1px solid #eab308;
+  border-left-width: 5px;
+  box-shadow: 0 16px 42px rgba(2, 6, 23, .28);
+}
+
+#betaOverlay .beta-main-photo {
+  width: clamp(190px, 24vw, 300px);
+  height: clamp(190px, 24vw, 300px);
+  border: 1px solid #475569;
+  border-radius: 14px;
+}
+
+#betaOverlay .beta-main-info {
+  justify-content: center;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+#betaOverlay .beta-section-eyebrow {
+  color: #facc15;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .13em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+#betaOverlay .beta-code-large {
+  margin: 0;
+  color: #f8fafc;
+  font-size: clamp(32px, 4vw, 48px);
+  line-height: 1;
+}
+
+#betaOverlay .beta-price-large {
+  color: #facc15;
+  font-size: clamp(28px, 3.2vw, 40px);
+}
+
+#betaOverlay .beta-main-info .beta-brand { color: #e2e8f0; font-size: 15px; }
+#betaOverlay .beta-main-info .beta-name { max-width: 850px; color: #cbd5e1; font-size: 15px; }
+#betaOverlay .beta-family-codes { display: flex; flex-direction: column; gap: 7px; margin-top: 3px; }
+#betaOverlay .beta-family-label { color: #94a3b8; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+#betaOverlay .beta-family-code-list { display: flex; flex-wrap: wrap; gap: 6px; }
+#betaOverlay .beta-family-code {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 9px;
+  color: #fef9c3;
+  background: rgba(202, 138, 4, .15);
+  border: 1px solid rgba(250, 204, 21, .35);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+#betaOverlay .beta-main-category {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: baseline;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+#betaOverlay .beta-main-category strong { color: #cbd5e1; font-weight: 600; }
+#betaOverlay .beta-suppliers-title { margin-top: 30px; color: #f8fafc; font-size: clamp(22px, 2.5vw, 28px); }
+#betaOverlay .beta-suppliers-grid { gap: 20px; }
+
+#betaOverlay .beta-provider-section {
+  overflow: hidden;
+  padding: 0 16px 12px;
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(2, 6, 23, .2);
+}
+
+#betaOverlay .beta-provider-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 -16px 4px;
+  padding: 16px 18px;
+  color: #eff6ff;
+  background: #1e3a8a;
+  border-bottom: 1px solid rgba(147, 197, 253, .25);
+}
+
+#betaOverlay .beta-provider-section-aimar .beta-provider-heading {
+  color: #fff1f2;
+  background: #9f1239;
+  border-color: rgba(253, 164, 175, .25);
+}
+
+#betaOverlay .beta-provider-heading-mark {
+  width: 10px;
+  height: 34px;
+  flex: 0 0 10px;
+  border-radius: 999px;
+  background: #60a5fa;
+}
+
+#betaOverlay .beta-provider-section-aimar .beta-provider-heading-mark { background: #fda4af; }
+#betaOverlay .beta-provider-heading h3 { margin: 0; color: inherit; font-size: 19px; }
+#betaOverlay .beta-provider-heading p { margin: 3px 0 0; color: rgba(255, 255, 255, .72); font-size: 12px; }
+
+#betaOverlay .beta-provider-card {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  gap: 14px;
+  margin: 12px 0 0;
+  padding: 14px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+}
+
+#betaOverlay .beta-provider-card:first-of-type { padding: 14px; border: 1px solid #334155; }
+#betaOverlay .beta-provider-photo { width: 104px; height: 104px; border-radius: 9px; }
+#betaOverlay .beta-provider-card-content { gap: 8px; }
+#betaOverlay .beta-provider-code { font-size: clamp(19px, 2vw, 23px); }
+#betaOverlay .beta-provider-price { color: #93c5fd; font-size: clamp(20px, 2vw, 24px); }
+#betaOverlay .beta-provider-card-aimar .beta-provider-price { color: #fda4af; }
+#betaOverlay .beta-provider-match { color: #94a3b8; font-size: 11px; }
+#betaOverlay .beta-provider-match strong { color: #e2e8f0; font-weight: 700; }
+#betaOverlay .beta-provider-meta { color: #cbd5e1; font-size: 12px; line-height: 1.5; }
+#betaOverlay .beta-provider-measures { color: #94a3b8; }
+#betaOverlay .beta-provider-badges { margin-top: 0; }
+#betaOverlay .beta-provider-link {
+  width: fit-content;
+  min-width: 142px;
+  margin-top: 4px;
+  color: #eff6ff;
+  background: #1d4ed8;
+}
+#betaOverlay .beta-provider-link:hover { background: #2563eb; }
+#betaOverlay .beta-provider-section-aimar .beta-provider-link { color: #fff1f2; background: #e11d48; }
+#betaOverlay .beta-provider-section-aimar .beta-provider-link:hover { background: #f43f5e; }
+#betaOverlay .beta-provider-link-disabled,
+#betaOverlay .beta-provider-section-aimar .beta-provider-link-disabled {
+  color: #cbd5e1;
+  background: #334155;
+}
+#betaOverlay .beta-detail-error { padding: 14px; color: #fecdd3; background: rgba(159, 18, 57, .18); border-radius: 10px; }
+#betaOverlay .beta-provider-loading { color: #cbd5e1; }
+#betaOverlay .beta-provider-section-aimar .beta-provider-loading .spinner { border-top-color: #fb7185; }
+
+@media (max-width: 640px) {
+  #betaOverlay .beta-main-product { gap: 18px; padding: 16px; }
+  #betaOverlay .beta-main-photo { width: min(100%, 260px); height: min(65vw, 260px); align-self: center; }
+  #betaOverlay .beta-main-info { width: 100%; }
+  #betaOverlay .beta-suppliers-grid { gap: 14px; }
+  #betaOverlay .beta-provider-section { padding: 0 12px 10px; }
+  #betaOverlay .beta-provider-heading { margin-right: -12px; margin-left: -12px; }
+  #betaOverlay .beta-provider-card { grid-template-columns: minmax(0, 1fr); }
+  #betaOverlay .beta-provider-photo { width: min(100%, 180px); height: min(48vw, 180px); }
+  #betaOverlay .beta-provider-link { width: 100%; }
+}

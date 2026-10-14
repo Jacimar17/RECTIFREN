@@ -1,7 +1,12 @@
 import { apiGet, apiPostForm } from "./api.js?v=20260647";
+import { bindMainEvents } from "./main-events.js";
+import { createAdminSession } from "./admin-session.js";
+import { pushUrlParams, readUrlParams } from "./app-url.js";
+import { createInventoryRenderer } from "./inventory-render.js";
+import { applyTheme, initTheme } from "./theme.js";
 import {
   $,
-  renderStock, setBusy, setActiveChip,
+  renderStock, setBusy,
   showToast, updateStats, showSkeleton, updateChipCounts, renderCards, renderFamilySummaries
 } from "./ui.js";
 import { createEquivalencesController } from "./equivalences.js";
@@ -17,7 +22,8 @@ let highlightKey = null;
 let sortCol     = null;
 let sortDir     = "asc";
 let autoRefreshTimer = null;
-let searchTimer = null;
+let rangeMin = null;
+let rangeMax = null;
 let stockRequestId = 0;
 let searchHasMore = false;
 let inventoryFamilies = [];
@@ -25,9 +31,23 @@ let familyMemberIds = new Set();
 let inventoryLittonError = "";
 const AUTO_REFRESH_MS = 5 * 60 * 1000; // 5 minutos
 const SEARCH_DEBOUNCE_MS = 450;
+const doRender = createInventoryRenderer({
+  getState: () => ({
+    cache, isAdmin, viewFilter, highlightKey, sortCol, sortDir, rangeMin, rangeMax,
+    familyMemberIds, inventoryFamilies, inventoryLittonError
+  }),
+  renderFamilySummaries,
+  renderStock,
+  renderCards,
+  pushUrlParams
+});
+const { restoreAdminSession, getAdminToken, saveAdminSession, clearAdminSession } = createAdminSession(() => {
+  adminLogout();
+  showToast("La sesión venció. Ingresá nuevamente.", "info");
+});
 const movements = createMovementController({ getIsAdmin: () => isAdmin });
 const { loadMovs, openHistModal, bindMovSort, bindHistModal, closeHistModal } = movements;
-const { openEquivModal, bind: bindEquivModal } = createEquivalencesController({ getAdminToken });
+const { openEquivModal, closeEquivModal, bind: bindEquivModal } = createEquivalencesController({ getAdminToken });
 const productActions = createProductActions({
   getAdminToken,
   adminLogout: () => adminLogout(),
@@ -40,72 +60,6 @@ const productActions = createProductActions({
   openHistModal,
   openEquivModal
 });
-
-/* ===== URL params ===== */
-function readUrlParams() {
-  const p = new URLSearchParams(location.search);
-  const f = p.get("filter");
-  const q = p.get("q");
-  if (f && ["all","out","low"].includes(f)) viewFilter = f;
-  if (q) { const s = $("search"); if (s) { s.value = q; $("btnClearSearch") && ($("btnClearSearch").style.display = "flex"); } }
-  const chipMap = { all:"fAll", out:"fOut", low:"fLow" };
-  setActiveChip(chipMap[viewFilter] || "fAll");
-}
-
-function pushUrlParams() {
-  const q = $("search")?.value || "";
-  const p = new URLSearchParams();
-  if (viewFilter !== "all") p.set("filter", viewFilter);
-  if (q) p.set("q", q);
-  const str = p.toString();
-  history.replaceState(null, "", str ? `?${str}` : location.pathname);
-}
-
-/* ===== Sesión ===== */
-const ADMIN_SESSION_KEY = "rectifren_admin_session";
-let adminSession = null;
-let sessionExpiryTimer = null;
-
-function scheduleSessionExpiry() {
-  if (sessionExpiryTimer) clearTimeout(sessionExpiryTimer);
-  const remaining = (adminSession?.expiresAt || 0) - Date.now();
-  if (remaining <= 0) return;
-  sessionExpiryTimer = setTimeout(() => {
-    adminLogout();
-    showToast("La sesión venció. Ingresá nuevamente.", "info");
-  }, remaining);
-}
-
-function restoreAdminSession() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(ADMIN_SESSION_KEY) || "null");
-    if (saved?.token && Number.isFinite(saved.expiresAt) && saved.expiresAt > Date.now()) {
-      adminSession = saved;
-      scheduleSessionExpiry();
-      return true;
-    }
-  } catch { /* sesión inválida */ }
-  localStorage.removeItem(ADMIN_SESSION_KEY);
-  adminSession = null;
-  return false;
-}
-
-function getAdminToken() {
-  return adminSession?.expiresAt > Date.now() ? adminSession.token : "";
-}
-
-function saveAdminSession(token, expiresAt) {
-  adminSession = { token, expiresAt };
-  localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(adminSession));
-  scheduleSessionExpiry();
-}
-
-function clearAdminSession() {
-  if (sessionExpiryTimer) clearTimeout(sessionExpiryTimer);
-  sessionExpiryTimer = null;
-  adminSession = null;
-  localStorage.removeItem(ADMIN_SESSION_KEY);
-}
 
 function setBusyState(on, text) { busy = on; setBusy(on, text); }
 
@@ -120,56 +74,6 @@ function setAdminButtonState() {
 function setLastUpdatedNow() {
   const el = $("lastUpdated"); if (!el) return;
   el.textContent = `Última actualización: ${new Date().toLocaleString("es-AR")}`;
-}
-
-/* ===== Tema ===== */
-function applyTheme(theme) {
-  const t = theme === "dark" ? "dark" : "light";
-  document.documentElement.setAttribute("data-theme", t);
-  localStorage.setItem("rectifren_theme", t);
-  const btn = $("btnTheme");
-  if (btn) btn.textContent = t === "dark" ? "☀️" : "🌙";
-}
-
-function initTheme() {
-  const saved = localStorage.getItem("rectifren_theme");
-  if (saved === "dark" || saved === "light") { applyTheme(saved); return; }
-  applyTheme(window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-}
-
-/* ===== Render ===== */
-let rangeMin = null;
-let rangeMax = null;
-
-function doRender() {
-  const query = $("search")?.value.trim() || "";
-  const statsRow = $("statsRow");
-  if (statsRow) statsRow.style.display = query ? "" : "none";
-  const labels = document.querySelectorAll("#statsRow .stat-label");
-  const defaultLabels = ["Total productos", "Unidades totales", "Sin stock", "Bajo stock", "En stock"];
-  const searchLabels = ["Coincidencias cargadas", "Unidades encontradas", "Sin stock", "Bajo stock", "Con stock"];
-  labels.forEach((label, index) => { label.textContent = query ? searchLabels[index] : defaultLabels[index]; });
-  ["fAll", "fOut", "fLow", "btnAdvSearch"].forEach(id => {
-    const control = $(id);
-    if (control) control.disabled = !query;
-  });
-  const exportButton = $("btnExport");
-  if (exportButton) exportButton.disabled = !query || cache.length === 0;
-  const opts = {
-    list: cache, isAdmin, viewFilter, query, highlightKey, sortCol, sortDir, rangeMin, rangeMax,
-    familyMemberIds
-  };
-  const littonNotice = $("littonSearchNotice");
-  if (littonNotice) {
-    littonNotice.hidden = !inventoryLittonError || !query;
-    littonNotice.textContent = inventoryLittonError
-      ? `No se pudo ampliar esta búsqueda con Litton; se muestran las coincidencias locales disponibles. ${inventoryLittonError}`
-      : "";
-  }
-  renderFamilySummaries(query ? inventoryFamilies : []);
-  renderStock(opts);
-  renderCards(opts);
-  pushUrlParams();
 }
 
 /* ===== Notificaciones ===== */
@@ -336,161 +240,38 @@ function toggleCompact() {
 }
 
 
-/* ===== Sort headers ===== */
-function bindSortHeaders() {
-  document.querySelectorAll("th.sortable").forEach(th => {
-    th.addEventListener("click", () => {
-      const col = th.dataset.col;
-      if (sortCol === col) sortDir = sortDir === "asc" ? "desc" : "asc";
-      else { sortCol = col; sortDir = "asc"; }
-      document.querySelectorAll("th.sortable").forEach(t => t.classList.remove("sort-asc","sort-desc"));
-      th.classList.add(sortDir === "asc" ? "sort-asc" : "sort-desc");
-      doRender();
-    });
-  });
-}
-
-/* ===== Bind events ===== */
-function bindEvents() {
-  $("search").addEventListener("input", () => {
-    const val = $("search").value;
-    const btn = $("btnClearSearch");
-    if (btn) btn.style.display = val ? "flex" : "none";
-    stockRequestId++;
-    clearTimeout(searchTimer);
-    if (!val.trim()) {
-      rangeMin = null;
-      rangeMax = null;
-      if ($("rangeMin")) $("rangeMin").value = "";
-      if ($("rangeMax")) $("rangeMax").value = "";
-      if ($("rangeFilter")) $("rangeFilter").style.display = "none";
-      if ($("btnAdvSearch")) $("btnAdvSearch").textContent = "⚡ Filtro stock";
-      loadStock("");
-      return;
-    }
-    searchTimer = setTimeout(() => loadStock(val.trim()), SEARCH_DEBOUNCE_MS);
-  });
-
-  const btnClear = $("btnClearSearch");
-  if (btnClear) btnClear.addEventListener("click", () => {
-    $("search").value = "";
-    btnClear.style.display = "none";
-    $("search").focus();
-    $("search").dispatchEvent(new Event("input"));
-  });
-
-  const btnExport = $("btnExport");
-  if (btnExport) btnExport.addEventListener("click", () => {
-    if (!cache.length) { showToast("No hay datos para exportar.", "info"); return; }
-    const rows = [["CODIGO","MARCA","STOCK","UBICACION"]];
-    for (const item of cache) rows.push([item.codigo||"", item.marca||"", String(item.stock||0), item.ubicacion === "NEGOCIO" ? "Negocio" : "Depósito/Galpón"]);
-    const csv  = rows.map(r => r.map(c => `"${String(c).replaceAll('"','""')}"`).join(",")).join("\r\n");
-    const blob = new Blob(["\uFEFF"+csv], { type:"text/csv;charset=utf-8;" });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a");
-    a.href = url; a.download = `rectifren_stock_${new Date().toISOString().slice(0,10)}.csv`;
-    a.click(); URL.revokeObjectURL(url);
-    showToast("Stock exportado correctamente.", "success");
-  });
-
-  $("btnAdmin").addEventListener("click", () => {
-    if (busy) return;
-    if (isAdmin) adminLogout(); else openLoginModal();
-  });
-
-  $("btnTheme").addEventListener("click", () => {
-    if (busy) return;
-    const cur = document.documentElement.getAttribute("data-theme") || "light";
-    applyTheme(cur === "dark" ? "light" : "dark");
-  });
-
-  $("btnCloseModal").addEventListener("click", () => { if (!busy) closeLoginModal(); });
-  $("btnCancel").addEventListener("click",      () => { if (!busy) closeLoginModal(); });
-  $("btnLogin").addEventListener("click", adminLogin);
-  $("adminPass").addEventListener("keydown", e => { if (e.key === "Enter") adminLogin(); });
-
-  $("modalOverlay").addEventListener("click", e => {
-    if (e.target === $("modalOverlay") && !busy) closeLoginModal();
-  });
-
-  $("movRange").addEventListener("change", loadMovs);
-
-  const chipFilter = (f, id) => () => {
-    if (busy) return;
-    viewFilter = f; setActiveChip(id);
-    const tb = document.getElementById("tbody");
-    if (tb) {
-      tb.classList.add("fading");
-      setTimeout(() => { doRender(); tb.classList.remove("fading"); }, 120);
-    } else { doRender(); }
-  };
-  $("fAll").addEventListener("click", chipFilter("all","fAll"));
-  $("fOut").addEventListener("click", chipFilter("out","fOut"));
-  $("fLow").addEventListener("click", chipFilter("low","fLow"));
-
-  // Compact toggle
-  $("btnCompact")?.addEventListener("click", toggleCompact);
-
-  // Búsqueda avanzada - rango de stock
-  $("btnAdvSearch")?.addEventListener("click", () => {
-    const rf = $("rangeFilter");
-    if (!rf) return;
-    const visible = rf.style.display !== "none";
-    rf.style.display = visible ? "none" : "flex";
-    if (visible) { rangeMin = null; rangeMax = null; $("rangeMin").value=""; $("rangeMax").value=""; doRender(); }
-    const btn = $("btnAdvSearch");
-    if (btn) btn.textContent = visible ? "⚡ Filtro stock" : "⚡ Quitar filtro";
-  });
-
-  const applyRange = () => {
-    const mn = $("rangeMin")?.value; const mx = $("rangeMax")?.value;
-    rangeMin = mn !== "" && mn !== null ? Number(mn) : null;
-    rangeMax = mx !== "" && mx !== null ? Number(mx) : null;
-    doRender();
-  };
-  $("rangeMin")?.addEventListener("input", applyRange);
-  $("rangeMax")?.addEventListener("input", applyRange);
-  $("btnClearRange")?.addEventListener("click", () => {
-    rangeMin = null; rangeMax = null;
-    if ($("rangeMin")) $("rangeMin").value = "";
-    if ($("rangeMax")) $("rangeMax").value = "";
-    doRender();
-  });
-
-  // Mov sort
-  bindMovSort();
-
-  document.addEventListener("keydown", e => {
-    if (e.key === "Escape" && !busy) {
-      if ($("betaLightbox")?.getAttribute("aria-hidden") === "false") return;
-      if ($("modalOverlay").style.display === "flex") closeLoginModal();
-      productActions.closeOpenModals();
-      if ($("equivOverlay")?.style.display  === "flex") closeEquivModal();
-      if ($("histOverlay")?.style.display  === "flex") closeHistModal();
-    }
-    if (e.key === "/" && document.activeElement?.tagName !== "INPUT") {
-      e.preventDefault();
-      $("search")?.focus();
-    }
-  });
-
-  // Visibility: pausar auto-refresh cuando la pestaña está oculta
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden) stopAutoRefresh(); else startAutoRefresh();
-  });
-
-  bindSortHeaders();
-}
-
 /* ===== Init ===== */
 document.addEventListener("DOMContentLoaded", () => {
   initTheme();
-  readUrlParams();
+  viewFilter = readUrlParams(viewFilter);
 
   isAdmin = restoreAdminSession();
 
   setAdminButtonState();
-  bindEvents();
+  bindMainEvents({
+    state: {
+      get busy() { return busy; },
+      get isAdmin() { return isAdmin; },
+      get cache() { return cache; },
+      get viewFilter() { return viewFilter; },
+      set viewFilter(value) { viewFilter = value; },
+      get rangeMin() { return rangeMin; },
+      set rangeMin(value) { rangeMin = value; },
+      get rangeMax() { return rangeMax; },
+      set rangeMax(value) { rangeMax = value; },
+      get sortCol() { return sortCol; },
+      set sortCol(value) { sortCol = value; },
+      get sortDir() { return sortDir; },
+      set sortDir(value) { sortDir = value; }
+    },
+    actions: {
+      adminLogin, adminLogout, applyTheme, bindMovSort, closeEquivModal, closeHistModal,
+      closeLoginModal, doRender, invalidateSearch: () => { stockRequestId++; },
+      loadMovs, loadStock, openLoginModal, productActions, startAutoRefresh, stopAutoRefresh,
+      toggleCompact
+    },
+    searchDebounceMs: SEARCH_DEBOUNCE_MS
+  });
   productActions.bind();
   bindHistModal();
   bindEquivModal();
