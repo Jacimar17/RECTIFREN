@@ -242,6 +242,7 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
   overlay.addEventListener("click", event => {
     const zoomable = event.target.closest?.(".beta-zoomable");
     if (zoomable) {
+      if (zoomable.closest(".beta-result-card")) return;
       event.preventDefault();
       event.stopPropagation();
       openLightbox(zoomable);
