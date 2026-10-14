@@ -128,24 +128,74 @@ test("normalizes punctuation and separators while requiring complete code equali
   assert.equal(coincideEquivalencia({ codigo: "OTHER", equivalencias: ["0988.00"] }, "0988 00"), true);
 });
 
-test("searches compact and original ATONOR terms until the exact normalized code matches", async () => {
+test("queries the live-style ATONOR catalog and rejects partial or unsupported products", async () => {
   const terms = [];
-  const result = await buscarAtonor.buscarCoincidencia("0988 00", async (term) => {
+  const producto = (id, name, sku, proveedor = "REMSA") => ({
+    id,
+    name,
+    sku,
+    attributes: [{ taxonomy: "pa_proveedor", terms: [{ name: proveedor }] }],
+    prices: { price: "8734602", currency_minor_unit: 2 },
+    is_in_stock: true,
+  });
+  const result = await buscarAtonor.buscarCoincidencia("0988 00", "REMSA", async (term) => {
     terms.push(term);
-    if (term === "098800") return [{ codigo: "1098800", marca: "Otro repuesto" }];
-    if (term === "0988 00") return [
-      { codigo: "0988-00", marca: "Correcto" },
-      { codigo: "0988 007", marca: "Código parcial" },
+    if (term === "REMSA0988-00") return [
+      producto(1, "REMSA0988-00", "REMSA0988", "LITTON"),
+      producto(2, "REMSA0988-007", "REMSA0988-007"),
+      producto(3, "REMSA0988-00", "REMSA0988", "MAZFREN"),
     ];
     return [];
   });
 
-  assert.deepEqual(terms, ["098800", "0988 00"]);
-  assert.deepEqual(result, [{ codigo: "0988-00", marca: "Correcto" }]);
+  assert.deepEqual(terms, ["REMSA0988-00"]);
+  assert.equal(result.length, 1);
+  assert.equal(result[0].codigo, "REMSA0988-00");
+  assert.equal(result[0].marca, "REMSA");
+  assert.equal(result[0].precio, 87346.02);
+  assert.equal(result[0].stockDisponible, true);
 });
 
-test("generates compact and source-form ATONOR search terms without numeric-prefix guesses", () => {
-  assert.deepEqual(buscarAtonor.terminos("0988 00"), ["098800", "0988 00"]);
-  assert.deepEqual(buscarAtonor.terminos("HQ-2227A"), ["HQ2227A", "HQ-2227A"]);
-  assert.deepEqual(buscarAtonor.terminos("PD/528"), ["PD528", "PD/528"]);
+test("builds the four exact ATONOR brand notations from Litton aliases", () => {
+  assert.deepEqual(buscarAtonor.terminos("44980NA", "LITTON"), [
+    "L4498-0-NA", "L4498-0-ULTRA", "44980NA",
+  ]);
+  assert.deepEqual(buscarAtonor.terminos("PD/528", "FRASLE"), [
+    "PD-528", "PD/528", "PD528",
+  ]);
+  assert.deepEqual(buscarAtonor.terminos("05P1379", "LPR"), ["LPR05P1379", "05P1379"]);
+  assert.deepEqual(buscarAtonor.terminos("0988 00", "REMSA"), [
+    "REMSA0988-00", "0988 00", "098800",
+  ]);
+});
+
+test("matches ATONOR suffixes and brand prefixes exactly, rejecting partial and unrelated products", () => {
+  assert.equal(buscarAtonor.coincide("PD-528 S/A", "PD/528", "FRASLE"), true);
+  assert.equal(buscarAtonor.coincide("L4498-0-NA", "44980NA", "LITTON"), true);
+  assert.equal(buscarAtonor.coincide("L4498-0-ULTRA", "44980NA", "LITTON"), true);
+  assert.equal(buscarAtonor.coincide("LPR05P1379", "05P1379", "LPR"), true);
+  assert.equal(buscarAtonor.coincide("REMSA0988-00", "0988 00", "REMSA"), true);
+  assert.equal(buscarAtonor.coincide("LPR105P1379", "05P1379", "LPR"), false);
+  assert.equal(buscarAtonor.coincide("PD-528 S/A1", "PD/528", "FRASLE"), false);
+});
+
+test("maps live ATONOR catalog details including images, current price, description and measurements", () => {
+  const item = buscarAtonor.mapear({
+    name: "L4498-0-NA",
+    sku: "L4498-0-NA",
+    description: "<p>Past Toyota Hilux</p>",
+    short_description: "<ul><li>LARGO: 134,5 MM</li><li>ALTURA: 77,1 MM</li><li>ESPESOR: 17 MM</li></ul>",
+    prices: { price: "3828309", currency_minor_unit: 2 },
+    images: [{ src: "https://atonor.com.ar/foto.jpg" }],
+    permalink: "https://atonor.com.ar/producto/l4498-0-na/",
+    is_in_stock: true,
+    attributes: [{ taxonomy: "pa_proveedor", terms: [{ name: "LITTON" }] }],
+  }, "44980NA");
+
+  assert.equal(item.nombre, "Past Toyota Hilux");
+  assert.equal(item.medidas, "Largo: 134,5 MM · Alto: 77,1 MM · Espesor: 17 MM");
+  assert.equal(item.precio, 38283.09);
+  assert.equal(item.stockDisponible, true);
+  assert.equal(item.imagen, "https://atonor.com.ar/foto.jpg");
+  assert.equal(item.link, "https://atonor.com.ar/producto/l4498-0-na/");
 });

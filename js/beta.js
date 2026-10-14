@@ -63,6 +63,11 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
   }
 
   function providerStockBadge(item) {
+    if (typeof item.stockDisponible === "boolean") {
+      const label = item.stockDisponible ? "Disponible" : "Sin stock";
+      const className = item.stockDisponible ? "beta-ok" : "beta-stock-empty";
+      return `<span class="beta-badge ${className}">${label}</span>`;
+    }
     if (item.stockProveedor == null || item.stockProveedor === "") {
       return `<span class="beta-badge beta-stock-unknown">Stock no informado</span>`;
     }

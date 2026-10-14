@@ -64,12 +64,12 @@ async function buscarFamiliaLitton(codigoLitton, {
 
   const tareas = equivalencias.flatMap((equivalencia) => [
     { proveedor: "Aimar", codigo: equivalencia.codigo, buscar: buscarAimar },
-    { proveedor: "ATONOR", codigo: equivalencia.codigo, buscar: buscarAtonor },
+    { proveedor: "ATONOR", codigo: equivalencia.codigo, marca: equivalencia.marca, buscar: buscarAtonor },
   ]);
   const errores = [];
   const resultados = await mapConcurrent(tareas, concurrency, async (tarea) => {
     try {
-      const items = await tarea.buscar(tarea.codigo);
+      const items = await tarea.buscar(tarea.codigo, tarea.marca);
       if (!Array.isArray(items)) {
         throw new Error(`${tarea.proveedor} devolvió una respuesta inválida.`);
       }
