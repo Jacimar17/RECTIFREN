@@ -100,6 +100,15 @@
 
 #betaOverlay .beta-main-info .beta-brand { color: #e2e8f0; font-size: 15px; }
 #betaOverlay .beta-main-info .beta-name { max-width: 850px; color: #cbd5e1; font-size: 15px; }
+#betaOverlay .beta-inventory-section { background: #111c31; border-color: #334155; }
+#betaOverlay .beta-inventory-heading h2 { color: #f8fafc; }
+#betaOverlay .beta-inventory-product { color: #f1f5f9; }
+#betaOverlay .beta-inventory-product span,
+#betaOverlay .beta-inventory-totals { color: #cbd5e1; }
+#betaOverlay .beta-inventory-stock,
+#betaOverlay .beta-inventory-totals strong { color: #f8fafc; }
+#betaOverlay .beta-inventory-warning { color: #facc15; }
+#betaOverlay .beta-inventory-empty { color: #cbd5e1; }
 #betaOverlay .beta-family-codes { display: flex; flex-direction: column; gap: 7px; margin-top: 3px; }
 #betaOverlay .beta-family-label { color: #94a3b8; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 #betaOverlay .beta-family-code-list { display: flex; flex-wrap: wrap; gap: 6px; }

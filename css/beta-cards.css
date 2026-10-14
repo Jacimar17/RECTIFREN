@@ -31,6 +31,31 @@
   border-radius: var(--radius);
 }
 .beta-main-info { flex: 1; }
+.beta-inventory-section {
+  margin-top: 24px;
+  padding: 16px;
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.beta-inventory-heading h2 { margin: 0; color: var(--text); font-size: 18px; }
+.beta-inventory-rows { display: grid; gap: 7px; margin: 12px 0 0; padding: 0; list-style: none; }
+.beta-inventory-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px 14px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.beta-inventory-product { min-width: 0; display: flex; flex-wrap: wrap; gap: 4px 8px; color: var(--text); overflow-wrap: anywhere; }
+.beta-inventory-product strong { font-weight: 800; }
+.beta-inventory-product span { color: var(--muted); }
+.beta-inventory-stock { color: var(--text); font-weight: 800; white-space: nowrap; }
+.beta-inventory-totals { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 12px; color: var(--muted); font-size: 12px; }
+.beta-inventory-totals strong { color: var(--text); }
+.beta-inventory-warning { margin: 12px 0 0; color: var(--warn); font-size: 12px; line-height: 1.5; }
+.beta-inventory-empty { margin: 12px 0 0; color: var(--muted); }
 .beta-suppliers-title { margin: 24px 0 14px; color: var(--text); font-size: 21px; }
 .beta-suppliers-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
 .beta-provider-section { min-width: 0; padding: 16px; background: var(--raised); border: 1px solid var(--border); border-radius: var(--radius); }
@@ -91,6 +116,10 @@
   .beta-result-photo { width: min(100%, 220px); height: min(55vw, 220px); justify-self: center; }
   .beta-result-price { justify-self: start; text-align: left; }
   .beta-main-product { flex-direction: column; align-items: stretch; gap: 18px; padding: 14px; }
+  .beta-inventory-section { padding: 12px; }
+  .beta-inventory-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .beta-inventory-row .inventory-location-badge { grid-column: 1; grid-row: 2; width: fit-content; }
+  .beta-inventory-stock { grid-column: 2; grid-row: 1 / span 2; }
   .beta-main-photo { width: min(100%, 260px); height: min(65vw, 260px); align-self: center; }
   .beta-code-large, .beta-price-large { font-size: 30px; }
   .beta-provider-card { flex-direction: column; }

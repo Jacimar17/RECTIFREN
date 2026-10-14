@@ -1,6 +1,6 @@
-import { apiBetaProveedores, apiDetalleProveedores } from "./api.js";
-import { $, showToast } from "./ui.js";
-import { createBetaView } from "./beta-view.js";
+import { apiBetaProveedores, apiDetalleProveedores, apiGet } from "./api.js";
+import { $, escapeHtml, showToast } from "./ui.js";
+import { createBetaView } from "./beta-view.js?v=20261014";
 
 export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }) {
   const overlay = $("betaOverlay");
@@ -13,8 +13,20 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
   let activeViewId = 0;
   const detailCache = new Map();
   const detailRequests = new Map();
+  const inventoryCache = new Map();
+  const inventoryRequests = new Map();
   const betaView = createBetaView(results);
-  const { fmtPrecio, safeHttpUrl, photoMarkup, semaforo, renderResults, renderProviderSection, updateProviderSections } = betaView;
+  const {
+    fmtPrecio,
+    safeHttpUrl,
+    photoMarkup,
+    semaforo,
+    renderResults,
+    renderInventorySection,
+    updateInventorySection,
+    renderProviderSection,
+    updateProviderSections
+  } = betaView;
 
   function openBetaModal() {
     $("betaStatus").textContent = "";
@@ -52,6 +64,22 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
     }
   }
 
+  async function getInventoryDetails(item) {
+    const code = item.codigo || "";
+    if (inventoryCache.has(code)) return inventoryCache.get(code);
+    if (inventoryRequests.has(code)) return inventoryRequests.get(code);
+
+    const request = apiGet({ action: "search", q: code });
+    inventoryRequests.set(code, request);
+    try {
+      const response = await request;
+      if (response.ok) inventoryCache.set(code, response);
+      return response;
+    } finally {
+      inventoryRequests.delete(code);
+    }
+  }
+
   async function showDetails(item, index) {
     selectedResultIndex = index;
     const viewId = ++activeViewId;
@@ -73,12 +101,14 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
           <div class="beta-family-codes" aria-live="polite"></div>
         </div>
       </section>
+      ${renderInventorySection()}
       <h2 class="beta-suppliers-title">Dónde conseguirla</h2>
       <div class="beta-suppliers-grid">
         ${renderProviderSection("ATONOR")}
         ${renderProviderSection("Aimar")}
       </div>`;
 
+    loadInventoryDetails(item, viewId);
     if (detailCache.has(code)) {
       updateProviderSections(detailCache.get(code));
       return;
@@ -95,6 +125,21 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
     } catch (error) {
       if (viewId !== activeViewId) return;
       updateProviderSections(null, error.message || "Error al consultar los proveedores.");
+    }
+  }
+
+  async function loadInventoryDetails(item, viewId) {
+    try {
+      const response = await getInventoryDetails(item);
+      if (viewId !== activeViewId) return;
+      if (!response.ok) {
+        updateInventorySection(null, response.error || "No se pudo consultar el inventario.");
+        return;
+      }
+      updateInventorySection(response);
+    } catch (error) {
+      if (viewId !== activeViewId) return;
+      updateInventorySection(null, error.message || "Error al consultar el inventario.");
     }
   }
 
