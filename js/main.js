@@ -1,4 +1,4 @@
-import { apiGet, apiPostForm } from "./api.js?v=20260647";
+import { apiGet, apiPostForm } from "./api.js";
 import { bindMainEvents } from "./main-events.js";
 import { createAdminSession } from "./admin-session.js";
 import { pushUrlParams, readUrlParams } from "./app-url.js";
@@ -11,7 +11,7 @@ import {
 } from "./ui.js";
 import { createEquivalencesController } from "./equivalences.js";
 import { createMovementController } from "./movements.js";
-import { bindBetaModal } from "./beta.js?v=20260647";
+import { bindBetaModal } from "./beta.js";
 import { createProductActions } from "./product-actions.js";
 
 let cache       = [];
