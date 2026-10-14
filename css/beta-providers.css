@@ -45,7 +45,6 @@
 #betaOverlay .beta-price { color: #facc15; }
 #betaOverlay .beta-brand,
 #betaOverlay .beta-name,
-#betaOverlay .beta-provider-meta,
 #betaOverlay .beta-description { color: #cbd5e1; }
 #betaOverlay .beta-supplier-stock { color: #e2e8f0; }
 #betaOverlay .beta-stock-unknown,
@@ -180,29 +179,10 @@
 #betaOverlay .beta-provider-card:first-of-type { padding: 14px; border: 1px solid #334155; }
 #betaOverlay .beta-provider-photo { width: 104px; height: 104px; border-radius: 9px; }
 #betaOverlay .beta-provider-card-content { gap: 8px; }
+#betaOverlay .beta-provider-brand { color: #cbd5e1; }
 #betaOverlay .beta-provider-code { font-size: clamp(19px, 2vw, 23px); }
 #betaOverlay .beta-provider-price { color: #93c5fd; font-size: clamp(20px, 2vw, 24px); }
 #betaOverlay .beta-provider-card-aimar .beta-provider-price { color: #fda4af; }
-#betaOverlay .beta-provider-match { color: #94a3b8; font-size: 11px; }
-#betaOverlay .beta-provider-match strong { color: #e2e8f0; font-weight: 700; }
-#betaOverlay .beta-provider-meta { color: #cbd5e1; font-size: 12px; line-height: 1.5; }
-#betaOverlay .beta-provider-measures { color: #94a3b8; }
-#betaOverlay .beta-provider-badges { margin-top: 0; }
-#betaOverlay .beta-provider-link {
-  width: fit-content;
-  min-width: 142px;
-  margin-top: 4px;
-  color: #eff6ff;
-  background: #1d4ed8;
-}
-#betaOverlay .beta-provider-link:hover { background: #2563eb; }
-#betaOverlay .beta-provider-section-aimar .beta-provider-link { color: #fff1f2; background: #e11d48; }
-#betaOverlay .beta-provider-section-aimar .beta-provider-link:hover { background: #f43f5e; }
-#betaOverlay .beta-provider-link-disabled,
-#betaOverlay .beta-provider-section-aimar .beta-provider-link-disabled {
-  color: #cbd5e1;
-  background: #334155;
-}
 #betaOverlay .beta-detail-error { padding: 14px; color: #fecdd3; background: rgba(159, 18, 57, .18); border-radius: 10px; }
 #betaOverlay .beta-provider-loading { color: #cbd5e1; }
 #betaOverlay .beta-provider-section-aimar .beta-provider-loading .spinner { border-top-color: #fb7185; }
@@ -216,5 +196,4 @@
   #betaOverlay .beta-provider-heading { margin-right: -12px; margin-left: -12px; }
   #betaOverlay .beta-provider-card { grid-template-columns: minmax(0, 1fr); }
   #betaOverlay .beta-provider-photo { width: min(100%, 180px); height: min(48vw, 180px); }
-  #betaOverlay .beta-provider-link { width: 100%; }
 }

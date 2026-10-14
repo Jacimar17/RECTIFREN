@@ -4,7 +4,11 @@ export function createBetaView(results) {
   function fmtPrecio(value) {
     const price = Number(value);
     if (!Number.isFinite(price)) return "—";
-    return price.toLocaleString("es-AR", { style: "currency", currency: "ARS" });
+    return price.toLocaleString("es-AR", {
+      style: "currency",
+      currency: "ARS",
+      maximumFractionDigits: 0
+    });
   }
 
   function safeHttpUrl(value) {
@@ -35,25 +39,6 @@ export function createBetaView(results) {
       <span class="beta-dot" style="background:${status.color}" aria-hidden="true"></span>
       <span>${status.label}</span>
     </span>`;
-  }
-
-  function providerStockBadge(item) {
-    if (typeof item.stockDisponible === "boolean") {
-      const label = item.stockDisponible ? "Disponible" : "Sin stock";
-      const className = item.stockDisponible ? "beta-ok" : "beta-stock-empty";
-      return `<span class="beta-badge ${className}">${label}</span>`;
-    }
-    if (item.stockProveedor == null || item.stockProveedor === "") {
-      return `<span class="beta-badge beta-stock-unknown">Stock no informado</span>`;
-    }
-    const stock = Number(item.stockProveedor);
-    if (!Number.isFinite(stock)) {
-      return `<span class="beta-badge beta-stock-unknown">Stock no informado</span>`;
-    }
-    if (stock > 0) {
-      return `<span class="beta-badge beta-ok">${escapeHtml(String(stock))} u.</span>`;
-    }
-    return `<span class="beta-badge beta-stock-empty">Sin stock</span>`;
   }
 
   function renderResultCard(item, index) {
@@ -88,23 +73,14 @@ export function createBetaView(results) {
 
   function renderProviderItem(item, provider) {
     const code = item.codigo || "Código s/d";
-    const link = safeHttpUrl(item.link);
-    const measures = item.medidas ? `<span class="beta-provider-measures">${escapeHtml(item.medidas)}</span>` : "";
+    const brand = typeof item.marca === "string" ? item.marca.trim() : "";
     const providerClass = provider.toLowerCase();
-    const matchCode = item.codigoConsultado
-      ? `<div class="beta-provider-match">Coincidencia por <strong>${escapeHtml(item.codigoConsultado)}</strong></div>`
-      : "";
     return `<article class="beta-provider-card beta-provider-card-${providerClass}">
       ${photoMarkup(item.imagen, code, "beta-provider-photo")}
       <div class="beta-provider-card-content">
+        ${brand ? `<div class="beta-provider-brand">${escapeHtml(brand)}</div>` : ""}
         <div class="beta-provider-code">${escapeHtml(code)}</div>
         <div class="beta-provider-price">${fmtPrecio(item.precio)}</div>
-        ${matchCode}
-        <div class="beta-provider-meta">${escapeHtml(item.marca || "Marca no informada")}${item.nombre ? ` · ${escapeHtml(item.nombre)}` : ""}${measures ? ` · ${measures}` : ""}</div>
-        <div class="beta-provider-badges">${providerStockBadge(item)}</div>
-        ${link
-          ? `<a class="beta-provider-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">Ver en ${provider}</a>`
-          : `<span class="beta-provider-link beta-provider-link-disabled">Enlace no disponible</span>`}
       </div>
     </article>`;
   }

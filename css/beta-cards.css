@@ -44,26 +44,9 @@
 }
 .beta-provider-card:first-of-type { padding-top: 0; border-top: 0; }
 .beta-provider-card-content { flex: 1; }
+.beta-provider-brand { color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; }
 .beta-provider-code { font-size: 22px; }
 .beta-provider-price { font-size: 22px; }
-.beta-provider-meta { color: var(--muted); font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
-.beta-provider-link {
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: 4px;
-  padding: 8px 14px;
-  color: #fff;
-  background: var(--rojo);
-  border: 0;
-  border-radius: var(--radius-sm);
-  font: inherit;
-  font-weight: 700;
-  text-decoration: none;
-}
-.beta-provider-link:hover { background: var(--rojo-h); }
-.beta-provider-link-disabled { color: var(--muted); background: var(--lift); }
 .beta-detail-error { margin: 8px 0; color: var(--danger); }
 .beta-lightbox {
   position: fixed;
