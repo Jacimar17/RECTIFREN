@@ -67,7 +67,7 @@ export async function apiPostForm(bodyObj, timeoutMs = 15000) {
     return request(`${API_URL}/api/stock/in`, {
       method: "POST",
       headers: jsonHeaders(token),
-      body: JSON.stringify({ codigo: bodyObj.codigo, marca: bodyObj.marca, cantidad: bodyObj.cantidad || 1, nota: bodyObj.nota || "" })
+      body: JSON.stringify({ codigo: bodyObj.codigo, marca: bodyObj.marca, ubicacion: bodyObj.ubicacion, cantidad: bodyObj.cantidad || 1, nota: bodyObj.nota || "" })
     }, timeoutMs);
   }
 
@@ -76,7 +76,7 @@ export async function apiPostForm(bodyObj, timeoutMs = 15000) {
     return request(`${API_URL}/api/stock/out`, {
       method: "POST",
       headers: jsonHeaders(token),
-      body: JSON.stringify({ codigo: bodyObj.codigo, marca: bodyObj.marca, cantidad: bodyObj.cantidad || 1, nota: bodyObj.nota || "" })
+      body: JSON.stringify({ codigo: bodyObj.codigo, marca: bodyObj.marca, ubicacion: bodyObj.ubicacion, cantidad: bodyObj.cantidad || 1, nota: bodyObj.nota || "" })
     }, timeoutMs);
   }
 
@@ -84,7 +84,11 @@ export async function apiPostForm(bodyObj, timeoutMs = 15000) {
   if (action === "set") {
     const lista = await request(`${API_URL}/api/productos/search?q=${encodeURIComponent(bodyObj.codigo || "")}`, {}, 45000);
     if (!lista.ok) return lista;
-    const prod = (lista.data || []).find(p => p.codigo === bodyObj.codigo && p.marca === bodyObj.marca);
+    const prod = (lista.data || []).find(p =>
+      p.codigo === bodyObj.codigo
+      && p.marca === bodyObj.marca
+      && (!bodyObj.ubicacionOrig || p.ubicacion === bodyObj.ubicacionOrig)
+    );
     if (!prod) return { ok: false, error: "Producto no encontrado." };
 
     return request(`${API_URL}/api/productos/${prod._id}`, {
@@ -93,8 +97,10 @@ export async function apiPostForm(bodyObj, timeoutMs = 15000) {
       body: JSON.stringify({
         codigo:       bodyObj.nuevoCodigo  || bodyObj.codigo,
         marca:        bodyObj.nuevaMarca   || bodyObj.marca,
+        marcaOrig:    bodyObj.marca,
         stock:        bodyObj.nuevoStock,
         ubicacion:    bodyObj.ubicacion,
+        ubicacionOrig: bodyObj.ubicacionOrig,
         equivalencias: bodyObj.equivalencias || ""
       })
     }, timeoutMs);
@@ -119,8 +125,20 @@ export async function apiPostForm(bodyObj, timeoutMs = 15000) {
   if (action === "delete") {
     const lista = await request(`${API_URL}/api/productos/search?q=${encodeURIComponent(bodyObj.codigo || "")}`, {}, 45000);
     if (!lista.ok) return lista;
-    const prod = (lista.data || []).find(p => p.codigo === bodyObj.codigo && p.marca === bodyObj.marca);
+    const prod = (lista.data || []).find(p =>
+      p.codigo === bodyObj.codigo
+      && p.marca === bodyObj.marca
+      && (!bodyObj.ubicacion || p.ubicacion === bodyObj.ubicacion)
+    );
     if (!prod) return { ok: false, error: "Producto no encontrado." };
+
+    if (prod.schemaVersion === 2) {
+      return request(`${API_URL}/api/productos/${prod._id}/variantes`, {
+        method: "DELETE",
+        headers: jsonHeaders(token),
+        body: JSON.stringify({ marca: bodyObj.marca, ubicacion: bodyObj.ubicacion })
+      }, timeoutMs);
+    }
 
     return request(`${API_URL}/api/productos/${prod._id}`, {
       method: "DELETE",

@@ -46,11 +46,20 @@ async function eliminar(req, res) {
   }
 }
 
+async function eliminarVariante(req, res) {
+  try {
+    const codigo = await productosService.eliminarVariante(req.params.id, req.body || {});
+    res.json({ ok: true, mensaje: `Variante de ${codigo} eliminada.` });
+  } catch (error) {
+    responderError(res, error);
+  }
+}
+
 async function actualizarStockMinimo(req, res) {
   try {
     res.json({
       ok: true,
-      data: await productosService.actualizarStockMinimo(req.params.id, req.body.stockMinimo),
+      data: await productosService.actualizarStockMinimo(req.params.id, req.body.stockMinimo, req.body),
     });
   } catch (error) {
     responderError(res, error);
@@ -63,5 +72,6 @@ module.exports = {
   agregar,
   actualizar,
   eliminar,
+  eliminarVariante,
   actualizarStockMinimo,
 };

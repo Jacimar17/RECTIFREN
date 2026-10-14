@@ -49,6 +49,7 @@ export function renderCards({ list, isAdmin, viewFilter, query, highlightKey, so
     card.className = `stock-card ${cClass}`;
     card.dataset.c = item.codigo||"";
     card.dataset.m = item.marca||"";
+    card.dataset.u = item.ubicacion || "";
 
     let badge = "";
     if (state==="out") badge=`<span class="badge out">SIN STOCK</span>`;
@@ -56,12 +57,12 @@ export function renderCards({ list, isAdmin, viewFilter, query, highlightKey, so
 
     const actions = isAdmin ? `
       <div class="stock-card-actions">
-        <button class="mini success" data-act="in"  data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${stockNum}">+ Entrada</button>
-        <button class="mini danger"  data-act="out" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${stockNum}" ${stockNum===0?"disabled":""}>− Salida</button>
-        <button class="mini"         data-act="set" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${stockNum}" data-u="${escapeHtml(item.ubicacion || "")}">✏️</button>
-        <button class="mini"         data-act="equiv"  data-id="${item._id||""}" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}">🔗</button>
-        <button class="mini"         data-act="minimo" data-id="${item._id||""}" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-min="${item.stockMinimo!==undefined?item.stockMinimo:2}">⚠️</button>
-        <button class="mini del"     data-act="del" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}">🗑</button>
+        <button class="mini success" data-act="in"  data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}" data-s="${stockNum}">+ Entrada</button>
+        <button class="mini danger"  data-act="out" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}" data-s="${stockNum}" ${stockNum===0?"disabled":""}>− Salida</button>
+        <button class="mini"         data-act="set" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${stockNum}" data-u="${escapeHtml(item.ubicacion || "")}" data-v2="${item.schemaVersion === 2 ? "1" : "0"}">✏️</button>
+        <button class="mini"         data-act="equiv"  data-id="${item._id||""}" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}">🔗</button>
+        <button class="mini"         data-act="minimo" data-id="${item._id||""}" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}" data-min="${item.stockMinimo!==undefined?item.stockMinimo:2}">⚠️</button>
+        <button class="mini del"     data-act="del" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}" data-id="${item._id||""}">🗑</button>
       </div>` : "";
 
     card.innerHTML = `

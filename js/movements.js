@@ -25,11 +25,12 @@ export function createMovementController({ getIsAdmin }) {
     }
   }
 
-  async function openHistModal(codigo, marca) {
+  async function openHistModal(codigo, marca, ubicacion) {
     const overlay = $("histOverlay");
     if (!overlay) return;
     $("histCodigo").textContent = codigo;
     $("histMarca").textContent = marca;
+    $("histUbicacion").textContent = ubicacion || "Todas";
     $("histTitle").textContent = `Historial — ${codigo}`;
     $("histStatus").textContent = "Cargando…";
     $("histTbody").innerHTML = "";
@@ -38,11 +39,12 @@ export function createMovementController({ getIsAdmin }) {
     try {
       const data = await apiGet({ action: "movements", range: "month" });
       const all = (data.ok ? data.data || [] : [])
-        .filter(movement => movement.codigo === codigo && movement.marca === marca);
+        .filter(movement => movement.codigo === codigo && movement.marca === marca
+          && (!ubicacion || !movement.ubicacion || movement.ubicacion === ubicacion));
       const tbody = $("histTbody");
       tbody.innerHTML = "";
       if (all.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted)">Sin movimientos recientes.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted)">Sin movimientos recientes.</td></tr>`;
       } else {
         for (const movement of all) {
           const row = document.createElement("tr");
@@ -52,6 +54,7 @@ export function createMovementController({ getIsAdmin }) {
           row.innerHTML = `
             <td>${escapeHtml(fmtDate(movement.createdAt || movement.fecha))}</td>
             <td style="${color};font-weight:700">${escapeHtml(movement.accion)}</td>
+            <td>${escapeHtml(movement.ubicacion || "—")}</td>
             <td class="center">${Number(movement.cantidad || 0)}</td>
             <td class="center">${Number(movement.stock_anterior || 0)}</td>
             <td class="center">${Number(movement.stock_nuevo || 0)}</td>
@@ -86,7 +89,7 @@ export function createMovementController({ getIsAdmin }) {
       return sortDir === "desc" ? -cmp : cmp;
     });
     if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--muted)">Sin movimientos.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--muted)">Sin movimientos.</td></tr>`;
       return;
     }
     for (const movement of rows) {
@@ -98,6 +101,7 @@ export function createMovementController({ getIsAdmin }) {
         <td style="${color};font-weight:700">${escapeHtml(movement.accion)}</td>
         <td>${escapeHtml(movement.codigo)}</td>
         <td>${escapeHtml(movement.marca)}</td>
+        <td>${escapeHtml(movement.ubicacion || "—")}</td>
         <td class="center">${Number(movement.cantidad || 0)}</td>
         <td class="center">${Number(movement.stock_anterior || 0)}</td>
         <td class="center">${Number(movement.stock_nuevo || 0)}</td>

@@ -13,19 +13,38 @@ function validarBusqueda(value) {
 function validarNuevoProducto(body) {
   const { codigo, marca, stock = 0, equivalencias = "" } = body;
   if (!codigo || !marca) throw httpError(400, "Faltan campos: codigo, marca.");
+  const cantidad = Number(stock);
+  if (!Number.isFinite(cantidad) || cantidad < 0) {
+    throw httpError(400, "El stock debe ser un número no negativo.");
+  }
   const ubicacion = body.ubicacion || ubicacionPredeterminada({ codigo });
   if (!Object.values(UBICACIONES).includes(ubicacion)) {
     throw httpError(400, "La ubicación del producto no es válida.");
   }
-  return { codigo: codigo.trim(), marca: marca.trim(), stock, equivalencias, ubicacion };
+  return { codigo: codigo.trim(), marca: marca.trim(), stock: cantidad, equivalencias, ubicacion };
 }
 
 function validarActualizacion(body) {
-  const { codigo, marca, stock, equivalencias, ubicacion } = body;
+  const { codigo, marca, stock, equivalencias, ubicacion, ubicacionOrig } = body;
+  for (const value of [ubicacion, ubicacionOrig]) {
+    if (value !== undefined && !Object.values(UBICACIONES).includes(value)) {
+      throw httpError(400, "La ubicación del producto no es válida.");
+    }
+  }
+  if (stock !== undefined && (!Number.isFinite(Number(stock)) || Number(stock) < 0)) {
+    throw httpError(400, "El stock debe ser un número no negativo.");
+  }
+  return { codigo, marca, stock, equivalencias, ubicacion, ubicacionOrig };
+}
+
+function validarVariante(marca, ubicacion) {
+  if (!marca || typeof marca !== "string" || !marca.trim()) {
+    throw httpError(400, "La marca de la variante es obligatoria.");
+  }
   if (ubicacion !== undefined && !Object.values(UBICACIONES).includes(ubicacion)) {
     throw httpError(400, "La ubicación del producto no es válida.");
   }
-  return { codigo, marca, stock, equivalencias, ubicacion };
+  return { marca: marca.trim(), ubicacion };
 }
 
 function validarStockMinimo(value) {
@@ -39,4 +58,5 @@ module.exports = {
   validarNuevoProducto,
   validarActualizacion,
   validarStockMinimo,
+  validarVariante,
 };

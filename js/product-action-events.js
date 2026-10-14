@@ -30,24 +30,27 @@ export function createProductActionEvents({
       const marca = button.getAttribute("data-m");
       const stock = Number(button.getAttribute("data-s") || 0);
       const ubicacion = button.getAttribute("data-u") || "DEPOSITO_GALPON";
-      if (action === "in" || action === "out") { openNoteModal(action, codigo, marca, stock); return; }
-      if (action === "set") { openEditModal({ codigo, marca, actual: stock, ubicacion }); return; }
-      if (action === "del") { openDelModal(codigo, marca); return; }
+      if (action === "in" || action === "out") { openNoteModal(action, codigo, marca, stock, ubicacion); return; }
+      if (action === "set") {
+        openEditModal({ codigo, marca, actual: stock, ubicacion, codigoLitton: button.dataset.v2 === "1" });
+        return;
+      }
+      if (action === "del") { openDelModal(codigo, marca, ubicacion, button.dataset.id); return; }
       if (action === "equiv") {
         void openEquivModal(button.getAttribute("data-id"), codigo, marca);
         return;
       }
       if (action === "minimo") {
         const minimo = Number(button.getAttribute("data-min") || 2);
-        openMinimoModal(button.getAttribute("data-id"), codigo, marca, minimo);
+        openMinimoModal(button.getAttribute("data-id"), codigo, marca, minimo, ubicacion);
       }
       return;
     }
     if (!event.target.closest("button")) {
       const row = event.target.closest("[data-c]");
       if (row) {
-        const { c: codigo, m: marca } = row.dataset;
-        if (codigo && marca) void openHistModal(codigo, marca);
+        const { c: codigo, m: marca, u: ubicacion } = row.dataset;
+        if (codigo && marca) void openHistModal(codigo, marca, ubicacion);
       }
     }
   }

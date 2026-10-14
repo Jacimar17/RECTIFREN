@@ -14,10 +14,16 @@ async function obtener(productoId) {
   const producto = await productosRepository.buscarPorIdConEquivalentes(productoId);
   if (!producto) throw httpError(404, "Producto no encontrado.");
 
-  const vinculados = (producto.equivalentesVinculados || []).map(normalizarProducto);
+  const vinculados = (producto.equivalentesVinculados || [])
+    .filter((equivalente) => !equivalente.archivado)
+    .map(normalizarProducto);
   const textoLibre = (producto.equivalencias || "")
     .split(",").map((item) => item.trim()).filter(Boolean);
-  return { vinculados, textoLibre };
+  return {
+    vinculados,
+    textoLibre,
+    equivalenciasCatalogo: producto.equivalenciasCatalogo || [],
+  };
 }
 
 async function vincular(productoId, { equivalenteId, equivalenteTexto }) {

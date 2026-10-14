@@ -98,24 +98,25 @@ export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, so
       <td class="col-acciones">
         <div class="btn-group">
           <button class="mini success" data-act="in" data-tooltip="Entrada"
-            data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${stockNum}">+</button>
+            data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}" data-s="${stockNum}">+</button>
           <button class="mini danger" data-act="out" data-tooltip="Salida"
             data-disabled="${minusDisabled?"1":"0"}"
             ${minusDisabled?"disabled":""}
-            data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${stockNum}">−</button>
+            data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}" data-s="${stockNum}">−</button>
           <button class="mini" data-act="set" data-tooltip="Editar"
-            data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${stockNum}" data-u="${escapeHtml(item.ubicacion || "")}">✏️</button>
+            data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${stockNum}" data-u="${escapeHtml(item.ubicacion || "")}" data-v2="${item.schemaVersion === 2 ? "1" : "0"}">✏️</button>
           <button class="mini" data-act="equiv" data-tooltip="Equivalencias"
-            data-id="${item._id||""}" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}">🔗</button>
+            data-id="${item._id||""}" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}">🔗</button>
           <button class="mini" data-act="minimo" data-tooltip="Stock mínimo"
-            data-id="${item._id||""}" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-min="${item.stockMinimo!==undefined?item.stockMinimo:2}">⚠️</button>
+            data-id="${item._id||""}" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}" data-min="${item.stockMinimo!==undefined?item.stockMinimo:2}">⚠️</button>
           <button class="mini del" data-act="del" data-tooltip="Eliminar"
-            data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}">🗑</button>
+            data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}" data-id="${item._id||""}">🗑</button>
         </div>
       </td>` : "";
 
     tr.dataset.c = item.codigo || "";
     tr.dataset.m = item.marca  || "";
+    tr.dataset.u = item.ubicacion || "";
     tr.style.cursor = "pointer";
     tr.innerHTML = `
       <td class="col-codigo">${highlight(item.codigo||"", q)}</td>

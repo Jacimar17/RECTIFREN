@@ -21,6 +21,8 @@ export function createProductActions({
   let pendingAction = null;
   let pendingDelete = null;
   let minimoProductoId = null;
+  let minimoMarca = "";
+  let minimoUbicacion = "";
   const {
     defaultLocationForCode,
     openAddModal,
@@ -29,8 +31,8 @@ export function createProductActions({
     setLocationTouched
   } = createProductAddModal();
 
-  function openNoteModal(act, codigo, marca, stock) {
-    pendingAction = { act, codigo, marca, stock };
+  function openNoteModal(act, codigo, marca, stock, ubicacion) {
+    pendingAction = { act, codigo, marca, stock, ubicacion };
     const overlay = $("noteOverlay");
     if (!overlay) return;
     $("noteTitle").textContent = act === "in" ? "Agregar una unidad" : "Retirar una unidad";
@@ -53,7 +55,7 @@ export function createProductActions({
 
   async function confirmNote() {
     if (!pendingAction) return;
-    const { act, codigo, marca } = pendingAction;
+    const { act, codigo, marca, ubicacion } = pendingAction;
     const nota = $("noteInput")?.value.trim() || "";
     closeNoteModal();
     const token = getAdminToken();
@@ -64,7 +66,7 @@ export function createProductActions({
     }
     setBusyState(true, "Aplicando cambio…");
     try {
-      const response = await apiPostForm({ action: act, token, codigo, marca, cantidad: 1, nota });
+      const response = await apiPostForm({ action: act, token, codigo, marca, ubicacion, cantidad: 1, nota });
       if (!response.ok) {
         showToast(`Error: ${response.error || "No se pudo operar."}`, "error");
         return;
@@ -116,8 +118,8 @@ export function createProductActions({
     }
   }
 
-  function openDelModal(codigo, marca) {
-    pendingDelete = { codigo, marca };
+  function openDelModal(codigo, marca, ubicacion, id) {
+    pendingDelete = { codigo, marca, ubicacion, id };
     const overlay = $("delOverlay");
     if (!overlay) return;
     $("delCodigo").textContent = codigo;
@@ -136,7 +138,7 @@ export function createProductActions({
 
   async function confirmDel() {
     if (!pendingDelete) return;
-    const { codigo, marca } = pendingDelete;
+    const { codigo, marca, ubicacion } = pendingDelete;
     closeDelModal();
     const token = getAdminToken();
     if (!token) {
@@ -146,7 +148,7 @@ export function createProductActions({
     }
     try {
       setBusyState(true, "Eliminando producto…");
-      const response = await apiPostForm({ action: "delete", token, codigo, marca });
+      const response = await apiPostForm({ action: "delete", token, codigo, marca, ubicacion });
       if (!response.ok) {
         showToast(`Error: ${response.error || "No se pudo eliminar."}`, "error");
         return;
@@ -161,8 +163,10 @@ export function createProductActions({
     }
   }
 
-  function openMinimoModal(id, codigo, marca, actual) {
+  function openMinimoModal(id, codigo, marca, actual, ubicacion) {
     minimoProductoId = id;
+    minimoMarca = marca;
+    minimoUbicacion = ubicacion;
     $("minimoCodigo").textContent = codigo;
     $("minimoMarca").textContent = marca;
     $("minimoInput").value = actual;
@@ -202,7 +206,7 @@ export function createProductActions({
       const response = await fetch(`${API_URL}/api/productos/${minimoProductoId}/minimo`, {
         method: "PATCH",
         headers: authJsonHeaders(token),
-        body: JSON.stringify({ stockMinimo: value })
+        body: JSON.stringify({ stockMinimo: value, marca: minimoMarca, ubicacion: minimoUbicacion })
       });
       const data = await response.json();
       if (!data.ok) {
@@ -242,7 +246,8 @@ export function createProductActions({
         nuevoCodigo: data.nuevoCodigo,
         nuevaMarca: data.nuevaMarca,
         nuevoStock: data.nuevoStock,
-        ubicacion: data.ubicacion
+        ubicacion: data.ubicacion,
+        ubicacionOrig: data.ubicacionOrig
       });
       if (!response.ok) {
         $("editStatus").textContent = `Error: ${response.error || "No se pudo guardar."}`;

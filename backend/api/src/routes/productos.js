@@ -8,6 +8,7 @@ router.get("/", controller.listar);
 router.get("/search", controller.buscar);
 router.post("/", auth, controller.agregar);
 router.put("/:id", auth, controller.actualizar);
+router.delete("/:id/variantes", auth, controller.eliminarVariante);
 router.delete("/:id", auth, controller.eliminar);
 router.patch("/:id/minimo", auth, controller.actualizarStockMinimo);
 

@@ -38,10 +38,22 @@ export function createEquivalencesController({ getAdminToken }) {
       list.innerHTML = "";
       if (!data.ok) { list.innerHTML = `<div class="muted">Error cargando equivalencias.</div>`; return; }
 
-      const { vinculados, textoLibre } = data;
-      if (!vinculados.length && !textoLibre.length) {
+      const { vinculados, textoLibre, equivalenciasCatalogo = [] } = data;
+      if (!vinculados.length && !textoLibre.length && !equivalenciasCatalogo.length) {
         list.innerHTML = `<div class="muted" style="font-size:13px">Sin equivalencias cargadas aún.</div>`;
         return;
+      }
+
+      if (equivalenciasCatalogo.length) {
+        const catalog = document.createElement("section");
+        catalog.className = "equiv-catalog";
+        catalog.innerHTML = `
+          <strong>Catálogo Litton · solo lectura</strong>
+          <div class="equiv-catalog-items">${equivalenciasCatalogo.map(item =>
+            `<span><b>${escapeHtml(item.codigo || "")}</b>${item.marca ? ` · ${escapeHtml(item.marca)}` : ""}</span>`
+          ).join("")}</div>
+        `;
+        list.appendChild(catalog);
       }
 
       for (const item of vinculados) {

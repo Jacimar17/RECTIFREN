@@ -1,7 +1,22 @@
 const mongoose = require("mongoose");
 
+const varianteInventarioSchema = new mongoose.Schema(
+  {
+    marca: { type: String, required: true, trim: true },
+    ubicacion: { type: String, required: true, enum: ["NEGOCIO", "DEPOSITO_GALPON"] },
+    cantidad: { type: Number, required: true, min: 0, default: 0 },
+    stockMinimo: { type: Number, min: 0, default: 2 },
+  },
+  { _id: true }
+);
+
 const productoSchema = new mongoose.Schema(
   {
+    schemaVersion: { type: Number, enum: [1, 2], default: 1 },
+    archivado: { type: Boolean, default: false, index: true },
+    fichaLitton: { type: mongoose.Schema.Types.Mixed },
+    imagenLitton: { type: String, trim: true, default: "" },
+    variantes: { type: [varianteInventarioSchema], default: undefined },
     codigo:        { type: String, trim: true },
     marca:         { type: String, trim: true },
     stock:         { type: Number, default: 0, min: 0 },

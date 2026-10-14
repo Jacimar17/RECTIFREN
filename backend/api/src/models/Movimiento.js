@@ -6,6 +6,7 @@ const movimientoSchema = new mongoose.Schema(
     productoId:     { type: mongoose.Schema.Types.ObjectId, ref: "Producto" },
     codigo:         { type: String, required: true },
     marca:          { type: String, required: true },
+    ubicacion:      { type: String, enum: ["NEGOCIO", "DEPOSITO_GALPON"] },
     cantidad:       { type: Number, default: 0 },
     stock_anterior: { type: Number, required: true },
     stock_nuevo:    { type: Number, required: true },
