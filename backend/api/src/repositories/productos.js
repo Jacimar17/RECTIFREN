@@ -101,7 +101,49 @@ function eliminar(producto) {
   return producto.deleteOne();
 }
 
+async function buscarCatalogoPublico({ query, marca, skip = 0, limit = 20 }) {
+  const conditions = [{ archivado: { $ne: true } }];
+
+  if (query) {
+    const regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+    conditions.push({
+      $or: [
+        { codigo: regex }, { CODIGO: regex },
+        { titulo: regex },
+        { descripcion: regex },
+        { equivalencias: regex },
+        { "equivalenciasCatalogo.codigo": regex },
+        { "fichaLitton.name": regex },
+        { "fichaLitton.description": regex },
+        { "fichaLitton.substitutes.value": regex },
+      ]
+    });
+  }
+
+  if (marca) {
+    const regexMarca = new RegExp(`^${marca.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i");
+    conditions.push({
+      $or: [
+        { marca: regexMarca }, { MARCA: regexMarca },
+        { "variantes.marca": regexMarca },
+        { "fichaLitton.subcategory": regexMarca },
+      ]
+    });
+  }
+
+  const filter = conditions.length === 1 ? conditions[0] : { $and: conditions };
+  const total = await Producto.countDocuments(filter);
+  const items = await Producto.find(filter)
+    .sort({ codigo: 1, CODIGO: 1 })
+    .skip(skip)
+    .limit(limit)
+    .lean();
+
+  return { items, total };
+}
+
 module.exports = {
+  buscarCatalogoPublico,
   listarOrdenados,
   buscarDirectos,
   listarInventarioParaFamilias,

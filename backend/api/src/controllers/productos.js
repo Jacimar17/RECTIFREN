@@ -4,6 +4,15 @@ function responderError(res, error) {
   res.status(error.status || 500).json({ ok: false, error: error.message });
 }
 
+async function catalogoPublico(req, res) {
+  try {
+    const resultado = await productosService.catalogoPublico(req.query);
+    res.json({ ok: true, ...resultado });
+  } catch (error) {
+    responderError(res, error);
+  }
+}
+
 async function listar(req, res) {
   try {
     res.json({ ok: true, data: await productosService.listar() });
@@ -67,6 +76,7 @@ async function actualizarStockMinimo(req, res) {
 }
 
 module.exports = {
+  catalogoPublico,
   listar,
   buscar,
   agregar,

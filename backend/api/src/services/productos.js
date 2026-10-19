@@ -343,7 +343,56 @@ async function eliminarVariante(id, body) {
   return producto.codigo;
 }
 
+/**
+ * Catálogo público (Fase 3)
+ * Retorna ÚNICAMENTE: codigo, titulo, descripcion, marca, foto y precio.
+ * Nunca expone costos, precios de proveedor, stock ni historial.
+ */
+async function catalogoPublico(queryParams = {}) {
+  const query = (queryParams.q || "").trim();
+  const marca = (queryParams.marca || "").trim();
+  const page = Math.max(1, parseInt(queryParams.page, 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(queryParams.limit, 10) || 20));
+  const skip = (page - 1) * limit;
+
+  const { items, total } = await productosRepository.buscarCatalogoPublico({
+    query,
+    marca,
+    skip,
+    limit,
+  });
+
+  const data = items.map((p) => {
+    const codigo = String(p.codigo || p.CODIGO || p.fichaLitton?.code || "").trim();
+    const marcaPrincipal = String(p.marca || p.MARCA || p.fichaLitton?.subcategory || "LITTON").trim();
+    const titulo = String(p.titulo || (codigo ? `Repuesto ${codigo}` : "")).trim();
+    const descripcion = String(
+      p.descripcion || p.fichaLitton?.description || p.equivalencias || ""
+    ).trim();
+    const foto = String(p.foto || p.imagenLitton || "").trim();
+    const precio = typeof p.precio === "number" ? p.precio : 0;
+
+    return {
+      codigo,
+      titulo,
+      descripcion,
+      marca: marcaPrincipal,
+      foto,
+      precio,
+    };
+  });
+
+  return {
+    data,
+    total,
+    page,
+    totalPages: Math.ceil(total / limit) || 1,
+    limit,
+  };
+}
+
 module.exports = {
+  catalogoPublico,
   listar,
   buscar,
   agregar,

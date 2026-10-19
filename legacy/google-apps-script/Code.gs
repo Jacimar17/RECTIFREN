@@ -47,10 +47,11 @@ function doGet(e) {
   return handleRequest(() => {
     const { action, ...params } = parseParams(e.parameter);
     switch (action) {
-      case "list":      return listStock_();
-      case "movements": return listMovements_(params.range || "week");
-      case "search":    return searchStock_(params.q || "");
-      default:          return error_("Acción no válida. Acciones GET: list, movements, search");
+      case "list":            return listStock_();
+      case "movements":       return listMovements_(params.range || "week");
+      case "search":          return searchStock_(params.q || "");
+      case "catalogopublico": return catalogoPublico_(params);
+      default:                return error_("Acción no válida. Acciones GET: list, movements, search, catalogoPublico");
     }
   });
 }
@@ -113,6 +114,39 @@ function searchStock_(query) {
     p.equivalencias.toLowerCase().includes(q)
   );
   return ok_({ data, query, total: data.length });
+}
+
+/**
+ * Endpoint público de catálogo (Fase 3)
+ * Lee la hoja de inventario y retorna ÚNICAMENTE: codigo, descripcion, marca, foto.
+ * Nunca expone costos, precios de proveedor, stock ni historial.
+ */
+function catalogoPublico_(params) {
+  const all = readStockRows_();
+  const q = (params.q || "").toLowerCase();
+  const filtroMarca = (params.marca || "").toLowerCase();
+
+  let catalogo = all.map(p => ({
+    codigo: String(p.codigo || p.CODIGO || "").trim(),
+    descripcion: String(p.descripcion || p.DESCRIPCION || p.equivalencias || p.EQUIVALENCIAS || "").trim(),
+    marca: String(p.marca || p.MARCA || "").trim(),
+    foto: String(p.foto || p.FOTO || "").trim()
+  }));
+
+  if (q) {
+    catalogo = catalogo.filter(p =>
+      p.codigo.toLowerCase().includes(q) ||
+      p.descripcion.toLowerCase().includes(q)
+    );
+  }
+
+  if (filtroMarca) {
+    catalogo = catalogo.filter(p =>
+      p.marca.toLowerCase() === filtroMarca
+    );
+  }
+
+  return ok_({ data: catalogo, total: catalogo.length });
 }
 
 function stockInOut_(type, codigo, marca, params) {

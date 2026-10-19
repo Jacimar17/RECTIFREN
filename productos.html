@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RECTIFREN — Catálogo de Productos</title>
-  <meta name="description" content="Catálogo online de repuestos para frenos, embragues y rectificaciones." />
+  <meta name="description" content="Catálogo online de repuestos para frenos, embragues, rectificaciones y sistemas hidráulicos. Consultá disponibilidad por WhatsApp." />
   <link rel="icon" type="image/png" href="assets/logo_rectifren.png" />
   <link rel="stylesheet" href="css/public.css?v=20261019" />
   <meta name="theme-color" content="#d32f2f" />
@@ -38,10 +38,9 @@
             type="search" 
             id="headerSearchInput" 
             class="search-input" 
-            placeholder="Buscar repuesto por código (ej: 528, FR-1234)..." 
+            placeholder="Buscar por código en catálogo..." 
             aria-label="Buscar repuesto por código"
             autocomplete="off"
-            required
           />
           <button type="submit" class="search-btn" title="Buscar en catálogo">🔍</button>
         </form>
@@ -69,22 +68,49 @@
     </div>
   </nav>
 
-  <!-- Contenido Catálogo (Se completará en la Fase 3) -->
-  <main class="section">
+  <!-- Sección Catálogo Público -->
+  <main class="catalog-section">
     <div class="container">
-      <header class="section-header">
-        <div class="section-subtitle">Catálogo de Repuestos</div>
-        <h1 class="section-title">Productos</h1>
+      <header class="section-header" style="margin-bottom:28px;">
+        <div class="section-subtitle">Catálogo Online</div>
+        <h1 class="section-title">Productos y Repuestos</h1>
       </header>
-      <div style="text-align:center; padding: 48px 16px; background:var(--gray-bg); border-radius:var(--radius); border:1px solid var(--gray-light);">
-        <span style="font-size:48px;">📦</span>
-        <h2 style="font-size:22px; margin: 16px 0 8px; color:var(--dark);">Catálogo público en preparación</h2>
-        <p style="color:var(--gray-mid); max-width:550px; margin: 0 auto 24px;">
-          Esta sección se conectará en la <strong>Fase 3</strong> para consultar repuestos con código, descripción, marca, fotos y botón directo de consulta a WhatsApp.
-        </p>
-        <a href="index.html" class="btn-cta" style="padding: 10px 24px; font-size:14px;">
-          ← Volver al Inicio
-        </a>
+
+      <!-- Barra de Filtros y Búsqueda -->
+      <div class="catalog-controls">
+        <div class="catalog-search-wrap">
+          <span class="catalog-search-icon" aria-hidden="true">🔍</span>
+          <input 
+            type="text" 
+            id="catalogSearchInput" 
+            class="catalog-search-input" 
+            placeholder="Buscar por código o descripción (ej: 528, pastilla, disco)..." 
+            autocomplete="off"
+          />
+          <button id="catalogClearSearch" class="catalog-clear-btn" title="Limpiar búsqueda" style="display:none">✕</button>
+        </div>
+
+        <div class="catalog-filter-group">
+          <label for="catalogFilterMarca" style="font-size:13px; font-weight:700; color:var(--dark);">Marca:</label>
+          <select id="catalogFilterMarca" class="catalog-select" aria-label="Filtrar por marca">
+            <option value="">Todas las marcas</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Estado de resultados -->
+      <div id="catalogStatus" class="catalog-status-bar" role="status" aria-live="polite">
+        Cargando repuestos...
+      </div>
+
+      <!-- Grilla de Productos -->
+      <div id="catalogProductsGrid" class="catalog-grid" aria-label="Listado de productos">
+        <!-- Renderizado dinámico desde js/productos.js -->
+      </div>
+
+      <!-- Controles de Paginación -->
+      <div id="catalogPagination" class="catalog-pagination">
+        <!-- Renderizado dinámico -->
       </div>
     </div>
   </main>
@@ -93,6 +119,7 @@
   <footer class="site-footer">
     <div class="container footer-top">
       <div class="footer-grid">
+        <!-- Columna 1: Contacto -->
         <div class="footer-col">
           <h3>Contacto</h3>
           <ul class="contact-list">
@@ -134,11 +161,13 @@
           </ul>
         </div>
 
+        <!-- Columna 2: Categorías -->
         <div class="footer-col">
           <h3>Categorías</h3>
           <ul id="footerCategoriesList" class="footer-categories"></ul>
         </div>
 
+        <!-- Columna 3: Ubicación con Google Maps -->
         <div class="footer-col">
           <h3>Ubicación</h3>
           <div class="maps-container">
@@ -164,6 +193,7 @@
     </div>
   </footer>
 
+  <!-- Botón flotante de WhatsApp -->
   <a 
     id="btnWhatsappFloat" 
     href="#" 
@@ -176,7 +206,7 @@
     💬
   </a>
 
-  <script type="module" src="js/public.js?v=20261019"></script>
+  <!-- Script modular de catálogo -->
+  <script type="module" src="js/productos.js?v=20261019"></script>
 </body>
 </html>
-

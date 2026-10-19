@@ -45,7 +45,21 @@ export async function apiGet(params) {
     return request(`${API_URL}/api/productos/search?q=${q}`, {}, 45000);
   }
 
+  if (action === "catalogoPublico" || action === "catalogo") {
+    return apiGetCatalogoPublico(params);
+  }
+
   return { ok: false, error: "Acción no reconocida." };
+}
+
+/* ── GET /api/productos/catalogo (Catálogo público) ── */
+export async function apiGetCatalogoPublico({ q = "", marca = "", page = 1, limit = 20 } = {}) {
+  const params = new URLSearchParams();
+  if (q) params.set("q", q);
+  if (marca) params.set("marca", marca);
+  if (page) params.set("page", page);
+  if (limit) params.set("limit", limit);
+  return request(`${API_URL}/api/productos/catalogo?${params.toString()}`);
 }
 
 /* ── POST con JSON (reemplaza apiPostForm) ── */
