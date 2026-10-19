@@ -30,19 +30,20 @@ export function authJsonHeaders(token) {
 /* ── GET /api/productos ── */
 export async function apiGet(params) {
   const action = params.action || "";
+  const token  = params.token  || "";
 
   if (action === "list") {
-    return request(`${API_URL}/api/productos`);
+    return request(`${API_URL}/api/productos`, { headers: jsonHeaders(token) });
   }
 
   if (action === "movements") {
     const range = params.range || "week";
-    return request(`${API_URL}/api/movimientos?range=${range}`);
+    return request(`${API_URL}/api/movimientos?range=${range}`, { headers: jsonHeaders(token) });
   }
 
   if (action === "search") {
     const q = encodeURIComponent(params.q || "");
-    return request(`${API_URL}/api/productos/search?q=${q}`, {}, 45000);
+    return request(`${API_URL}/api/productos/search?q=${q}`, { headers: jsonHeaders(token) }, 45000);
   }
 
   if (action === "catalogoPublico" || action === "catalogo") {

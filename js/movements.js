@@ -1,7 +1,7 @@
 import { apiGet } from "./api.js";
 import { $, escapeHtml, fmtDate } from "./ui.js";
 
-export function createMovementController({ getIsAdmin }) {
+export function createMovementController({ getIsAdmin, getAdminToken = () => "" }) {
   let sortCol = "fecha";
   let sortDir = "desc";
   let cache = [];
@@ -15,7 +15,7 @@ export function createMovementController({ getIsAdmin }) {
     const status = $("movStatus");
     status.textContent = "Cargando movimientos...";
     try {
-      const data = await apiGet({ action: "movements", range });
+      const data = await apiGet({ action: "movements", range, token: getAdminToken() });
       if (!data.ok) { status.textContent = `Error: ${data.error || "No se pudo cargar."}`; return; }
       cache = data.data || [];
       renderMovs(cache);
@@ -37,7 +37,7 @@ export function createMovementController({ getIsAdmin }) {
     overlay.style.display = "flex";
     overlay.setAttribute("aria-hidden", "false");
     try {
-      const data = await apiGet({ action: "movements", range: "month" });
+      const data = await apiGet({ action: "movements", range: "month", token: getAdminToken() });
       const all = (data.ok ? data.data || [] : [])
         .filter(movement => movement.codigo === codigo && movement.marca === marca
           && (!ubicacion || !movement.ubicacion || movement.ubicacion === ubicacion));

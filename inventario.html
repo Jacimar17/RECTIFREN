@@ -24,7 +24,42 @@
   <!-- Toasts -->
   <div id="toastContainer" class="toastContainer"></div>
 
-  <div class="container">
+  <!-- Pantalla de Login Principal (Auth Gate) -->
+  <div id="inventoryAuthGate" class="auth-gate-container">
+    <div class="auth-gate-card">
+      <div class="auth-gate-brand">
+        <img src="assets/logo_rectifren.png" alt="RECTIFREN" class="auth-gate-logo" />
+        <h2>RECTI<span>FREN</span></h2>
+        <p class="muted">Acceso exclusivo a inventario y stock interno</p>
+      </div>
+
+      <form id="gateLoginForm" class="auth-gate-form">
+        <div class="auth-field">
+          <label for="gateUser">Usuario</label>
+          <input id="gateUser" type="text" placeholder="Ingresá tu usuario" autocomplete="username" required autofocus />
+        </div>
+        <div class="auth-field">
+          <label for="gatePass">Contraseña</label>
+          <input id="gatePass" type="password" placeholder="Ingresá tu contraseña" autocomplete="current-password" required />
+        </div>
+
+        <div id="gateStatus" class="auth-gate-status" role="alert"></div>
+
+        <button type="submit" id="btnGateSubmit" class="auth-gate-btn">
+          Ingresar al Inventario
+        </button>
+      </form>
+
+      <div class="auth-gate-footer">
+        <a href="index.html" class="auth-gate-back-link">
+          ← Volver a la página pública
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Aplicación de Inventario (Oculta hasta autenticar) -->
+  <div class="container" id="inventoryAppContainer" style="display:none;">
     <div class="card">
 
       <!-- Header -->
