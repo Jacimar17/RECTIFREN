@@ -1,6 +1,7 @@
 import { apiBetaProveedores, apiDetalleProveedores, apiGet } from "./api.js";
 import { $, escapeHtml, showToast } from "./ui.js";
-import { createBetaView } from "./beta-view.js?v=20261014";
+import { createBetaView } from "./beta-view.js?v=20261019";
+import { icon } from "./ui/icons.js";
 
 export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }) {
   const overlay = $("betaOverlay");
@@ -87,7 +88,7 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
     const category = item.categoria
       ? `<div class="beta-main-category"><span>Categoría</span><strong>${escapeHtml(item.categoria)}</strong></div>`
       : "";
-    results.innerHTML = `<button type="button" class="beta-back-button">← Volver a resultados</button>
+    results.innerHTML = `<button type="button" class="beta-back-button">${icon("arrow-left")} Volver a resultados</button>
       <section class="beta-main-product" aria-labelledby="beta-main-product-code">
         ${photoMarkup(item.imagen, code, "beta-main-photo")}
         <div class="beta-main-info">
@@ -236,7 +237,7 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
     if (!image) return;
     const placeholder = document.createElement("div");
     placeholder.className = "beta-photo-placeholder";
-    placeholder.innerHTML = `<span aria-hidden="true">📷</span><span>Foto no disponible</span>`;
+    placeholder.innerHTML = `${icon("camera")}<span>Foto no disponible</span>`;
     image.replaceWith(placeholder);
   }, true);
   overlay.addEventListener("click", event => {

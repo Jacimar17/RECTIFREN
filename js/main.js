@@ -11,8 +11,9 @@ import {
 } from "./ui.js";
 import { createEquivalencesController } from "./equivalences.js";
 import { createMovementController } from "./movements.js";
-import { bindBetaModal } from "./beta.js?v=20261015";
+import { bindBetaModal } from "./beta.js?v=20261019";
 import { createProductActions } from "./product-actions.js";
+import { icon, hydrateIcons } from "./ui/icons.js";
 import {
   bindCategoriasModal, cargarCategorias, closeCategoriasModal, openCategoriasModal
 } from "./categories.js";
@@ -130,7 +131,7 @@ function checkNewOutOfStock(oldCache, newCache) {
   const nowOut = newCache.filter(i => Number(i.stock||0) === 0);
   const nuevos = nowOut.filter(i => !wasOut.has(`${i.codigo}|${i.marca}`));
   for (const item of nuevos) {
-    new Notification("⚠ RECTIFREN — Sin stock", {
+    new Notification("RECTIFREN — Sin stock", {
       body: `${item.codigo} (${item.marca}) quedó sin stock.`,
       icon: "assets/logo_rectifren.png"
     });
@@ -307,12 +308,13 @@ function toggleCompact() {
   compactMode = !compactMode;
   document.body.classList.toggle("compact", compactMode);
   const btn = $("btnCompact");
-  if (btn) btn.textContent = compactMode ? "☰ Normal" : "☰ Compacto";
+  if (btn) btn.innerHTML = `${icon("list")} ${compactMode ? "Normal" : "Compacto"}`;
 }
 
 
 /* ===== Init ===== */
 document.addEventListener("DOMContentLoaded", () => {
+  hydrateIcons();
   initTheme();
   viewFilter = readUrlParams(viewFilter);
 

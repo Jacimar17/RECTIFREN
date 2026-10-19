@@ -5,17 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RECTIFREN | Inventario</title>
   <link rel="icon" type="image/png" href="assets/logo_rectifren.png" />
-  <link rel="stylesheet" href="css/base.css?v=20260648">
-  <link rel="stylesheet" href="css/controls.css?v=20260648">
-  <link rel="stylesheet" href="css/inventory-table.css?v=20260648">
-  <link rel="stylesheet" href="css/overlays.css?v=20260648">
-  <link rel="stylesheet" href="css/responsive.css?v=20261015">
-  <link rel="stylesheet" href="css/effects.css?v=20260648">
-  <link rel="stylesheet" href="css/beta-layout.css?v=20261014">
-  <link rel="stylesheet" href="css/beta-cards.css?v=20261014">
-  <link rel="stylesheet" href="css/beta-providers.css?v=20261014">
+  <link rel="stylesheet" href="css/base.css?v=20261019">
+  <link rel="stylesheet" href="css/controls.css?v=20261019">
+  <link rel="stylesheet" href="css/inventory-table.css?v=20261019">
+  <link rel="stylesheet" href="css/overlays.css?v=20261019">
+  <link rel="stylesheet" href="css/responsive.css?v=20261019">
+  <link rel="stylesheet" href="css/effects.css?v=20261019">
+  <link rel="stylesheet" href="css/beta-layout.css?v=20261019">
+  <link rel="stylesheet" href="css/beta-cards.css?v=20261019">
+  <link rel="stylesheet" href="css/beta-providers.css?v=20261019">
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#e8380d">
+  <meta name="theme-color" content="#d32f2f">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="RECTIFREN">
 </head>
@@ -52,7 +52,7 @@
 
       <div class="auth-gate-footer">
         <a href="index.html" class="auth-gate-back-link">
-          ← Volver a la página pública
+          <span data-icon="arrow-left"></span> Volver a la página pública
         </a>
       </div>
     </div>
@@ -70,10 +70,10 @@
           <div class="muted">Sistema de inventario · Visualización de stock</div>
         </div>
         <div class="header-actions">
-          <a href="index.html" class="btn-export" style="text-decoration:none; display:inline-flex; align-items:center; gap:4px;" title="Ir al sitio público">🌐 Web</a>
-          <button id="btnTheme" title="Cambiar tema">☀️</button>
+          <a href="index.html" class="btn-export" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px;" title="Ir al sitio público"><span data-icon="globe"></span> Web</a>
+          <button id="btnTheme" title="Cambiar tema" aria-label="Cambiar tema"><span data-icon="moon"></span></button>
           <button id="btnAdmin" class="primary">Administrador</button>
-          <button id="btnBeta" title="Funciones en prueba">🧪 Beta</button>
+          <button id="btnBeta" title="Funciones en prueba"><span data-icon="flask"></span> Beta</button>
         </div>
       </header>
 
@@ -89,28 +89,28 @@
           </div>
         </div>
         <div class="stat-card stat-accent">
-          <div class="stat-icon">🔢</div>
+          <div class="stat-icon"><span data-icon="hash"></span></div>
           <div class="stat-body">
             <div class="stat-value" id="statUnitsVal">—</div>
             <div class="stat-label">Unidades totales</div>
           </div>
         </div>
         <div class="stat-card stat-danger">
-          <div class="stat-icon">🚫</div>
+          <div class="stat-icon"><span data-icon="ban"></span></div>
           <div class="stat-body">
             <div class="stat-value" id="statOutVal">—</div>
             <div class="stat-label">Sin stock</div>
           </div>
         </div>
         <div class="stat-card stat-warn">
-          <div class="stat-icon">⚠️</div>
+          <div class="stat-icon"><span data-icon="alert"></span></div>
           <div class="stat-body">
             <div class="stat-value" id="statLowVal">—</div>
             <div class="stat-label">Bajo stock</div>
           </div>
         </div>
         <div class="stat-card stat-success">
-          <div class="stat-icon">✅</div>
+          <div class="stat-icon"><span data-icon="check-circle"></span></div>
           <div class="stat-body">
             <div class="stat-value" id="statOkVal">—</div>
             <div class="stat-label">En stock</div>
@@ -122,9 +122,9 @@
       <div class="toolbar" id="toolbar">
         <div class="search">
           <div class="searchWrap">
-            <span class="searchIcon">🔍</span>
+            <span class="searchIcon" data-icon="search"></span>
             <input id="search" placeholder="Buscar por CODIGO o MARCA..." />
-            <button id="btnClearSearch" class="clearSearch" title="Limpiar" style="display:none">✕</button>
+            <button id="btnClearSearch" class="clearSearch" title="Limpiar" aria-label="Limpiar búsqueda" style="display:none"><span data-icon="close"></span></button>
           </div>
           <div class="muted tiny" id="lastUpdated">Última actualización: — <span class="refresh-dot" title="Auto-refresh activo cada 5 min"></span></div>
           <div class="range-filter" id="rangeFilter" style="display:none">
@@ -132,7 +132,7 @@
             <input id="rangeMin" type="number" min="0" step="1" placeholder="Mín" class="range-input" />
             <span class="muted" style="font-size:11px">y</span>
             <input id="rangeMax" type="number" min="0" step="1" placeholder="Máx" class="range-input" />
-            <button id="btnClearRange" class="clearSearch" style="position:static;font-size:11px;padding:4px 8px">✕ Limpiar</button>
+            <button id="btnClearRange" class="clearSearch" style="position:static;font-size:11px;padding:4px 8px"><span data-icon="close"></span> Limpiar</button>
           </div>
         </div>
         <div class="toolbar-right">
@@ -149,11 +149,11 @@
             <option value="NEGOCIO">Negocio</option>
             <option value="DEPOSITO_GALPON">Depósito/Galpón</option>
           </select>
-          <button id="btnExport" class="btn-export" title="Exportar a CSV">⬇ Exportar</button>
-          <button id="btnCompact" class="btn-export" title="Modo compacto">☰ Compacto</button>
-          <button id="btnAdvSearch" class="btn-export" title="Búsqueda por rango de stock">⚡ Filtro stock</button>
-          <button id="btnCategorias" class="btn-export" style="display:none" title="Crear y renombrar categorías">Categorías</button>
-          <button id="btnAddProduct" class="btn-add" style="display:none" title="Agregar producto">＋ Producto</button>
+          <button id="btnExport" class="btn-export" title="Exportar a CSV"><span data-icon="download"></span> Exportar</button>
+          <button id="btnCompact" class="btn-export" title="Modo compacto"><span data-icon="list"></span> Compacto</button>
+          <button id="btnAdvSearch" class="btn-export" title="Búsqueda por rango de stock"><span data-icon="zap"></span> Filtro stock</button>
+          <button id="btnCategorias" class="btn-export" style="display:none" title="Crear y renombrar categorías"><span data-icon="tag"></span> Categorías</button>
+          <button id="btnAddProduct" class="btn-add" style="display:none" title="Agregar producto"><span data-icon="plus"></span> Producto</button>
         </div>
       </div>
 
@@ -168,11 +168,11 @@
         <table id="stockTable">
           <thead>
             <tr>
-              <th class="col-codigo sortable" data-col="codigo">CODIGO <span class="sort-icon">↕</span></th>
-              <th class="col-marca sortable" data-col="marca">MARCA <span class="sort-icon">↕</span></th>
-              <th class="col-categoria sortable" data-col="categoria">CATEGORÍA <span class="sort-icon">↕</span></th>
-              <th class="col-stock sortable" data-col="stock">STOCK <span class="sort-icon">↕</span></th>
-              <th class="col-ubicacion sortable" data-col="ubicacion">UBICACIÓN <span class="sort-icon">↕</span></th>
+              <th class="col-codigo sortable" data-col="codigo">CODIGO <span class="sort-icon" data-icon="sort"></span></th>
+              <th class="col-marca sortable" data-col="marca">MARCA <span class="sort-icon" data-icon="sort"></span></th>
+              <th class="col-categoria sortable" data-col="categoria">CATEGORÍA <span class="sort-icon" data-icon="sort"></span></th>
+              <th class="col-stock sortable" data-col="stock">STOCK <span class="sort-icon" data-icon="sort"></span></th>
+              <th class="col-ubicacion sortable" data-col="ubicacion">UBICACIÓN <span class="sort-icon" data-icon="sort"></span></th>
             </tr>
           </thead>
           <tbody id="tbody"></tbody>
@@ -193,12 +193,12 @@
           <table>
             <thead>
               <tr>
-                <th class="mov-sortable" data-mcol="fecha">Fecha <span class="sort-icon">↕</span></th>
-                <th class="mov-sortable" data-mcol="accion">Acción <span class="sort-icon">↕</span></th>
+                <th class="mov-sortable" data-mcol="fecha">Fecha <span class="sort-icon" data-icon="sort"></span></th>
+                <th class="mov-sortable" data-mcol="accion">Acción <span class="sort-icon" data-icon="sort"></span></th>
                 <th>CODIGO</th>
                 <th>MARCA</th>
                 <th>UBICACIÓN</th>
-                <th class="mov-sortable" data-mcol="cantidad">Cant. <span class="sort-icon">↕</span></th>
+                <th class="mov-sortable" data-mcol="cantidad">Cant. <span class="sort-icon" data-icon="sort"></span></th>
                 <th>Antes</th>
                 <th>Después</th>
                 <th>Nota</th>
@@ -229,14 +229,14 @@
   <div id="modalOverlay" class="modalOverlay" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
       <div class="modalHeader">
-        <h2 id="modalTitle" class="modalTitle">Acceso Administrador</h2>
-        <button id="btnCloseModal" class="modalClose" title="Cerrar">✕</button>
+        <h2 id="modalTitle" class="modalTitle"><span data-icon="lock"></span>Acceso Administrador</h2>
+        <button id="btnCloseModal" class="modalClose" title="Cerrar" aria-label="Cerrar"><span data-icon="close"></span></button>
       </div>
       <div class="modalBody">
         <input id="adminUser" placeholder="Usuario" autocomplete="username" />
         <input id="adminPass" type="password" placeholder="Contraseña" autocomplete="current-password" />
         <div class="hint">
-          Si el login es correcto, se habilitan: <strong>+</strong> / <strong>−</strong> / <strong>✏️</strong>, guardado automático y últimos movimientos.
+          Si el login es correcto, se habilitan: <strong>+</strong> / <strong>−</strong> / <strong>editar</strong>, guardado automático y últimos movimientos.
         </div>
         <div class="modalActions">
           <button id="btnCancel">Cancelar</button>
@@ -251,8 +251,8 @@
   <div id="editOverlay" class="modalOverlay" aria-hidden="true">
     <div class="modal modalWide" role="dialog" aria-modal="true" aria-labelledby="editTitle">
       <div class="modalHeader">
-        <h2 id="editTitle" class="modalTitle">Editar producto</h2>
-        <button id="btnCloseEdit" class="modalClose" title="Cerrar">✕</button>
+        <h2 id="editTitle" class="modalTitle"><span data-icon="edit"></span>Editar producto</h2>
+        <button id="btnCloseEdit" class="modalClose" title="Cerrar" aria-label="Cerrar"><span data-icon="close"></span></button>
       </div>
       <div class="modalBody">
         <div class="editInfo" style="grid-template-columns:1fr 1fr 1fr">
@@ -303,8 +303,8 @@
   <div id="histOverlay" class="modalOverlay" aria-hidden="true">
     <div class="modal modalWide" role="dialog" aria-modal="true">
       <div class="modalHeader">
-        <h2 class="modalTitle" id="histTitle">Historial</h2>
-        <button id="btnCloseHist" class="modalClose">✕</button>
+        <h2 class="modalTitle"><span data-icon="clock"></span><span id="histTitle">Historial</span></h2>
+        <button id="btnCloseHist" class="modalClose" aria-label="Cerrar"><span data-icon="close"></span></button>
       </div>
       <div class="modalBody" style="gap:10px">
         <div class="editInfo" id="histInfo">
@@ -337,8 +337,8 @@
   <div id="equivOverlay" class="modalOverlay" aria-hidden="true">
     <div class="modal modalWide" role="dialog" aria-modal="true">
       <div class="modalHeader">
-        <h2 class="modalTitle">🔗 Equivalencias</h2>
-        <button id="btnCloseEquiv" class="modalClose">✕</button>
+        <h2 class="modalTitle"><span data-icon="link"></span>Equivalencias</h2>
+        <button id="btnCloseEquiv" class="modalClose" aria-label="Cerrar"><span data-icon="close"></span></button>
       </div>
       <div class="modalBody">
         <div class="editInfo" id="equivProductoInfo">
@@ -351,7 +351,7 @@
           <label class="muted" for="equivSearch">Buscar equivalente en stock</label>
           <div style="position:relative">
             <div class="searchWrap">
-              <span class="searchIcon">🔍</span>
+              <span class="searchIcon" data-icon="search"></span>
               <input id="equivSearch" placeholder="Escribí código o marca..." autocomplete="off" />
             </div>
             <div id="equivSuggestions" class="equiv-suggestions" style="display:none"></div>
@@ -381,8 +381,8 @@
   <div id="minimoOverlay" class="modalOverlay" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true">
       <div class="modalHeader">
-        <h2 class="modalTitle">⚙️ Stock mínimo</h2>
-        <button id="btnCloseMinimo" class="modalClose">✕</button>
+        <h2 class="modalTitle"><span data-icon="sliders"></span>Stock mínimo</h2>
+        <button id="btnCloseMinimo" class="modalClose" aria-label="Cerrar"><span data-icon="close"></span></button>
       </div>
       <div class="modalBody">
         <div class="editInfo">
@@ -407,8 +407,8 @@
   <div id="delOverlay" class="modalOverlay" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true">
       <div class="modalHeader">
-        <h2 class="modalTitle" style="color:var(--danger)">⚠ Eliminar producto</h2>
-        <button id="btnCloseDel" class="modalClose">✕</button>
+        <h2 class="modalTitle" style="color:var(--danger)"><span data-icon="alert"></span>Eliminar producto</h2>
+        <button id="btnCloseDel" class="modalClose" aria-label="Cerrar"><span data-icon="close"></span></button>
       </div>
       <div class="modalBody">
         <div class="editInfo" id="delInfo">
@@ -430,8 +430,8 @@
   <div id="addOverlay" class="modalOverlay" aria-hidden="true">
     <div class="modal modalWide" role="dialog" aria-modal="true" aria-labelledby="addTitle">
       <div class="modalHeader">
-        <h2 class="modalTitle" id="addTitle">Agregar producto</h2>
-        <button id="btnCloseAdd" class="modalClose" type="button" title="Cerrar">✕</button>
+        <h2 class="modalTitle" id="addTitle"><span data-icon="plus"></span>Agregar producto</h2>
+        <button id="btnCloseAdd" class="modalClose" type="button" title="Cerrar" aria-label="Cerrar"><span data-icon="close"></span></button>
       </div>
       <div class="modalBody">
         <div class="formGrid">
@@ -491,8 +491,8 @@
   <div id="catOverlay" class="modalOverlay" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="catTitle">
       <div class="modalHeader">
-        <h2 class="modalTitle" id="catTitle">Categorías</h2>
-        <button id="btnCloseCat" class="modalClose" type="button" title="Cerrar">✕</button>
+        <h2 class="modalTitle" id="catTitle"><span data-icon="tag"></span>Categorías</h2>
+        <button id="btnCloseCat" class="modalClose" type="button" title="Cerrar" aria-label="Cerrar"><span data-icon="close"></span></button>
       </div>
       <div class="modalBody">
         <p class="muted" style="margin-top:0">Crealas o renombralas. Al renombrar, los productos que la usaban se actualizan solos.</p>
@@ -513,8 +513,8 @@
   <div id="noteOverlay" class="modalOverlay" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true">
       <div class="modalHeader">
-        <h2 class="modalTitle" id="noteTitle">Confirmar movimiento</h2>
-        <button id="btnCloseNote" class="modalClose">✕</button>
+        <h2 class="modalTitle"><span data-icon="info"></span><span id="noteTitle">Confirmar movimiento</span></h2>
+        <button id="btnCloseNote" class="modalClose" aria-label="Cerrar"><span data-icon="close"></span></button>
       </div>
       <div class="modalBody">
         <div class="editInfo" id="noteInfo">
@@ -547,12 +547,12 @@
               <p id="betaDescription" class="beta-description">Busca pastillas de freno en Litton y compara código, marca, foto y precio en Aimar y ATONOR.</p>
             </div>
           </div>
-          <button id="btnCloseBeta" class="modalClose" type="button" title="Cerrar" aria-label="Cerrar beta">✕</button>
+          <button id="btnCloseBeta" class="modalClose" type="button" title="Cerrar" aria-label="Cerrar beta"><span data-icon="close"></span></button>
         </div>
         <div class="beta-searchbar">
           <label class="beta-visually-hidden" for="betaSearch">Buscar código o producto</label>
           <div class="beta-search-input">
-            <span aria-hidden="true">🔍</span>
+            <span data-icon="search" aria-hidden="true"></span>
             <input id="betaSearch" placeholder="Ej: 528 o pastilla de freno Amarok" autocomplete="off" />
           </div>
           <button id="btnBetaSearch" class="primary" type="button">Buscar</button>
@@ -567,7 +567,7 @@
     </div>
   </div>
   <div id="betaLightbox" class="beta-lightbox" aria-hidden="true">
-    <button class="beta-lightbox-close" type="button" aria-label="Cerrar foto">✕</button>
+    <button class="beta-lightbox-close" type="button" aria-label="Cerrar foto"><span data-icon="close"></span></button>
     <figure class="beta-lightbox-figure">
       <img class="beta-lightbox-image" alt="" />
       <figcaption class="beta-lightbox-caption"></figcaption>
@@ -585,6 +585,6 @@
     </div>
   </div>
 
-  <script type="module" src="js/main.js?v=20261015"></script>
+  <script type="module" src="js/main.js?v=20261019"></script>
 </body>
 </html>

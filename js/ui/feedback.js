@@ -1,5 +1,6 @@
 import { $, escapeHtml } from "./dom.js";
 import { setStatsLoading } from "./stats.js";
+import { icon } from "./icons.js";
 
 export function setBusy(on, text = "Aplicando cambio…") {
   const overlay = $("busyOverlay");
@@ -21,10 +22,10 @@ export function setBusy(on, text = "Aplicando cambio…") {
 export function showToast(message, type = "info", duration = 3200) {
   const container = $("toastContainer");
   if (!container) return;
-  const icons = { success:"✅", error:"❌", info:"ℹ️" };
+  const icons = { success: icon("check-circle"), error: icon("x-circle"), info: icon("info") };
   const toast = document.createElement("div");
   toast.className = `toast toast-${type}`;
-  toast.innerHTML = `<span>${icons[type]||"ℹ️"}</span><span>${escapeHtml(message)}</span>`;
+  toast.innerHTML = `<span>${icons[type]||icon("info")}</span><span>${escapeHtml(message)}</span>`;
   container.appendChild(toast);
   setTimeout(() => {
     toast.classList.add("toast-exit");

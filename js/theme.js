@@ -1,11 +1,13 @@
 import { $ } from "./ui.js";
+import { icon } from "./ui/icons.js";
 
 export function applyTheme(theme) {
   const value = theme === "dark" ? "dark" : "light";
   document.documentElement.setAttribute("data-theme", value);
   localStorage.setItem("rectifren_theme", value);
   const button = $("btnTheme");
-  if (button) button.textContent = value === "dark" ? "☀️" : "🌙";
+  // En tema oscuro el botón ofrece pasar a claro (sol) y viceversa.
+  if (button) button.innerHTML = icon(value === "dark" ? "sun" : "moon");
 }
 
 export function initTheme() {

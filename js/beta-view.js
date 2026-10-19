@@ -1,4 +1,5 @@
 import { escapeHtml } from "./ui.js";
+import { icon } from "./ui/icons.js";
 
 export function createBetaView(results) {
   function fmtPrecio(value) {
@@ -20,7 +21,7 @@ export function createBetaView(results) {
     const label = escapeHtml(code || "Foto del producto");
     if (!url) {
       return `<div class="beta-photo-frame ${sizeClass}">
-        <div class="beta-photo-placeholder"><span aria-hidden="true">📷</span><span>Foto no disponible</span></div>
+        <div class="beta-photo-placeholder">${icon("camera")}<span>Foto no disponible</span></div>
       </div>`;
     }
     return `<div class="beta-photo-frame ${sizeClass}">

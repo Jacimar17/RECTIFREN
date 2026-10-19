@@ -1,5 +1,6 @@
 import { $, escapeHtml, getStockState, ubicacionBadge } from "./dom.js";
 import { highlight, sortByCodigo } from "./render-utils.js";
+import { icon } from "./icons.js";
 
 export function ensureAccionesHeader(isAdmin) {
   const theadRow = document.querySelector("table#stockTable thead tr");
@@ -69,7 +70,7 @@ export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, so
 
     let badge = "";
     if (state === "out") badge = `<span class="badge out">SIN STOCK</span>`;
-    if (state === "low") badge = `<span class="badge low">⚠️</span>`;
+    if (state === "low") badge = `<span class="badge low">BAJO</span>`;
 
     const barPct  = state === "out" ? 0 : state === "low" ? 40 : 100;
     const barClass = state === "out" ? "bar-danger" : state === "low" ? "bar-warn" : "";
@@ -100,19 +101,19 @@ export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, so
       <td class="col-acciones">
         <div class="btn-group">
           <button class="mini success" data-act="in" data-tooltip="Entrada"
-            data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}" data-s="${stockNum}">+</button>
+            data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}" data-s="${stockNum}">${icon("plus")}</button>
           <button class="mini danger" data-act="out" data-tooltip="Salida"
             data-disabled="${minusDisabled?"1":"0"}"
             ${minusDisabled?"disabled":""}
-            data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}" data-s="${stockNum}">−</button>
+            data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}" data-s="${stockNum}">${icon("minus")}</button>
           <button class="mini" data-act="set" data-tooltip="Editar"
-            data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${stockNum}" data-u="${escapeHtml(item.ubicacion || "")}" data-cat="${escapeHtml(item.categoria || "")}" data-v2="${item.schemaVersion === 2 ? "1" : "0"}">✏️</button>
+            data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${stockNum}" data-u="${escapeHtml(item.ubicacion || "")}" data-cat="${escapeHtml(item.categoria || "")}" data-v2="${item.schemaVersion === 2 ? "1" : "0"}">${icon("edit")}</button>
           <button class="mini" data-act="equiv" data-tooltip="Equivalencias"
-            data-id="${item._id||""}" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}">🔗</button>
+            data-id="${item._id||""}" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}">${icon("link")}</button>
           <button class="mini" data-act="minimo" data-tooltip="Stock mínimo"
-            data-id="${item._id||""}" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}" data-min="${item.stockMinimo!==undefined?item.stockMinimo:2}">⚠️</button>
+            data-id="${item._id||""}" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}" data-min="${item.stockMinimo!==undefined?item.stockMinimo:2}">${icon("alert")}</button>
           <button class="mini del" data-act="del" data-tooltip="Eliminar"
-            data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}" data-id="${item._id||""}">🗑</button>
+            data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}" data-id="${item._id||""}">${icon("trash")}</button>
         </div>
       </td>` : "";
 

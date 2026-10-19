@@ -57,14 +57,13 @@ tbody tr {
   cursor: default;
 }
 
-tbody tr:hover td { background: rgba(26,63,143,0.06); }
-html[data-theme="light"] tbody tr:hover td { background: rgba(26,63,143,0.04); }
+tbody tr:hover td { background: var(--row-hover); }
 
 /* Sortable */
 th.sortable { cursor: pointer; transition: color .15s; }
 th.sortable:hover { color: var(--text); }
-th.sort-asc  .sort-icon::after { content: ' ▲'; font-size: 9px; color: var(--azul); }
-th.sort-desc .sort-icon::after { content: ' ▼'; font-size: 9px; color: var(--azul); }
+th.sort-asc  .sort-icon::after { content: ' ▲'; font-size: 9px; color: var(--rojo); }
+th.sort-desc .sort-icon::after { content: ' ▼'; font-size: 9px; color: var(--rojo); }
 th.sort-asc  .sort-icon, th.sort-desc .sort-icon { opacity: 0; }
 .sort-icon { font-size: 9px; color: var(--dim); margin-left: 3px; }
 
@@ -81,16 +80,16 @@ th.col-acciones, td.col-acciones { width: 290px; max-width: 290px; text-align: r
 td.col-stock { font-family: var(--font-display); font-weight: 800; font-size: 18px; text-align: center; }
 
 .stock-bar-wrap { display: flex; align-items: center; justify-content: center; gap: 8px; }
-.stock-bar { width: 40px; height: 3px; border-radius: 99px; background: var(--border2); overflow: hidden; flex-shrink: 0; }
+.stock-bar { width: 44px; height: 4px; border-radius: 99px; background: var(--border2); overflow: hidden; flex-shrink: 0; }
 .stock-bar-fill { height: 100%; border-radius: 99px; background: var(--success); transition: width .4s ease; }
 .stock-bar-fill.bar-danger { background: var(--danger); }
 .stock-bar-fill.bar-warn   { background: var(--warn); }
 
 /* Row states */
 tr.row-out td:first-child { box-shadow: inset 3px 0 0 var(--danger); }
-tr.row-out td { background: rgba(239,68,68,0.05) !important; }
+tr.row-out td { background: var(--row-out-bg) !important; }
 tr.row-low td:first-child { box-shadow: inset 3px 0 0 var(--warn); }
-tr.row-low td { background: rgba(245,158,11,0.05) !important; }
+tr.row-low td { background: var(--row-low-bg) !important; }
 
 /* Badges */
 .badge {
@@ -105,8 +104,10 @@ tr.row-low td { background: rgba(245,158,11,0.05) !important; }
   vertical-align: middle;
 }
 
-.badge.out { background: rgba(239,68,68,0.12); color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
-.badge.low { background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.2); }
+.badge.out { background: rgba(220,38,38,0.12); color: var(--danger); border: 1px solid rgba(220,38,38,0.28); }
+.badge.low { background: rgba(217,119,6,0.13); color: var(--warn); border: 1px solid rgba(217,119,6,0.30); }
+html[data-theme="dark"] .badge.out { color: #f87171; border-color: rgba(248,113,113,0.35); }
+html[data-theme="dark"] .badge.low { color: #fbbf24; border-color: rgba(251,191,36,0.35); }
 
 /* Skeleton */
 .skeleton-row td { padding: 12px 14px; }
@@ -122,14 +123,14 @@ tr.row-low td { background: rgba(245,158,11,0.05) !important; }
 
 /* Mini buttons */
 button.mini {
-  padding: 5px 10px;
+  padding: 5px 8px;
   border-radius: var(--radius-xs);
   font-weight: 700;
   font-size: 13px;
   line-height: 1;
   margin: 0 2px;
   min-width: 30px;
-  height: 28px;
+  height: 30px;
   justify-content: center;
   transition: all .15s;
   border: 1px solid transparent;
@@ -137,17 +138,19 @@ button.mini {
   color: var(--muted);
 }
 
+button.mini .icon { width: 16px; height: 16px; vertical-align: middle; }
+
 button.mini:hover { color: var(--text); background: var(--lift); border-color: var(--border2); }
 
-button.mini.success { background: rgba(34,197,94,0.08); color: #22c55e; border-color: rgba(34,197,94,0.18); }
-button.mini.success:hover { background: #22c55e; color: #fff; border-color: transparent; box-shadow: 0 2px 10px rgba(34,197,94,0.35); }
+button.mini.success { background: rgba(22,163,74,0.10); color: var(--success); border-color: rgba(22,163,74,0.20); }
+button.mini.success:hover { background: var(--success); color: #fff; border-color: transparent; box-shadow: 0 2px 10px rgba(22,163,74,0.35); }
 
-button.mini.danger  { background: rgba(239,68,68,0.08); color: #ef4444; border-color: rgba(239,68,68,0.18); }
-button.mini.danger:hover:not(:disabled) { background: #ef4444; color: #fff; border-color: transparent; box-shadow: 0 2px 10px rgba(239,68,68,0.35); }
-button.mini:disabled { opacity: 0.2; cursor: not-allowed; }
+button.mini.danger  { background: rgba(220,38,38,0.10); color: var(--danger); border-color: rgba(220,38,38,0.20); }
+button.mini.danger:hover:not(:disabled) { background: var(--danger); color: #fff; border-color: transparent; box-shadow: 0 2px 10px rgba(220,38,38,0.35); }
+button.mini:disabled { opacity: 0.25; cursor: not-allowed; }
 
 button.mini.del { background: transparent; color: var(--dim); border-color: transparent; }
-button.mini.del:hover { background: rgba(239,68,68,0.08); color: #ef4444; border-color: rgba(239,68,68,0.18); }
+button.mini.del:hover { background: rgba(220,38,38,0.10); color: var(--danger); border-color: rgba(220,38,38,0.20); }
 
 /* Grupo de botones en acciones */
 td.col-acciones { display: table-cell; }
@@ -178,8 +181,8 @@ td.col-acciones { display: table-cell; }
 /* Mov sort */
 th.mov-sortable { cursor: pointer; user-select: none; transition: color .15s; }
 th.mov-sortable:hover { color: var(--text); }
-th.mov-sort-asc  .sort-icon::after { content: ' ▲'; font-size: 10px; color: var(--azul); }
-th.mov-sort-desc .sort-icon::after { content: ' ▼'; font-size: 10px; color: var(--azul); }
+th.mov-sort-asc  .sort-icon::after { content: ' ▲'; font-size: 10px; color: var(--rojo); }
+th.mov-sort-desc .sort-icon::after { content: ' ▼'; font-size: 10px; color: var(--rojo); }
 th.mov-sort-asc  .sort-icon, th.mov-sort-desc .sort-icon { opacity: 0; }
 
 /* ============================================================
@@ -216,7 +219,11 @@ th.mov-sort-asc  .sort-icon, th.mov-sort-desc .sort-icon { opacity: 0; }
 .toast.toast-exit { animation: toastOut .25s ease-in forwards; }
 .toast.toast-success { border-left: 3px solid var(--success); }
 .toast.toast-error   { border-left: 3px solid var(--danger); }
-.toast.toast-info    { border-left: 3px solid var(--azul); }
+.toast.toast-info    { border-left: 3px solid var(--rojo); }
+.toast .icon { width: 18px; height: 18px; }
+.toast.toast-success .icon { color: var(--success); }
+.toast.toast-error   .icon { color: var(--danger); }
+.toast.toast-info    .icon { color: var(--rojo); }
 
 @keyframes toastIn  { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
 @keyframes toastOut { from{opacity:1;transform:translateY(0)} to{opacity:0;transform:translateY(12px)} }

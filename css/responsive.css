@@ -35,22 +35,23 @@ body.compact #donutChart { width: 40px; height: 40px; }
 
 /* Card base */
 .stock-card {
-  background: var(--raised);
+  background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: transform .15s, box-shadow .15s;
+  transition: transform .15s, box-shadow .15s, border-color .15s;
   cursor: pointer;
 }
 
 .stock-card:active { transform: scale(0.99); }
+.stock-card:hover { border-color: var(--border2); box-shadow: var(--shadow-sm); }
 
 .stock-card.card-out { border-left: 3px solid var(--danger); }
 .stock-card.card-low { border-left: 3px solid var(--warn); }
-.stock-card.card-ok  { border-left: 3px solid var(--azul); }
+.stock-card.card-ok  { border-left: 3px solid var(--success); }
 
 /* Card body */
 .stock-card-body {
@@ -136,8 +137,9 @@ body.compact #donutChart { width: 40px; height: 40px; }
   border-right: 1px solid var(--border);
   border-radius: 0;
   margin: 0;
-  padding: 10px 4px;
-  font-size: 16px;
+  padding: 11px 4px;
+  font-size: 12px;
+  gap: 4px;
   background: transparent;
   color: var(--muted);
   justify-content: center;
@@ -145,12 +147,14 @@ body.compact #donutChart { width: 40px; height: 40px; }
   min-width: 0;
 }
 
+.stock-card-actions button .icon { width: 15px; height: 15px; }
+
 .stock-card-actions button:last-child { border-right: none; }
 .stock-card-actions button:hover { background: var(--lift); color: var(--text); }
-.stock-card-actions button.success:hover { background: rgba(34,197,94,0.12); color: var(--success); }
-.stock-card-actions button.danger:hover  { background: rgba(239,68,68,0.10); color: var(--danger); }
-.stock-card-actions button.del:hover     { background: rgba(239,68,68,0.10); color: var(--danger); }
-.stock-card-actions button:disabled      { opacity: 0.2; cursor: not-allowed; }
+.stock-card-actions button.success:hover { background: rgba(22,163,74,0.12); color: var(--success); }
+.stock-card-actions button.danger:hover  { background: rgba(220,38,38,0.10); color: var(--danger); }
+.stock-card-actions button.del:hover     { background: rgba(220,38,38,0.10); color: var(--danger); }
+.stock-card-actions button:disabled      { opacity: 0.25; cursor: not-allowed; }
 
 /* ============================================================
    EQUIVALENCIAS
@@ -248,6 +252,11 @@ body.compact #donutChart { width: 40px; height: 40px; }
    ============================================================ */
 .stats { grid-template-columns: repeat(5, 1fr); }
 @media (max-width: 900px) { .stats { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 760px) {
+  .edit-grid { grid-template-columns: 1fr 1fr; }
+  .modal { padding: 18px; }
+  .modalOverlay { padding: 12px; }
+}
 @media (max-width: 600px) {
   .stats { grid-template-columns: repeat(2, 1fr); }
   .card { padding: 16px; }

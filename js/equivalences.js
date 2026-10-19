@@ -1,6 +1,7 @@
 import { API_URL } from "./config.js";
 import { authJsonHeaders } from "./api.js";
 import { $, escapeHtml } from "./ui.js";
+import { icon } from "./ui/icons.js";
 
 export function createEquivalencesController({ getAdminToken }) {
   let productoId = null;
@@ -67,7 +68,7 @@ export function createEquivalencesController({ getAdminToken }) {
             <div class="equiv-item-meta">${escapeHtml(item.marca)} · En stock</div>
           </div>
           <div class="equiv-item-stock ${stockClass}">${stock}</div>
-          <button class="equiv-item-del" data-vid="${item._id}" title="Quitar vínculo">✕</button>
+          <button class="equiv-item-del" data-vid="${item._id}" title="Quitar vínculo">${icon("close")}</button>
         `;
         row.querySelector(".equiv-item-del").addEventListener("click", () => desvincularEquiv(item._id, null));
         list.appendChild(row);
@@ -81,7 +82,7 @@ export function createEquivalencesController({ getAdminToken }) {
             <div class="equiv-item-code">${escapeHtml(text)}</div>
             <div class="equiv-item-meta" style="color:var(--warn)">Texto libre (no está en stock)</div>
           </div>
-          <button class="equiv-item-del" title="Quitar">✕</button>
+          <button class="equiv-item-del" title="Quitar">${icon("close")}</button>
         `;
         row.querySelector(".equiv-item-del").addEventListener("click", () => desvincularEquiv(null, text));
         list.appendChild(row);
@@ -141,7 +142,7 @@ export function createEquivalencesController({ getAdminToken }) {
       const data = await response.json();
       if (data.ok) {
         document.dispatchEvent(new Event("rectifren:inventory-updated"));
-        $("equivStatus").textContent = "✅ Equivalencia agregada.";
+        $("equivStatus").textContent = "Equivalencia agregada.";
         await loadEquivList();
       } else {
         $("equivStatus").textContent = `Error: ${data.error}`;

@@ -44,7 +44,7 @@ export function refrescarSelectsCategorias() {
       opciones.push(`<option value="${escapeHtml(categoria.nombre)}">${escapeHtml(categoria.nombre)}</option>`);
     }
     // Solo el formulario de alta puede crear una categoría en el momento.
-    if (id === "addCategoria") opciones.push(`<option value="${OPCION_NUEVA}">＋ Nueva categoría…</option>`);
+    if (id === "addCategoria") opciones.push(`<option value="${OPCION_NUEVA}">+ Nueva categoría…</option>`);
     select.innerHTML = opciones.join("");
 
     if (cache.some(categoria => categoria.nombre === valorPrevio)) select.value = valorPrevio;

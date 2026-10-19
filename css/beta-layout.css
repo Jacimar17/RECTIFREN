@@ -167,7 +167,8 @@
   text-align: center;
   font-size: 12px;
 }
-.beta-photo-placeholder span:first-child { font-size: 30px; }
+.beta-photo-placeholder span { font-size: 12px; }
+.beta-photo-placeholder .icon { width: 30px; height: 30px; }
 .beta-result-info, .beta-main-info, .beta-provider-card-content {
   min-width: 0;
   display: flex;

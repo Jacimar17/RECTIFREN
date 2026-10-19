@@ -9,8 +9,7 @@ export function setStatsLoading() {
 }
 
 /* ===== Contador animado ===== */
-function animateCounter(el, from, to, duration = 600) {
-  if (from === to) { el.textContent = to; return; }
+function animateCounter(el, from, to, duration = 600) {  if (from === to) { el.textContent = to; return; }
   const start = performance.now();
   const update = (now) => {
     const progress = Math.min((now - start) / duration, 1);
@@ -62,6 +61,13 @@ export function updateStats(list) {
   drawDonut({ ok, low, out });
 }
 
+/* Lee una variable de color del tema (soporta cambio claro/oscuro). */
+function cssVar(name, fallback) {
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return value || fallback;
+}
+function trackColor() { return cssVar("--border2", "rgba(120,130,145,0.3)"); }
+
 function drawDonut({ ok, low, out }) {
   const canvas = document.getElementById("donutChart");
   if (!canvas) return;
@@ -72,13 +78,13 @@ function drawDonut({ ok, low, out }) {
   ctx.clearRect(0, 0, W, H);
   if (total === 0) {
     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2);
-    ctx.strokeStyle = "rgba(255,255,255,0.1)";
+    ctx.strokeStyle = trackColor();
     ctx.lineWidth = r - inner; ctx.stroke(); return;
   }
   const segments = [
-    { val: ok,  color: "#22c55e" },
-    { val: low, color: "#f59e0b" },
-    { val: out, color: "#ef4444" },
+    { val: ok,  color: cssVar("--success", "#16a34a") },
+    { val: low, color: cssVar("--warn",    "#d97706") },
+    { val: out, color: cssVar("--danger",  "#dc2626") },
   ].filter(s => s.val > 0);
   let angle = -Math.PI / 2;
   for (const seg of segments) {

@@ -1,4 +1,5 @@
 import { $, setActiveChip, showToast } from "./ui.js";
+import { icon } from "./ui/icons.js";
 
 export function bindMainEvents({ state, actions, searchDebounceMs }) {
   let searchTimer = null;
@@ -46,7 +47,7 @@ export function bindMainEvents({ state, actions, searchDebounceMs }) {
       if ($("rangeMin")) $("rangeMin").value = "";
       if ($("rangeMax")) $("rangeMax").value = "";
       if ($("rangeFilter")) $("rangeFilter").style.display = "none";
-      if ($("btnAdvSearch")) $("btnAdvSearch").textContent = "⚡ Filtro stock";
+      if ($("btnAdvSearch")) $("btnAdvSearch").innerHTML = `${icon("zap")} Filtro stock`;
       loadStock("");
       return;
     }
@@ -119,7 +120,7 @@ export function bindMainEvents({ state, actions, searchDebounceMs }) {
     rf.style.display = visible ? "none" : "flex";
     if (visible) { state.rangeMin = null; state.rangeMax = null; $("rangeMin").value=""; $("rangeMax").value=""; doRender(); }
     const btn = $("btnAdvSearch");
-    if (btn) btn.textContent = visible ? "⚡ Filtro stock" : "⚡ Quitar filtro";
+    if (btn) btn.innerHTML = visible ? `${icon("zap")} Filtro stock` : `${icon("zap")} Quitar filtro`;
   });
 
   const applyRange = () => {
