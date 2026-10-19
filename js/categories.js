@@ -24,6 +24,14 @@ export function esOpcionNueva(valor) {
   return valor === OPCION_NUEVA;
 }
 
+/** Devuelve los campos extra declarados por una categoría (o lista vacía). */
+export function getCamposExtraCategoria(nombre) {
+  const objetivo = normalizarNombreCategoria(nombre);
+  if (!objetivo) return [];
+  const categoria = cache.find(item => normalizarNombreCategoria(item.nombre) === objetivo);
+  return Array.isArray(categoria?.camposExtra) ? categoria.camposExtra : [];
+}
+
 /** Rellena los desplegables de categorías conservando la selección válida. */
 export function refrescarSelectsCategorias() {
   for (const id of SELECTS_CATEGORIA) {

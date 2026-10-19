@@ -1,4 +1,4 @@
-import { $, openEditModal, closeEditModal } from "./ui.js";
+import { $, normalizarCodigo, openEditModal, closeEditModal } from "./ui.js";
 import { refrescarSelectsCategorias } from "./categories.js";
 
 export function createProductActionEvents({
@@ -18,7 +18,10 @@ export function createProductActionEvents({
   openAddModal,
   closeAddModal,
   confirmAdd,
+  confirmAddSumar,
+  hideAddDupBox,
   syncNuevaCategoriaField,
+  renderAddCamposExtra,
   defaultLocationForCode,
   isAddLocationTouched,
   setAddLocationTouched
@@ -94,12 +97,27 @@ export function createProductActionEvents({
       $("btnAddProduct")?.addEventListener("click", () => { if (!isBusy()) openAddModal(); });
       $("btnCloseAdd")?.addEventListener("click", () => { if (!isBusy()) closeAddModal(); });
       $("btnCancelAdd")?.addEventListener("click", () => { if (!isBusy()) closeAddModal(); });
-      $("btnConfirmAdd")?.addEventListener("click", () => { if (!isBusy()) void confirmAdd(); });
+      $("btnConfirmAdd")?.addEventListener("click", () => { if (!isBusy()) void confirmAdd({ modo: "cerrar" }); });
+      $("btnSaveAddMore")?.addEventListener("click", () => { if (!isBusy()) void confirmAdd({ modo: "otro" }); });
+      $("btnAddSumar")?.addEventListener("click", () => { if (!isBusy()) void confirmAddSumar(); });
+      $("btnAddCancelDup")?.addEventListener("click", () => { if (!isBusy()) hideAddDupBox(); });
       $("addCodigo")?.addEventListener("input", event => {
         if (!isAddLocationTouched()) $("addUbicacion").value = defaultLocationForCode(event.target.value);
       });
-      $("addCategoria")?.addEventListener("change", () => syncNuevaCategoriaField());
+      // El código se guarda en mayúsculas; se acomoda también al salir del campo.
+      $("addCodigo")?.addEventListener("blur", event => {
+        const input = event.target;
+        const limpio = normalizarCodigo(input.value);
+        if (limpio !== input.value) input.value = limpio;
+      });
+      $("addCategoria")?.addEventListener("change", () => {
+        syncNuevaCategoriaField();
+        renderAddCamposExtra();
+      });
       $("addUbicacion")?.addEventListener("change", () => setAddLocationTouched(true));
+      $("addStock")?.addEventListener("keydown", event => {
+        if (event.key === "Enter" && !isBusy()) void confirmAdd({ modo: "cerrar" });
+      });
       addOverlay.addEventListener("click", event => {
         if (event.target === addOverlay && !isBusy()) closeAddModal();
       });

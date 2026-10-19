@@ -1,7 +1,10 @@
 const productosService = require("../services/productos");
 
 function responderError(res, error) {
-  res.status(error.status || 500).json({ ok: false, error: error.message });
+  const body = { ok: false, error: error.message };
+  // Marca para que el frontend ofrezca sumar la cantidad a un producto existente.
+  if (error.codigoExiste) body.codigoExiste = true;
+  res.status(error.status || 500).json(body);
 }
 
 async function catalogoPublico(req, res) {

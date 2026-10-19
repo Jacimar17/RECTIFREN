@@ -125,6 +125,21 @@ async function renombrar(id, nuevoNombre) {
 }
 
 /**
+ * Devuelve el documento de la categoría activa, o null si no existe o viene vacío.
+ * Sirve para leer sus campos extra además de validar el nombre.
+ */
+async function obtenerActiva(nombre) {
+  if (!nombre) return null;
+  const limpio = String(nombre).trim().replace(/\s+/g, " ");
+  if (!limpio) return null;
+  const slug = generarSlug(limpio);
+  return Categoria.findOne({
+    $or: [{ nombre: limpio }, { slug }],
+    activa: { $ne: false },
+  });
+}
+
+/**
  * Verifica que una categoría exista en la colección y devuelve su nombre canónico.
  * Si no existe, lanza un 404 para que el cliente la cree antes de usarla.
  */
@@ -132,11 +147,7 @@ async function validarExistente(nombre) {
   if (!nombre) return "";
   const limpio = String(nombre).trim().replace(/\s+/g, " ");
   if (!limpio) return "";
-  const slug = generarSlug(limpio);
-  const categoria = await Categoria.findOne({
-    $or: [{ nombre: limpio }, { slug }],
-    activa: { $ne: false },
-  });
+  const categoria = await obtenerActiva(limpio);
   if (!categoria) {
     throw httpError(404, `La categoría "${limpio}" no existe. Creala desde el formulario antes de usarla.`);
   }
@@ -148,6 +159,7 @@ module.exports = {
   crear,
   renombrar,
   validarExistente,
+  obtenerActiva,
   inicializarCategoriasBase,
   generarSlug,
   CATEGORIAS_BASE,

@@ -19,24 +19,48 @@ function validarCategoria(valor) {
   return limpio;
 }
 
+/**
+ * Normaliza un código de producto: sin espacios de más y en mayúsculas.
+ * La búsqueda en proveedores (beta) compara códigos en mayúsculas, por eso
+ * conviene guardarlos siempre igual.
+ */
+function normalizarCodigo(valor) {
+  return String(valor || "").trim().replace(/\s+/g, " ").toUpperCase();
+}
+
+function validarDescripcion(valor) {
+  if (valor === undefined || valor === null) return "";
+  if (typeof valor !== "string") throw httpError(400, "La descripción no es válida.");
+  const limpio = valor.trim();
+  if (limpio.length > 500) throw httpError(400, "La descripción no puede superar 500 caracteres.");
+  return limpio;
+}
+
 function validarNuevoProducto(body) {
-  const { codigo, marca, stock = 0, equivalencias = "" } = body;
-  if (!codigo || !marca) throw httpError(400, "Faltan campos: codigo, marca.");
+  const marca = String(body.marca || "").trim();
+  const stock = body.stock === undefined ? 0 : body.stock;
+  const equivalencias = body.equivalencias || "";
+  const codigo = normalizarCodigo(body.codigo);
+  if (!codigo) throw httpError(400, "El código es obligatorio.");
+  if (!marca) throw httpError(400, "La marca es obligatoria.");
   const cantidad = Number(stock);
   if (!Number.isFinite(cantidad) || cantidad < 0) {
-    throw httpError(400, "El stock debe ser un número no negativo.");
+    throw httpError(400, "La cantidad debe ser un número mayor o igual a 0.");
   }
   const ubicacion = body.ubicacion || ubicacionPredeterminada({ codigo });
   if (!Object.values(UBICACIONES).includes(ubicacion)) {
     throw httpError(400, "La ubicación del producto no es válida.");
   }
   return {
-    codigo: codigo.trim(),
-    marca: marca.trim(),
+    codigo,
+    marca,
     stock: cantidad,
     equivalencias,
     ubicacion,
+    descripcion: validarDescripcion(body.descripcion),
     categoria: validarCategoria(body.categoria),
+    // Permite sumar la cantidad a un producto ya existente en vez de fallar.
+    sumarStock: body.sumarStock === true || body.sumarStock === "true",
   };
 }
 
@@ -78,4 +102,6 @@ module.exports = {
   validarStockMinimo,
   validarVariante,
   validarCategoria,
+  normalizarCodigo,
+  validarDescripcion,
 };

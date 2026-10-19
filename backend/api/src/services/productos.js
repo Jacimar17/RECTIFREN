@@ -143,12 +143,103 @@ async function buscar(value) {
   };
 }
 
+/**
+ * Filtra los campos extra que llegan del formulario dejando solo los que la
+ * categoría declara. Si el campo define opciones, solo acepta valores de la lista.
+ */
+function normalizarCamposExtra(categoria, valor) {
+  if (!categoria || !Array.isArray(categoria.camposExtra) || !valor || typeof valor !== "object") return {};
+  const salida = {};
+  for (const campo of categoria.camposExtra) {
+    const nombre = String(campo?.nombre || "").trim();
+    if (!nombre) continue;
+    const bruto = valor[nombre];
+    if (bruto === undefined || bruto === null) continue;
+    const limpio = String(bruto).trim().slice(0, 80);
+    if (!limpio) continue;
+    if (Array.isArray(campo.opciones) && campo.opciones.length && !campo.opciones.includes(limpio)) continue;
+    salida[nombre] = limpio;
+  }
+  return salida;
+}
+
+/** Suma la cantidad al stock de un producto que ya existe en la ubicación indicada. */
+async function sumarStockExistente(producto, input, { categoria, camposExtra } = {}) {
+  const cantidad = Number(input.stock);
+  if (categoria && !producto.categoria) producto.categoria = categoria;
+  if (camposExtra && Object.keys(camposExtra).length) {
+    producto.camposExtra = { ...(producto.camposExtra || {}), ...camposExtra };
+  }
+
+  if (producto.schemaVersion === 2) {
+    if (!Array.isArray(producto.variantes)) producto.variantes = [];
+    const variante = producto.variantes.find((item) =>
+      item.marca === input.marca && item.ubicacion === input.ubicacion
+    );
+    if (!variante) throw httpError(409, "No se pudo identificar la variante a la que sumar el stock.");
+    const stockAntes = Number(variante.cantidad || 0);
+    variante.cantidad = stockAntes + cantidad;
+    await productosRepository.guardar(producto);
+    if (cantidad !== 0) {
+      await movimientosRepository.crear({
+        accion: "ENTRADA",
+        productoId: producto._id,
+        codigo: producto.codigo,
+        marca: variante.marca,
+        ubicacion: variante.ubicacion,
+        cantidad,
+        stock_anterior: stockAntes,
+        stock_nuevo: variante.cantidad,
+      });
+    }
+    return normalizarVariante(producto, variante);
+  }
+
+  const stockAntes = producto.stock !== undefined && producto.stock !== null
+    ? Number(producto.stock)
+    : Number(producto.STOCK || 0);
+  const stockNuevo = stockAntes + cantidad;
+  producto.stock = stockNuevo;
+  producto.STOCK = stockNuevo;
+  await productosRepository.guardar(producto);
+  const normalizado = normalizarProducto(producto);
+  if (cantidad !== 0) {
+    await movimientosRepository.crear({
+      accion: "ENTRADA",
+      productoId: producto._id,
+      codigo: normalizado.codigo,
+      marca: normalizado.marca,
+      ubicacion: normalizado.ubicacion,
+      cantidad,
+      stock_anterior: stockAntes,
+      stock_nuevo: stockNuevo,
+    });
+  }
+  return normalizado;
+}
+
 async function agregar(body) {
   const input = validarNuevoProducto(body);
   // La categoría enviada debe existir en la colección "categorias".
-  const categoria = await categoriasService.validarExistente(input.categoria);
+  const categoriaDoc = await categoriasService.obtenerActiva(input.categoria);
+  if (input.categoria && !categoriaDoc) {
+    throw httpError(404, `La categoría "${input.categoria}" no existe. Creala desde el formulario antes de usarla.`);
+  }
+  const categoria = categoriaDoc ? categoriaDoc.nombre : "";
+  const camposExtra = normalizarCamposExtra(categoriaDoc, body.camposExtra);
+
   const existe = await productosRepository.buscarPorCodigoMarca(input.codigo, input.marca, input.ubicacion);
-  if (existe.length) throw httpError(409, `El producto ya existe: ${body.codigo} — ${body.marca}`);
+  if (existe.length > 1) {
+    throw httpError(409, `El código ${input.codigo} coincide con más de un producto.`);
+  }
+  if (existe.length === 1) {
+    if (!input.sumarStock) {
+      const error = httpError(409, `El producto ya existe: ${input.codigo} — ${input.marca}`);
+      error.codigoExiste = true;
+      throw error;
+    }
+    return sumarStockExistente(existe[0], input, { categoria, camposExtra });
+  }
 
   const stock = Number(input.stock);
   const candidatosLitton = await productosRepository.buscarLittonPorCodigo(input.codigo);
@@ -160,6 +251,15 @@ async function agregar(body) {
     if (!Array.isArray(productoLitton.variantes)) productoLitton.variantes = [];
     // Solo se completa la categoría del documento Litton si todavía no tiene una.
     if (categoria && !productoLitton.categoria) productoLitton.categoria = categoria;
+    if (input.descripcion && !productoLitton.descripcion) productoLitton.descripcion = input.descripcion;
+    if (Object.keys(camposExtra).length) {
+      productoLitton.camposExtra = { ...(productoLitton.camposExtra || {}), ...camposExtra };
+    }
+    if (productoLitton.variantes.some((item) =>
+      item.marca === input.marca && item.ubicacion === input.ubicacion
+    )) {
+      throw httpError(409, `Ya existe una variante ${input.marca} en esa ubicación para ${input.codigo}.`);
+    }
     const variante = {
       marca: input.marca,
       ubicacion: input.ubicacion,
@@ -188,10 +288,12 @@ async function agregar(body) {
   const producto = await productosRepository.crear({
     codigo: input.codigo,
     marca: input.marca,
+    descripcion: input.descripcion,
     stock,
     equivalencias: input.equivalencias,
     ubicacion: input.ubicacion,
     categoria,
+    camposExtra,
   });
   await movimientosRepository.crear({
     accion: "ALTA",

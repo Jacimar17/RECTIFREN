@@ -6,7 +6,7 @@ import {
   cargarCategorias, esOpcionNueva, normalizarNombreCategoria
 } from "./categories.js";
 import {
-  $, showToast, closeEditModal, getEditModalData
+  $, showToast, closeEditModal, getEditModalData, normalizarCodigo
 } from "./ui.js";
 
 export function createProductActions({
@@ -26,11 +26,18 @@ export function createProductActions({
   let minimoProductoId = null;
   let minimoMarca = "";
   let minimoUbicacion = "";
+  // Recuerda con qué botón se intentó guardar para repetirlo al sumar stock.
+  let addDupModo = "cerrar";
   const {
     defaultLocationForCode,
     openAddModal,
     closeAddModal,
+    prepararSiguienteAlta,
     syncNuevaCategoriaField,
+    renderCamposExtra,
+    collectCamposExtra,
+    hideDupBox,
+    showDupBox,
     isLocationTouched,
     setLocationTouched
   } = createProductAddModal();
@@ -113,42 +120,62 @@ export function createProductActions({
     return creada.data?.nombre || nombre;
   }
 
-  async function confirmAdd() {
+  async function confirmAdd({ modo = "cerrar", sumar = false } = {}) {
     const token = getAdminToken();
     if (!token) {
       adminLogout();
       showToast("La sesión venció. Ingresá nuevamente.", "error");
       return;
     }
-    const codigo = $("addCodigo")?.value.trim();
-    const marca = $("addMarca")?.value.trim();
+    const codigo = normalizarCodigo($("addCodigo")?.value);
+    const marca = ($("addMarca")?.value || "").trim();
+    const descripcion = ($("addDescripcion")?.value || "").trim();
     const stock = Number($("addStock")?.value || 0);
     const ubicacion = $("addUbicacion")?.value || defaultLocationForCode(codigo);
     const status = $("addStatus");
-    if (!codigo) { if (status) status.textContent = "El código es obligatorio."; return; }
-    if (!marca) { if (status) status.textContent = "La marca es obligatoria."; return; }
+    hideDupBox();
+    if (!codigo) { if (status) status.textContent = "El código es obligatorio."; $("addCodigo")?.focus(); return; }
+    if (!marca) { if (status) status.textContent = "La marca es obligatoria."; $("addMarca")?.focus(); return; }
     if (!Number.isFinite(stock) || stock < 0) {
-      if (status) status.textContent = "Stock inválido.";
+      if (status) status.textContent = "La cantidad debe ser 0 o más.";
       return;
     }
     try {
-      setBusyState(true, "Agregando producto…");
+      setBusyState(true, sumar ? "Sumando cantidad…" : "Guardando producto…");
       const categoria = await resolverCategoria(token, status);
       if (categoria === null) return;
-      const response = await apiPostForm({ action: "add", token, codigo, marca, stock, ubicacion, categoria });
+      const camposExtra = collectCamposExtra();
+      const response = await apiPostForm({
+        action: "add", token, codigo, marca, descripcion,
+        stock, ubicacion, categoria, camposExtra, sumarStock: sumar
+      });
       if (!response.ok) {
-        if (status) status.textContent = `Error: ${response.error || "No se pudo agregar."}`;
+        // El producto ya existe: ofrecer sumar la cantidad al stock actual.
+        if (response.codigoExiste) {
+          addDupModo = modo;
+          showDupBox(codigo, marca, ubicacion, stock);
+          if (status) status.textContent = "";
+          return;
+        }
+        if (status) status.textContent = `Error: ${response.error || "No se pudo guardar."}`;
         return;
       }
       document.dispatchEvent(new Event("rectifren:inventory-updated"));
-      closeAddModal();
-      showToast(`Producto ${codigo} agregado.`, "success");
+      if (sumar) showToast(`Se sumaron ${stock} unidades a ${codigo}.`, "success");
+      else showToast(`Producto ${codigo} guardado.`, "success");
+      if (modo === "otro") prepararSiguienteAlta(categoria);
+      else closeAddModal();
       await loadStock();
       await loadMovs();
       setLastUpdatedNow();
     } finally {
       setBusyState(false);
     }
+  }
+
+  /** Confirma el alta sumando la cantidad al producto existente. */
+  function confirmAddSumar() {
+    return confirmAdd({ modo: addDupModo, sumar: true });
   }
 
   function openDelModal(codigo, marca, ubicacion, id) {
@@ -316,7 +343,10 @@ export function createProductActions({
     openAddModal,
     closeAddModal,
     confirmAdd,
+    confirmAddSumar,
+    hideAddDupBox: hideDupBox,
     syncNuevaCategoriaField,
+    renderAddCamposExtra: renderCamposExtra,
     defaultLocationForCode,
     isAddLocationTouched: isLocationTouched,
     setAddLocationTouched: setLocationTouched

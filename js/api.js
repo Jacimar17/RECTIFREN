@@ -127,17 +127,25 @@ export async function apiPostForm(bodyObj, timeoutMs = 15000) {
 
   // Agregar producto
   if (action === "add") {
+    const payload = {
+      codigo: bodyObj.codigo,
+      marca: bodyObj.marca,
+      stock: bodyObj.stock || 0,
+      descripcion: bodyObj.descripcion || "",
+      equivalencias: bodyObj.equivalencias || "",
+      ubicacion: bodyObj.ubicacion,
+      categoria: bodyObj.categoria || ""
+    };
+    if (bodyObj.camposExtra && Object.keys(bodyObj.camposExtra).length) {
+      payload.camposExtra = bodyObj.camposExtra;
+    }
+    // Si el producto ya existe, el backend permite sumarle la cantidad.
+    if (bodyObj.sumarStock) payload.sumarStock = true;
+
     return request(`${API_URL}/api/productos`, {
       method: "POST",
       headers: jsonHeaders(token),
-      body: JSON.stringify({
-        codigo: bodyObj.codigo,
-        marca: bodyObj.marca,
-        stock: bodyObj.stock || 0,
-        equivalencias: bodyObj.equivalencias || "",
-        ubicacion: bodyObj.ubicacion,
-        categoria: bodyObj.categoria || ""
-      })
+      body: JSON.stringify(payload)
     }, timeoutMs);
   }
 

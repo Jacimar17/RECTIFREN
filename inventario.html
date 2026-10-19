@@ -428,34 +428,61 @@
 
   <!-- Modal Agregar producto -->
   <div id="addOverlay" class="modalOverlay" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal modalWide" role="dialog" aria-modal="true" aria-labelledby="addTitle">
       <div class="modalHeader">
-        <h2 class="modalTitle">Agregar producto</h2>
-        <button id="btnCloseAdd" class="modalClose">✕</button>
+        <h2 class="modalTitle" id="addTitle">Agregar producto</h2>
+        <button id="btnCloseAdd" class="modalClose" type="button" title="Cerrar">✕</button>
       </div>
       <div class="modalBody">
-        <label class="muted" for="addCodigo">Código</label>
-        <input id="addCodigo" placeholder="Ej: FR-1234" autocomplete="off" />
-        <label class="muted" for="addMarca">Marca</label>
-        <input id="addMarca" placeholder="Ej: BREMBO" autocomplete="off" />
-        <label class="muted" for="addCategoria">Categoría</label>
-        <select id="addCategoria" class="select">
-          <option value="">Sin categoría</option>
-        </select>
-        <label class="muted" for="addNuevaCategoria" id="addNuevaCategoriaLabel" style="display:none">Nombre de la nueva categoría</label>
-        <input id="addNuevaCategoria" placeholder="Ej: Bombas de freno" autocomplete="off" style="display:none" />
-        <label class="muted" for="addStock">Stock inicial</label>
-        <input id="addStock" type="number" min="0" step="1" placeholder="0" value="0" />
-        <label class="muted" for="addUbicacion">Ubicación</label>
-        <select id="addUbicacion" class="select">
-          <option value="NEGOCIO">Negocio</option>
-          <option value="DEPOSITO_GALPON">Depósito/Galpón</option>
-        </select>
-        <div class="modalActions">
-          <button id="btnCancelAdd">Cancelar</button>
-          <button id="btnConfirmAdd" class="primary">Agregar</button>
+        <div class="formGrid">
+          <div class="formField">
+            <label class="muted" for="addCodigo">Código *</label>
+            <input id="addCodigo" placeholder="Ej: FR-1234" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="next" />
+          </div>
+          <div class="formField">
+            <label class="muted" for="addMarca">Marca *</label>
+            <input id="addMarca" placeholder="Ej: BREMBO" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="next" />
+          </div>
+          <div class="formField formFieldFull">
+            <label class="muted" for="addDescripcion">Descripción</label>
+            <textarea id="addDescripcion" rows="2" placeholder="Detalle opcional (medidas, posición, etc.)" autocomplete="off"></textarea>
+          </div>
+          <div class="formField">
+            <label class="muted" for="addCategoria">Categoría</label>
+            <select id="addCategoria" class="select">
+              <option value="">Sin categoría</option>
+            </select>
+          </div>
+          <div class="formField formFieldFull" id="addNuevaCategoriaField" style="display:none">
+            <label class="muted" for="addNuevaCategoria" id="addNuevaCategoriaLabel">Nombre de la nueva categoría</label>
+            <input id="addNuevaCategoria" placeholder="Ej: Bombas de freno" autocomplete="off" />
+          </div>
+          <div class="formField">
+            <label class="muted" for="addStock" id="addCantidadLabel">Cantidad</label>
+            <input id="addStock" type="number" min="0" step="1" inputmode="numeric" placeholder="0" value="0" />
+          </div>
+          <div class="formField">
+            <label class="muted" for="addUbicacion">Ubicación</label>
+            <select id="addUbicacion" class="select">
+              <option value="NEGOCIO">Negocio</option>
+              <option value="DEPOSITO_GALPON">Depósito/Galpón</option>
+            </select>
+          </div>
         </div>
-        <p id="addStatus" class="muted"></p>
+        <div id="addCamposExtra" class="camposExtra" hidden></div>
+        <div id="addDupBox" class="addDupBox" hidden>
+          <p id="addDupMsg" class="muted" role="status" aria-live="polite"></p>
+          <div class="modalActions">
+            <button id="btnAddCancelDup" type="button">Cancelar</button>
+            <button id="btnAddSumar" class="primary" type="button">Sumar cantidad</button>
+          </div>
+        </div>
+        <div class="modalActions">
+          <button id="btnCancelAdd" type="button">Cancelar</button>
+          <button id="btnSaveAddMore" type="button">Guardar y cargar otro</button>
+          <button id="btnConfirmAdd" class="primary" type="button">Guardar</button>
+        </div>
+        <p id="addStatus" class="muted" role="status" aria-live="polite"></p>
       </div>
     </div>
   </div>

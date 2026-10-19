@@ -200,6 +200,69 @@ input:focus {
 input::placeholder { color: var(--dim); }
 
 /* ============================================================
+   FORMULARIO DE ALTA (producto)
+   ============================================================ */
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.formField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.formFieldFull { grid-column: 1 / -1; }
+
+.formField input,
+.formField select,
+.formField textarea { width: 100%; }
+
+.formField textarea {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border2);
+  background: var(--raised);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  outline: none;
+  resize: vertical;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.formField textarea:focus,
+.formField select:focus {
+  border-color: var(--azul);
+  box-shadow: 0 0 0 3px var(--azul-soft);
+}
+
+.camposExtra { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.camposExtra[hidden] { display: none; }
+
+.addDupBox {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--warn);
+  border-radius: var(--radius-sm);
+  background: var(--raised);
+}
+.addDupBox[hidden] { display: none; }
+.addDupBox p { margin: 0; font-size: 13px; line-height: 1.5; }
+
+/* En celular: una sola columna y campos cómodos para el pulgar. */
+@media (max-width: 560px) {
+  .formGrid, .camposExtra { grid-template-columns: 1fr; }
+  .formField input,
+  .formField select,
+  .formField textarea { font-size: 16px; padding: 12px 14px; }
+}
+
+/* ============================================================
    BOTONES
    ============================================================ */
 button {

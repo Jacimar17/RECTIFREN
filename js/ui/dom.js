@@ -24,3 +24,12 @@ export function ubicacionBadge(ubicacion) {
   const label = enNegocio ? "Negocio" : "Depósito/Galpón";
   return `<span class="inventory-location-badge ${enNegocio ? "inventory-location-business" : "inventory-location-depot"}">${label}</span>`;
 }
+
+/** Normaliza un código de producto: sin espacios de más y en mayúsculas. */
+export function normalizarCodigo(valor) {
+  return String(valor ?? "").trim().replace(/\s+/g, " ").toUpperCase();
+}
+
+export function ubicacionLabel(ubicacion) {
+  return ubicacion === "NEGOCIO" ? "Negocio" : "Depósito/Galpón";
+}
