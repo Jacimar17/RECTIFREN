@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RECTIFREN — Catálogo de Productos</title>
+  <meta name="description" content="Catálogo online de repuestos para frenos, embragues y rectificaciones." />
+  <link rel="icon" type="image/png" href="assets/logo_rectifren.png" />
+  <link rel="stylesheet" href="css/public.css?v=20261019" />
+  <meta name="theme-color" content="#d32f2f" />
+</head>
+<body>
+
+  <!-- Aviso de página en producción -->
+  <div class="top-notice">
+    ⚠️ <strong>Página en producción.</strong> Para consultas contactanos por WhatsApp:
+    <a id="noticeWaLink" href="#" target="_blank" rel="noopener">Enviar mensaje directo →</a>
+  </div>
+
+  <!-- Header principal -->
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="index.html" class="brand-wrapper" title="RECTIFREN - Inicio">
+        <img 
+          src="assets/logo_rectifren.png" 
+          alt="RECTIFREN" 
+          class="brand-logo"
+          onerror="this.style.display='none'; document.getElementById('brandFallback').style.display='block';"
+        />
+        <div id="brandFallback" class="brand-fallback" style="display:none;">
+          RECTI<span>FREN</span>
+        </div>
+      </a>
+
+      <div class="header-search">
+        <form id="headerSearchForm" class="search-form" role="search">
+          <input 
+            type="search" 
+            id="headerSearchInput" 
+            class="search-input" 
+            placeholder="Buscar repuesto por código (ej: 528, FR-1234)..." 
+            aria-label="Buscar repuesto por código"
+            autocomplete="off"
+            required
+          />
+          <button type="submit" class="search-btn" title="Buscar en catálogo">🔍</button>
+        </form>
+      </div>
+
+      <div class="header-actions">
+        <a href="inventario.html" class="btn-inventory" title="Acceso al panel interno de inventario">
+          🔒 Inventario
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Barra de navegación roja -->
+  <nav class="site-nav" aria-label="Navegación principal">
+    <div class="container nav-inner">
+      <ul class="nav-links">
+        <li class="nav-item">
+          <a href="index.html">INICIO</a>
+        </li>
+        <li class="nav-item active">
+          <a href="productos.html">PRODUCTOS</a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Contenido Catálogo (Se completará en la Fase 3) -->
+  <main class="section">
+    <div class="container">
+      <header class="section-header">
+        <div class="section-subtitle">Catálogo de Repuestos</div>
+        <h1 class="section-title">Productos</h1>
+      </header>
+      <div style="text-align:center; padding: 48px 16px; background:var(--gray-bg); border-radius:var(--radius); border:1px solid var(--gray-light);">
+        <span style="font-size:48px;">📦</span>
+        <h2 style="font-size:22px; margin: 16px 0 8px; color:var(--dark);">Catálogo público en preparación</h2>
+        <p style="color:var(--gray-mid); max-width:550px; margin: 0 auto 24px;">
+          Esta sección se conectará en la <strong>Fase 3</strong> para consultar repuestos con código, descripción, marca, fotos y botón directo de consulta a WhatsApp.
+        </p>
+        <a href="index.html" class="btn-cta" style="padding: 10px 24px; font-size:14px;">
+          ← Volver al Inicio
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer en 3 columnas -->
+  <footer class="site-footer">
+    <div class="container footer-top">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <h3>Contacto</h3>
+          <ul class="contact-list">
+            <li class="contact-item">
+              <span class="contact-icon">📞</span>
+              <div>
+                <strong>Teléfono:</strong><br />
+                <a id="footerTel" href="#">Cargando...</a>
+              </div>
+            </li>
+            <li class="contact-item">
+              <span class="contact-icon">💬</span>
+              <div>
+                <strong>WhatsApp:</strong><br />
+                <a id="footerWa" href="#" target="_blank" rel="noopener">Cargando...</a>
+              </div>
+            </li>
+            <li class="contact-item">
+              <span class="contact-icon">📍</span>
+              <div>
+                <strong>Dirección:</strong><br />
+                <span id="footerDir">Cargando...</span>
+              </div>
+            </li>
+            <li class="contact-item">
+              <span class="contact-icon">✉️</span>
+              <div>
+                <strong>Email:</strong><br />
+                <a id="footerEmail" href="#">Cargando...</a>
+              </div>
+            </li>
+            <li class="contact-item">
+              <span class="contact-icon">🕒</span>
+              <div>
+                <strong>Horarios:</strong><br />
+                <span id="footerHorarios">Cargando...</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h3>Categorías</h3>
+          <ul id="footerCategoriesList" class="footer-categories"></ul>
+        </div>
+
+        <div class="footer-col">
+          <h3>Ubicación</h3>
+          <div class="maps-container">
+            <iframe 
+              id="footerMapsIframe" 
+              class="maps-iframe" 
+              title="Mapa de ubicación de RECTIFREN" 
+              loading="lazy" 
+              src="about:blank">
+            </iframe>
+          </div>
+          <a id="btnOpenMaps" href="#" target="_blank" rel="noopener" class="btn-maps">
+            🗺️ Abrir en Maps
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <div class="container">
+        © RECTIFREN · Frenos, Embragues y Rectificaciones · Todos los derechos reservados
+      </div>
+    </div>
+  </footer>
+
+  <a 
+    id="btnWhatsappFloat" 
+    href="#" 
+    target="_blank" 
+    rel="noopener" 
+    class="btn-whatsapp-float" 
+    title="Consultar por WhatsApp"
+    aria-label="Abrir chat de WhatsApp"
+  >
+    💬
+  </a>
+
+  <script type="module" src="js/public.js?v=20261019"></script>
+</body>
+</html>
+
