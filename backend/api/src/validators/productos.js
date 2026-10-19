@@ -10,6 +10,15 @@ function validarBusqueda(value) {
   return query;
 }
 
+function validarCategoria(valor) {
+  if (valor === undefined || valor === null) return "";
+  if (typeof valor !== "string") throw httpError(400, "La categoría no es válida.");
+  const limpio = valor.trim().replace(/\s+/g, " ");
+  if (!limpio) return "";
+  if (limpio.length > 80) throw httpError(400, "El nombre de la categoría no puede superar 80 caracteres.");
+  return limpio;
+}
+
 function validarNuevoProducto(body) {
   const { codigo, marca, stock = 0, equivalencias = "" } = body;
   if (!codigo || !marca) throw httpError(400, "Faltan campos: codigo, marca.");
@@ -21,7 +30,14 @@ function validarNuevoProducto(body) {
   if (!Object.values(UBICACIONES).includes(ubicacion)) {
     throw httpError(400, "La ubicación del producto no es válida.");
   }
-  return { codigo: codigo.trim(), marca: marca.trim(), stock: cantidad, equivalencias, ubicacion };
+  return {
+    codigo: codigo.trim(),
+    marca: marca.trim(),
+    stock: cantidad,
+    equivalencias,
+    ubicacion,
+    categoria: validarCategoria(body.categoria),
+  };
 }
 
 function validarActualizacion(body) {
@@ -34,7 +50,9 @@ function validarActualizacion(body) {
   if (stock !== undefined && (!Number.isFinite(Number(stock)) || Number(stock) < 0)) {
     throw httpError(400, "El stock debe ser un número no negativo.");
   }
-  return { codigo, marca, stock, equivalencias, ubicacion, ubicacionOrig };
+  // Si no viene la categoría se deja como está; si viene vacía se quita.
+  const categoria = body.categoria === undefined ? undefined : validarCategoria(body.categoria);
+  return { codigo, marca, stock, equivalencias, ubicacion, ubicacionOrig, categoria };
 }
 
 function validarVariante(marca, ubicacion) {
@@ -59,4 +77,5 @@ module.exports = {
   validarActualizacion,
   validarStockMinimo,
   validarVariante,
+  validarCategoria,
 };

@@ -22,7 +22,7 @@ function buscarDirectos(regex, limit) {
 
 function listarInventarioParaFamilias() {
   return Producto.find({ archivado: { $ne: true } })
-    .select("_id codigo CODIGO marca MARCA stock STOCK ubicacion equivalencias equivalenciasCatalogo equivalentesVinculados schemaVersion fichaLitton variantes")
+    .select("_id codigo CODIGO marca MARCA stock STOCK ubicacion categoria equivalencias equivalenciasCatalogo equivalentesVinculados schemaVersion fichaLitton variantes")
     .lean();
 }
 

@@ -1,4 +1,5 @@
 import { $, openEditModal, closeEditModal } from "./ui.js";
+import { refrescarSelectsCategorias } from "./categories.js";
 
 export function createProductActionEvents({
   isBusy,
@@ -17,6 +18,7 @@ export function createProductActionEvents({
   openAddModal,
   closeAddModal,
   confirmAdd,
+  syncNuevaCategoriaField,
   defaultLocationForCode,
   isAddLocationTouched,
   setAddLocationTouched
@@ -32,7 +34,12 @@ export function createProductActionEvents({
       const ubicacion = button.getAttribute("data-u") || "DEPOSITO_GALPON";
       if (action === "in" || action === "out") { openNoteModal(action, codigo, marca, stock, ubicacion); return; }
       if (action === "set") {
-        openEditModal({ codigo, marca, actual: stock, ubicacion, codigoLitton: button.dataset.v2 === "1" });
+        refrescarSelectsCategorias();
+        openEditModal({
+          codigo, marca, actual: stock, ubicacion,
+          categoria: button.dataset.cat || "",
+          codigoLitton: button.dataset.v2 === "1"
+        });
         return;
       }
       if (action === "del") { openDelModal(codigo, marca, ubicacion, button.dataset.id); return; }
@@ -91,6 +98,7 @@ export function createProductActionEvents({
       $("addCodigo")?.addEventListener("input", event => {
         if (!isAddLocationTouched()) $("addUbicacion").value = defaultLocationForCode(event.target.value);
       });
+      $("addCategoria")?.addEventListener("change", () => syncNuevaCategoriaField());
       $("addUbicacion")?.addEventListener("change", () => setAddLocationTouched(true));
       addOverlay.addEventListener("click", event => {
         if (event.target === addOverlay && !isBusy()) closeAddModal();

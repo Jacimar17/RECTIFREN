@@ -13,10 +13,15 @@ import { createEquivalencesController } from "./equivalences.js";
 import { createMovementController } from "./movements.js";
 import { bindBetaModal } from "./beta.js?v=20261015";
 import { createProductActions } from "./product-actions.js";
+import {
+  bindCategoriasModal, cargarCategorias, closeCategoriasModal, openCategoriasModal
+} from "./categories.js";
 
 let cache       = [];
 let isAdmin     = false;
 let viewFilter  = "all";
+let categoriaFilter = "";
+let ubicacionFilter = "";
 let busy        = false;
 let highlightKey = null;
 let sortCol     = null;
@@ -34,6 +39,7 @@ const SEARCH_DEBOUNCE_MS = 450;
 const doRender = createInventoryRenderer({
   getState: () => ({
     cache, isAdmin, viewFilter, highlightKey, sortCol, sortDir, rangeMin, rangeMax,
+    categoriaFilter, ubicacionFilter,
     familyMemberIds, inventoryFamilies, inventoryLittonError
   }),
   renderFamilySummaries,
@@ -68,6 +74,7 @@ function updateAuthStateUI(authenticated) {
   const app = $("inventoryAppContainer");
   const btn = $("btnAdmin");
   const addButton = $("btnAddProduct");
+  const categoriasButton = $("btnCategorias");
 
   if (authenticated) {
     if (gate) gate.style.display = "none";
@@ -77,6 +84,7 @@ function updateAuthStateUI(authenticated) {
       btn.title       = "Cerrar sesión del inventario";
     }
     if (addButton) addButton.style.display = "flex";
+    if (categoriasButton) categoriasButton.style.display = "flex";
   } else {
     if (gate) gate.style.display = "flex";
     if (app) app.style.display = "none";
@@ -85,6 +93,7 @@ function updateAuthStateUI(authenticated) {
       btn.title       = "Iniciar sesión";
     }
     if (addButton) addButton.style.display = "none";
+    if (categoriasButton) categoriasButton.style.display = "none";
     const passInput = $("gatePass");
     if (passInput) passInput.value = "";
     const userInput = $("gateUser");
@@ -258,6 +267,7 @@ async function adminLogin(customCredentials = null) {
     isAdmin = true;
     updateAuthStateUI(true);
     closeLoginModal();
+    await cargarCategorias(getAdminToken());
     doRender();
     await loadMovs();
     setLastUpdatedNow();
@@ -280,6 +290,12 @@ function adminLogout() {
   stopAutoRefresh();
   updateAuthStateUI(false);
   cache = [];
+  // Limpiar los filtros al cerrar sesión.
+  categoriaFilter = "";
+  ubicacionFilter = "";
+  if ($("filterCategoria")) $("filterCategoria").value = "";
+  if ($("filterUbicacion")) $("filterUbicacion").value = "";
+  if ($("filterCategoria")) $("filterCategoria").innerHTML = `<option value="">Todas las categorías</option>`;
   doRender();
   setLastUpdatedNow();
   showToast("Sesión cerrada correctamente.", "info");
@@ -314,6 +330,10 @@ document.addEventListener("DOMContentLoaded", () => {
       set rangeMin(value) { rangeMin = value; },
       get rangeMax() { return rangeMax; },
       set rangeMax(value) { rangeMax = value; },
+      get categoriaFilter() { return categoriaFilter; },
+      set categoriaFilter(value) { categoriaFilter = value; },
+      get ubicacionFilter() { return ubicacionFilter; },
+      set ubicacionFilter(value) { ubicacionFilter = value; },
       get sortCol() { return sortCol; },
       set sortCol(value) { sortCol = value; },
       get sortDir() { return sortDir; },
@@ -330,6 +350,8 @@ document.addEventListener("DOMContentLoaded", () => {
   productActions.bind();
   bindHistModal();
   bindEquivModal();
+  bindCategoriasModal({ getAdminToken, isBusy: () => busy });
+  $("btnCategorias")?.addEventListener("click", () => { if (!busy) openCategoriasModal(); });
   bindBetaModal({
     getIsAdmin: () => isAdmin,
     getAdminToken,
@@ -349,6 +371,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   if (isAdmin) {
+    void cargarCategorias(getAdminToken());
     loadStock();
     startAutoRefresh();
     loadMovs();

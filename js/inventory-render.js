@@ -17,6 +17,8 @@ export function createInventoryRenderer({
       sortDir,
       rangeMin,
       rangeMax,
+      categoriaFilter,
+      ubicacionFilter,
       familyMemberIds,
       inventoryFamilies,
       inventoryLittonError
@@ -36,6 +38,7 @@ export function createInventoryRenderer({
     if (exportButton) exportButton.disabled = !query || cache.length === 0;
     const opts = {
       list: cache, isAdmin, viewFilter, query, highlightKey, sortCol, sortDir, rangeMin, rangeMax,
+      categoriaFilter, ubicacionFilter,
       familyMemberIds
     };
     const littonNotice = $("littonSearchNotice");

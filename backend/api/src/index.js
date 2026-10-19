@@ -11,6 +11,7 @@ const movimientosRouter   = require("./routes/movimientos");
 const authRouter          = require("./routes/auth");
 const equivalenciasRouter = require("./routes/equivalencias");
 const proveedoresRouter   = require("./routes/proveedores");
+const categoriasRouter    = require("./routes/categorias");
 const migrarUbicacionesFaltantes = require("./migrations/ubicaciones");
 
 const app  = express();
@@ -53,6 +54,7 @@ app.use("/api/stock",        stockRouter);
 app.use("/api/movimientos",  movimientosRouter);
 app.use("/api/equivalencias", equivalenciasRouter);
 app.use("/api/proveedores",  proveedoresRouter);
+app.use("/api/categorias",   categoriasRouter);
 
 app.get("/", (req, res) => {
   res.json({ ok: true, app: "RECTIFREN API", version: "1.0.0" });

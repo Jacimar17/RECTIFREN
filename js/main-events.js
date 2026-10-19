@@ -137,6 +137,18 @@ export function bindMainEvents({ state, actions, searchDebounceMs }) {
     doRender();
   });
 
+  $("filterCategoria")?.addEventListener("change", evento => {
+    if (state.busy) return;
+    state.categoriaFilter = evento.target.value;
+    doRender();
+  });
+
+  $("filterUbicacion")?.addEventListener("change", evento => {
+    if (state.busy) return;
+    state.ubicacionFilter = evento.target.value;
+    doRender();
+  });
+
   bindMovSort();
 
   document.addEventListener("keydown", e => {

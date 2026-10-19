@@ -1,5 +1,6 @@
 const productosRepository = require("../repositories/productos");
 const movimientosRepository = require("../repositories/movimientos");
+const categoriasService = require("./categorias");
 const { resolverFamiliasInventario, UBICACIONES } = require("../proveedores/familia-inventario");
 const buscarLitton = require("../proveedores/litton");
 const { resolverFamiliasLittonEnVivo } = require("../proveedores/familia-litton-en-vivo");
@@ -144,6 +145,8 @@ async function buscar(value) {
 
 async function agregar(body) {
   const input = validarNuevoProducto(body);
+  // La categoría enviada debe existir en la colección "categorias".
+  const categoria = await categoriasService.validarExistente(input.categoria);
   const existe = await productosRepository.buscarPorCodigoMarca(input.codigo, input.marca, input.ubicacion);
   if (existe.length) throw httpError(409, `El producto ya existe: ${body.codigo} — ${body.marca}`);
 
@@ -155,6 +158,8 @@ async function agregar(body) {
   if (candidatosLitton.length === 1) {
     const productoLitton = candidatosLitton[0];
     if (!Array.isArray(productoLitton.variantes)) productoLitton.variantes = [];
+    // Solo se completa la categoría del documento Litton si todavía no tiene una.
+    if (categoria && !productoLitton.categoria) productoLitton.categoria = categoria;
     const variante = {
       marca: input.marca,
       ubicacion: input.ubicacion,
@@ -186,6 +191,7 @@ async function agregar(body) {
     stock,
     equivalencias: input.equivalencias,
     ubicacion: input.ubicacion,
+    categoria,
   });
   await movimientosRepository.crear({
     accion: "ALTA",
@@ -201,9 +207,14 @@ async function agregar(body) {
 }
 
 async function actualizar(id, body) {
-  const { codigo, marca, stock, equivalencias, ubicacion, ubicacionOrig } = validarActualizacion(body);
+  const { codigo, marca, stock, equivalencias, ubicacion, ubicacionOrig, categoria } = validarActualizacion(body);
   const producto = await productosRepository.buscarPorId(id);
   if (!producto) throw httpError(404, "Producto no encontrado.");
+
+  // La categoría vive a nivel producto (también en los productos Litton).
+  if (categoria !== undefined) {
+    producto.categoria = await categoriasService.validarExistente(categoria);
+  }
 
   if (producto.schemaVersion === 2) {
     if (codigo && codigo.trim() !== producto.codigo) {

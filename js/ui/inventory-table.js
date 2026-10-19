@@ -14,7 +14,7 @@ export function ensureAccionesHeader(isAdmin) {
   }
   if (!isAdmin && existing) existing.remove();
 }
-export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, sortCol, sortDir, rangeMin, rangeMax, familyMemberIds }) {
+export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, sortCol, sortDir, rangeMin, rangeMax, categoriaFilter, ubicacionFilter, familyMemberIds }) {
   ensureAccionesHeader(isAdmin);
   const q = (query||"").trim().toLowerCase();
   const tbody = $("tbody");
@@ -34,6 +34,8 @@ export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, so
 
   if (rangeMin !== null && rangeMin !== undefined) working = working.filter(it => Number(it.stock||0) >= rangeMin);
   if (rangeMax !== null && rangeMax !== undefined) working = working.filter(it => Number(it.stock||0) <= rangeMax);
+  if (categoriaFilter) working = working.filter(it => (it.categoria || "") === categoriaFilter);
+  if (ubicacionFilter) working = working.filter(it => (it.ubicacion || "") === ubicacionFilter);
 
   if (sortCol) {
     working = [...working].sort((a,b) => {
@@ -48,7 +50,7 @@ export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, so
 
   if (working.length === 0) {
     const tr = document.createElement("tr");
-    const colspan = isAdmin ? 5 : 4;
+    const colspan = isAdmin ? 6 : 5;
     const message = q ? "Sin resultados para la búsqueda actual." : "Escribí un código o marca para buscar.";
     tr.innerHTML = `<td colspan="${colspan}" style="text-align:center; padding:28px; color:var(--muted)">${message}</td>`;
     tbody.appendChild(tr);
@@ -104,7 +106,7 @@ export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, so
             ${minusDisabled?"disabled":""}
             data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}" data-s="${stockNum}">−</button>
           <button class="mini" data-act="set" data-tooltip="Editar"
-            data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${stockNum}" data-u="${escapeHtml(item.ubicacion || "")}" data-v2="${item.schemaVersion === 2 ? "1" : "0"}">✏️</button>
+            data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${stockNum}" data-u="${escapeHtml(item.ubicacion || "")}" data-cat="${escapeHtml(item.categoria || "")}" data-v2="${item.schemaVersion === 2 ? "1" : "0"}">✏️</button>
           <button class="mini" data-act="equiv" data-tooltip="Equivalencias"
             data-id="${item._id||""}" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}">🔗</button>
           <button class="mini" data-act="minimo" data-tooltip="Stock mínimo"
@@ -121,6 +123,7 @@ export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, so
     tr.innerHTML = `
       <td class="col-codigo">${highlight(item.codigo||"", q)}</td>
       <td class="col-marca">${highlight(item.marca||"", q)}</td>
+      <td class="col-categoria">${item.categoria ? escapeHtml(item.categoria) : '<span class="cat-none">Sin categoría</span>'}</td>
       <td class="col-stock">${stockCell}</td>
       <td class="col-ubicacion">${ubicacionBadge(item.ubicacion)}</td>
       ${acciones}

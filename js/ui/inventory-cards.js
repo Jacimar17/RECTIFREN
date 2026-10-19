@@ -1,7 +1,7 @@
 import { $, escapeHtml, getStockState, ubicacionBadge } from "./dom.js";
 import { highlight } from "./render-utils.js";
 
-export function renderCards({ list, isAdmin, viewFilter, query, highlightKey, sortCol, sortDir, rangeMin, rangeMax, familyMemberIds }) {
+export function renderCards({ list, isAdmin, viewFilter, query, highlightKey, sortCol, sortDir, rangeMin, rangeMax, categoriaFilter, ubicacionFilter, familyMemberIds }) {
   const grid = document.getElementById("cardGrid");
   if (!grid) return;
   grid.innerHTML = "";
@@ -21,6 +21,8 @@ export function renderCards({ list, isAdmin, viewFilter, query, highlightKey, so
   if (viewFilter === "low") working = working.filter(i => getStockState(i) === "low");
   if (rangeMin !== null && rangeMin !== undefined) working = working.filter(i => Number(i.stock||0) >= rangeMin);
   if (rangeMax !== null && rangeMax !== undefined) working = working.filter(i => Number(i.stock||0) <= rangeMax);
+  if (categoriaFilter) working = working.filter(i => (i.categoria || "") === categoriaFilter);
+  if (ubicacionFilter) working = working.filter(i => (i.ubicacion || "") === ubicacionFilter);
 
   if (sortCol) {
     working = [...working].sort((a,b) => {
@@ -59,7 +61,7 @@ export function renderCards({ list, isAdmin, viewFilter, query, highlightKey, so
       <div class="stock-card-actions">
         <button class="mini success" data-act="in"  data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}" data-s="${stockNum}">+ Entrada</button>
         <button class="mini danger"  data-act="out" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}" data-s="${stockNum}" ${stockNum===0?"disabled":""}>− Salida</button>
-        <button class="mini"         data-act="set" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${stockNum}" data-u="${escapeHtml(item.ubicacion || "")}" data-v2="${item.schemaVersion === 2 ? "1" : "0"}">✏️</button>
+        <button class="mini"         data-act="set" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${stockNum}" data-u="${escapeHtml(item.ubicacion || "")}" data-cat="${escapeHtml(item.categoria || "")}" data-v2="${item.schemaVersion === 2 ? "1" : "0"}">✏️</button>
         <button class="mini"         data-act="equiv"  data-id="${item._id||""}" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}">🔗</button>
         <button class="mini"         data-act="minimo" data-id="${item._id||""}" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}" data-min="${item.stockMinimo!==undefined?item.stockMinimo:2}">⚠️</button>
         <button class="mini del"     data-act="del" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}" data-id="${item._id||""}">🗑</button>
@@ -70,6 +72,7 @@ export function renderCards({ list, isAdmin, viewFilter, query, highlightKey, so
         <div class="stock-card-info">
           <div class="stock-card-codigo">${highlight(item.codigo||"", q)} ${badge}</div>
           <div class="stock-card-marca">${highlight(item.marca||"", q)}</div>
+          <div class="stock-card-cat${item.categoria ? "" : " cat-none"}">${item.categoria ? escapeHtml(item.categoria) : "Sin categoría"}</div>
           <div class="stock-card-location">${ubicacionBadge(item.ubicacion)}</div>
         </div>
         <div class="stock-card-right">

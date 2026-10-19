@@ -141,9 +141,18 @@
             <button class="chip chip-danger" id="fOut" type="button">Faltantes</button>
             <button class="chip chip-warn" id="fLow" type="button">Bajo stock</button>
           </div>
+          <select id="filterCategoria" class="select toolbar-select" title="Filtrar por categoría" aria-label="Filtrar por categoría">
+            <option value="">Todas las categorías</option>
+          </select>
+          <select id="filterUbicacion" class="select toolbar-select" title="Filtrar por ubicación" aria-label="Filtrar por ubicación">
+            <option value="">Todas las ubicaciones</option>
+            <option value="NEGOCIO">Negocio</option>
+            <option value="DEPOSITO_GALPON">Depósito/Galpón</option>
+          </select>
           <button id="btnExport" class="btn-export" title="Exportar a CSV">⬇ Exportar</button>
           <button id="btnCompact" class="btn-export" title="Modo compacto">☰ Compacto</button>
           <button id="btnAdvSearch" class="btn-export" title="Búsqueda por rango de stock">⚡ Filtro stock</button>
+          <button id="btnCategorias" class="btn-export" style="display:none" title="Crear y renombrar categorías">Categorías</button>
           <button id="btnAddProduct" class="btn-add" style="display:none" title="Agregar producto">＋ Producto</button>
         </div>
       </div>
@@ -161,6 +170,7 @@
             <tr>
               <th class="col-codigo sortable" data-col="codigo">CODIGO <span class="sort-icon">↕</span></th>
               <th class="col-marca sortable" data-col="marca">MARCA <span class="sort-icon">↕</span></th>
+              <th class="col-categoria sortable" data-col="categoria">CATEGORÍA <span class="sort-icon">↕</span></th>
               <th class="col-stock sortable" data-col="stock">STOCK <span class="sort-icon">↕</span></th>
               <th class="col-ubicacion sortable" data-col="ubicacion">UBICACIÓN <span class="sort-icon">↕</span></th>
             </tr>
@@ -259,6 +269,12 @@
             <input id="editMarcaInput" placeholder="Ej: BREMBO" autocomplete="off" />
           </div>
           <div>
+            <label class="muted" for="editCategoria">Categoría</label>
+            <select id="editCategoria" class="select">
+              <option value="">Sin categoría</option>
+            </select>
+          </div>
+          <div>
             <label class="muted" for="editNuevo">Nuevo stock</label>
             <input id="editNuevo" type="number" min="0" step="1" placeholder="Stock" />
           </div>
@@ -271,7 +287,7 @@
           </div>
         </div>
         <div class="hint">
-          Podés editar el código, la marca y/o el stock. Los cambios se registran como <strong>AJUSTE</strong>.
+          Podés editar el código, la marca, la categoría y/o el stock. Los cambios se registran como <strong>AJUSTE</strong>.
         </div>
         <div class="modalActions">
           <button id="btnCancelEdit">Cancelar</button>
@@ -422,6 +438,12 @@
         <input id="addCodigo" placeholder="Ej: FR-1234" autocomplete="off" />
         <label class="muted" for="addMarca">Marca</label>
         <input id="addMarca" placeholder="Ej: BREMBO" autocomplete="off" />
+        <label class="muted" for="addCategoria">Categoría</label>
+        <select id="addCategoria" class="select">
+          <option value="">Sin categoría</option>
+        </select>
+        <label class="muted" for="addNuevaCategoria" id="addNuevaCategoriaLabel" style="display:none">Nombre de la nueva categoría</label>
+        <input id="addNuevaCategoria" placeholder="Ej: Bombas de freno" autocomplete="off" style="display:none" />
         <label class="muted" for="addStock">Stock inicial</label>
         <input id="addStock" type="number" min="0" step="1" placeholder="0" value="0" />
         <label class="muted" for="addUbicacion">Ubicación</label>
@@ -434,6 +456,28 @@
           <button id="btnConfirmAdd" class="primary">Agregar</button>
         </div>
         <p id="addStatus" class="muted"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Categorías -->
+  <div id="catOverlay" class="modalOverlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="catTitle">
+      <div class="modalHeader">
+        <h2 class="modalTitle" id="catTitle">Categorías</h2>
+        <button id="btnCloseCat" class="modalClose" type="button" title="Cerrar">✕</button>
+      </div>
+      <div class="modalBody">
+        <p class="muted" style="margin-top:0">Crealas o renombralas. Al renombrar, los productos que la usaban se actualizan solos.</p>
+        <ul id="catList" class="cat-list"></ul>
+        <div class="cat-create">
+          <label class="muted" for="catNueva">Nueva categoría</label>
+          <div class="cat-create-row">
+            <input id="catNueva" placeholder="Ej: Cilindros de embrague" autocomplete="off" />
+            <button id="btnCatCrear" class="primary" type="button">Crear</button>
+          </div>
+        </div>
+        <p id="catStatus" class="muted" role="status" aria-live="polite"></p>
       </div>
     </div>
   </div>

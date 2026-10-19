@@ -34,3 +34,33 @@ node scripts/migrate-litton-variants.js --mapping C:\ruta\mapeos-rf-litton.json 
 ```
 
 La instancia MongoDB debe admitir transacciones. Si falla la transacción, los documentos de inventario no se actualizan. El respaldo creado se conserva para recuperación.
+
+# Migración de categorías
+
+`migrate-categorias.js` completa el campo `categoria` de los productos que todavía no tienen una, usando reglas estrictas sobre la descripción, el título, las equivalencias, la ficha de Litton y el propio código:
+
+- texto con "pastilla" (o "brake pad") → `Pastillas de freno`
+- texto con "cable" o "comando" → `Cables comando`
+- si coincide con las dos reglas, o con ninguna, el producto **no** se clasifica y se lista al final para revisarlo a mano. No adivina.
+
+También asegura que existan las cinco categorías base del inventario.
+
+## Ejecutar
+
+Desde `backend/api`, primero simulá (modo por defecto, no escribe nada):
+
+```powershell
+$env:MONGODB_URI = "..."
+node scripts/migrate-categorias.js
+```
+
+Revisá el informe: cuántos productos se asignarían a cada categoría y la lista de los que quedaron sin clasificar.
+
+Antes de aplicar, hacé una copia de seguridad de la colección `productos` (por ejemplo con `mongodump` o exportando a JSON). Después:
+
+```powershell
+node scripts/migrate-categorias.js --apply
+```
+
+La migración es idempotente: solo completa categorías vacías y nunca pisa una categoría ya asignada, así que se puede correr más de una vez sin duplicar ni perder información.
+

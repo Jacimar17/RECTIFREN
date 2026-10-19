@@ -1,7 +1,10 @@
-import { apiPostForm, authJsonHeaders } from "./api.js";
+import { apiPostForm, apiCrearCategoria, authJsonHeaders } from "./api.js";
 import { API_URL } from "./config.js";
 import { createProductActionEvents } from "./product-action-events.js";
 import { createProductAddModal } from "./product-add-modal.js";
+import {
+  cargarCategorias, esOpcionNueva, normalizarNombreCategoria
+} from "./categories.js";
 import {
   $, showToast, closeEditModal, getEditModalData
 } from "./ui.js";
@@ -27,6 +30,7 @@ export function createProductActions({
     defaultLocationForCode,
     openAddModal,
     closeAddModal,
+    syncNuevaCategoriaField,
     isLocationTouched,
     setLocationTouched
   } = createProductAddModal();
@@ -82,6 +86,33 @@ export function createProductActions({
     }
   }
 
+  /**
+   * Resuelve la categoría elegida en el formulario. Si el usuario eligió
+   * "Nueva categoría", la crea en la API antes de dar de alta el producto.
+   * Devuelve el nombre a usar o null si hubo un error (que ya se muestra).
+   */
+  async function resolverCategoria(token, status) {
+    const seleccion = $("addCategoria")?.value || "";
+    if (!esOpcionNueva(seleccion)) return seleccion;
+    const nombre = normalizarNombreCategoria($("addNuevaCategoria")?.value);
+    if (!nombre) {
+      if (status) status.textContent = "Escribí el nombre de la nueva categoría.";
+      return null;
+    }
+    const creada = await apiCrearCategoria(token, nombre);
+    if (!creada.ok) {
+      // Si ya existía (lista desactualizada), la usamos igual.
+      if (/ya existe/i.test(creada.error || "")) {
+        await cargarCategorias(token);
+        return nombre;
+      }
+      if (status) status.textContent = `Error: ${creada.error || "No se pudo crear la categoría."}`;
+      return null;
+    }
+    await cargarCategorias(token);
+    return creada.data?.nombre || nombre;
+  }
+
   async function confirmAdd() {
     const token = getAdminToken();
     if (!token) {
@@ -102,7 +133,9 @@ export function createProductActions({
     }
     try {
       setBusyState(true, "Agregando producto…");
-      const response = await apiPostForm({ action: "add", token, codigo, marca, stock, ubicacion });
+      const categoria = await resolverCategoria(token, status);
+      if (categoria === null) return;
+      const response = await apiPostForm({ action: "add", token, codigo, marca, stock, ubicacion, categoria });
       if (!response.ok) {
         if (status) status.textContent = `Error: ${response.error || "No se pudo agregar."}`;
         return;
@@ -247,7 +280,8 @@ export function createProductActions({
         nuevaMarca: data.nuevaMarca,
         nuevoStock: data.nuevoStock,
         ubicacion: data.ubicacion,
-        ubicacionOrig: data.ubicacionOrig
+        ubicacionOrig: data.ubicacionOrig,
+        categoria: data.categoria
       });
       if (!response.ok) {
         $("editStatus").textContent = `Error: ${response.error || "No se pudo guardar."}`;
@@ -282,6 +316,7 @@ export function createProductActions({
     openAddModal,
     closeAddModal,
     confirmAdd,
+    syncNuevaCategoriaField,
     defaultLocationForCode,
     isAddLocationTouched: isLocationTouched,
     setAddLocationTouched: setLocationTouched

@@ -106,18 +106,22 @@ export async function apiPostForm(bodyObj, timeoutMs = 15000) {
     );
     if (!prod) return { ok: false, error: "Producto no encontrado." };
 
+    const payload = {
+      codigo:       bodyObj.nuevoCodigo  || bodyObj.codigo,
+      marca:        bodyObj.nuevaMarca   || bodyObj.marca,
+      marcaOrig:    bodyObj.marca,
+      stock:        bodyObj.nuevoStock,
+      ubicacion:    bodyObj.ubicacion,
+      ubicacionOrig: bodyObj.ubicacionOrig,
+      equivalencias: bodyObj.equivalencias || ""
+    };
+    // La categoría solo se envía si el formulario la incluye.
+    if (bodyObj.categoria !== undefined) payload.categoria = bodyObj.categoria;
+
     return request(`${API_URL}/api/productos/${prod._id}`, {
       method: "PUT",
       headers: jsonHeaders(token),
-      body: JSON.stringify({
-        codigo:       bodyObj.nuevoCodigo  || bodyObj.codigo,
-        marca:        bodyObj.nuevaMarca   || bodyObj.marca,
-        marcaOrig:    bodyObj.marca,
-        stock:        bodyObj.nuevoStock,
-        ubicacion:    bodyObj.ubicacion,
-        ubicacionOrig: bodyObj.ubicacionOrig,
-        equivalencias: bodyObj.equivalencias || ""
-      })
+      body: JSON.stringify(payload)
     }, timeoutMs);
   }
 
@@ -131,7 +135,8 @@ export async function apiPostForm(bodyObj, timeoutMs = 15000) {
         marca: bodyObj.marca,
         stock: bodyObj.stock || 0,
         equivalencias: bodyObj.equivalencias || "",
-        ubicacion: bodyObj.ubicacion
+        ubicacion: bodyObj.ubicacion,
+        categoria: bodyObj.categoria || ""
       })
     }, timeoutMs);
   }
@@ -162,6 +167,27 @@ export async function apiPostForm(bodyObj, timeoutMs = 15000) {
   }
 
   return { ok: false, error: "Acción no reconocida." };
+}
+
+/* ── Categorías ── */
+export async function apiGetCategorias(token) {
+  return request(`${API_URL}/api/categorias`, { headers: jsonHeaders(token) });
+}
+
+export async function apiCrearCategoria(token, nombre, descripcion = "") {
+  return request(`${API_URL}/api/categorias`, {
+    method: "POST",
+    headers: jsonHeaders(token),
+    body: JSON.stringify({ nombre, descripcion })
+  });
+}
+
+export async function apiRenombrarCategoria(token, id, nombre) {
+  return request(`${API_URL}/api/categorias/${id}`, {
+    method: "PUT",
+    headers: jsonHeaders(token),
+    body: JSON.stringify({ nombre })
+  });
 }
 
 /* ── Beta: búsqueda en proveedores ── */

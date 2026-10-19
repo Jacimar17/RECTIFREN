@@ -19,6 +19,8 @@ const productoSchema = new mongoose.Schema(
     variantes: { type: [varianteInventarioSchema], default: undefined },
     codigo:        { type: String, trim: true },
     marca:         { type: String, trim: true },
+    categoria:     { type: String, trim: true, default: "" },
+    camposExtra:   { type: mongoose.Schema.Types.Mixed, default: {} },
     titulo:        { type: String, trim: true, default: "" },
     descripcion:   { type: String, trim: true, default: "" },
     precio:        { type: Number, default: 0, min: 0 },
@@ -46,5 +48,6 @@ const productoSchema = new mongoose.Schema(
 
 productoSchema.index({ codigo: 1, marca: 1 });
 productoSchema.index({ CODIGO: 1, MARCA: 1 });
+productoSchema.index({ categoria: 1 });
 
 module.exports = mongoose.model("Producto", productoSchema);

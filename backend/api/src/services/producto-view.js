@@ -9,6 +9,7 @@ function normalizarVariante(producto, variante) {
     marca: variante.marca || "",
     stock: variante.cantidad ?? 0,
     ubicacion: variante.ubicacion,
+    categoria: producto.categoria || "",
     equivalencias: producto.equivalencias || "",
     equivalenciasCatalogo: producto.equivalenciasCatalogo || [],
     stockMinimo: variante.stockMinimo ?? 2,
@@ -28,6 +29,7 @@ function normalizarProducto(producto) {
       marca: producto.marca || producto.fichaLitton?.subcategory || "LITTON",
       stock: variantes.reduce((total, variante) => total + Number(variante.cantidad || 0), 0),
       ubicacion: "",
+      categoria: producto.categoria || "",
       equivalencias: producto.equivalencias || "",
       equivalenciasCatalogo: producto.equivalenciasCatalogo || [],
       stockMinimo: producto.stockMinimo ?? 2,
@@ -44,6 +46,7 @@ function normalizarProducto(producto) {
       ? producto.stock
       : (producto.STOCK !== undefined ? producto.STOCK : 0),
     ubicacion: ubicacionEfectiva(producto),
+    categoria: producto.categoria || "",
     equivalencias: producto.equivalencias || "",
     stockMinimo: producto.stockMinimo !== undefined ? producto.stockMinimo : 2,
   };
