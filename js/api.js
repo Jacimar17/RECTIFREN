@@ -198,6 +198,21 @@ export async function apiRenombrarCategoria(token, id, nombre) {
   });
 }
 
+/* Marcas del inventario para la asignación masiva por marca. */
+export async function apiGetMarcas(token) {
+  return request(`${API_URL}/api/categorias/marcas`, { headers: jsonHeaders(token) });
+}
+
+/* Asigna (o simula asignar) una categoría a los productos de una marca.
+   `datos.aplicar` en false solo calcula la vista previa. */
+export async function apiAsignarCategoriaMasiva(token, datos) {
+  return request(`${API_URL}/api/categorias/asignar`, {
+    method: "POST",
+    headers: jsonHeaders(token),
+    body: JSON.stringify(datos || {})
+  }, 40000);
+}
+
 /* ── Beta: búsqueda en proveedores ── */
 export async function apiBetaProveedores(q, token) {
   return request(`${API_URL}/api/proveedores`, {

@@ -31,9 +31,29 @@ async function renombrar(req, res) {
   }
 }
 
+async function marcas(req, res) {
+  try {
+    const data = await categoriasService.listarMarcas();
+    res.json({ ok: true, data });
+  } catch (error) {
+    responderError(res, error);
+  }
+}
+
+async function asignar(req, res) {
+  try {
+    const data = await categoriasService.asignarMasivo(req.body || {});
+    res.json({ ok: true, data });
+  } catch (error) {
+    responderError(res, error);
+  }
+}
+
 module.exports = {
   listar,
   crear,
   renombrar,
+  marcas,
+  asignar,
 };
 

@@ -38,6 +38,12 @@
 
 .modalWide { max-width: 640px; }
 
+/* La ventana de Categorías puede quedar alta: se le permite scroll interno. */
+#catOverlay .modal {
+  max-height: calc(100vh - 36px);
+  overflow-y: auto;
+}
+
 @keyframes popIn { to { transform: translateY(0) scale(1); opacity: 1; } }
 
 .modalHeader {

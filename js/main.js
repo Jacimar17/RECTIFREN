@@ -16,7 +16,7 @@ import { createProductActions } from "./product-actions.js";
 import { icon, hydrateIcons } from "./ui/icons.js";
 import {
   bindCategoriasModal, cargarCategorias, closeCategoriasModal, openCategoriasModal
-} from "./categories.js";
+} from "./categories.js?v=20261020";
 
 let cache       = [];
 let isAdmin     = false;
@@ -352,7 +352,11 @@ document.addEventListener("DOMContentLoaded", () => {
   productActions.bind();
   bindHistModal();
   bindEquivModal();
-  bindCategoriasModal({ getAdminToken, isBusy: () => busy });
+  bindCategoriasModal({
+    getAdminToken,
+    isBusy: () => busy,
+    onInventarioActualizado: () => { void loadStock(); }
+  });
   $("btnCategorias")?.addEventListener("click", () => { if (!busy) openCategoriasModal(); });
   bindBetaModal({
     getIsAdmin: () => isAdmin,

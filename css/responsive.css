@@ -280,4 +280,5 @@ body.compact #donutChart { width: 40px; height: 40px; }
   .search { flex: 0 1 auto; width: 100%; min-width: 0; }
   .toolbar-right { flex-wrap: wrap; overflow: visible; }
   .filters { flex-wrap: wrap; }
+  .cat-bulk-grid { grid-template-columns: 1fr; }
 }

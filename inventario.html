@@ -6,10 +6,10 @@
   <title>RECTIFREN | Inventario</title>
   <link rel="icon" type="image/png" href="assets/logo_rectifren.png" />
   <link rel="stylesheet" href="css/base.css?v=20261019">
-  <link rel="stylesheet" href="css/controls.css?v=20261019">
+  <link rel="stylesheet" href="css/controls.css?v=20261020">
   <link rel="stylesheet" href="css/inventory-table.css?v=20261019">
-  <link rel="stylesheet" href="css/overlays.css?v=20261019">
-  <link rel="stylesheet" href="css/responsive.css?v=20261019">
+  <link rel="stylesheet" href="css/overlays.css?v=20261020">
+  <link rel="stylesheet" href="css/responsive.css?v=20261020">
   <link rel="stylesheet" href="css/effects.css?v=20261019">
   <link rel="stylesheet" href="css/beta-layout.css?v=20261019">
   <link rel="stylesheet" href="css/beta-cards.css?v=20261019">
@@ -505,6 +505,30 @@
           </div>
         </div>
         <p id="catStatus" class="muted" role="status" aria-live="polite"></p>
+
+        <div class="cat-bulk">
+          <h3 class="cat-bulk-title"><span data-icon="tag"></span>Asignar en masa por marca</h3>
+          <p class="cat-bulk-help muted">Elegí una marca y una categoría. Primero ves cuántos productos se van a tocar y después confirmás.</p>
+          <div class="cat-bulk-grid">
+            <label class="muted" for="catBulkMarca">Marca</label>
+            <input id="catBulkMarca" list="catMarcasLista" placeholder="Ej: Litton" autocomplete="off" />
+            <datalist id="catMarcasLista"></datalist>
+            <label class="muted" for="catBulkTexto">Contiene texto (opcional)</label>
+            <input id="catBulkTexto" placeholder="Ej: cable" autocomplete="off" />
+            <label class="muted" for="catBulkCategoria">Categoría</label>
+            <select id="catBulkCategoria"></select>
+          </div>
+          <label class="cat-bulk-check">
+            <input type="checkbox" id="catBulkSoloVacias" checked />
+            <span>Solo productos sin categoría (recomendado)</span>
+          </label>
+          <div class="modalActions">
+            <button id="btnCatBulkPreview" type="button">Vista previa</button>
+            <button id="btnCatBulkApply" class="primary" type="button" disabled>Asignar</button>
+          </div>
+          <p id="catBulkStatus" class="muted" role="status" aria-live="polite"></p>
+          <ul id="catBulkPreview" class="cat-list cat-bulk-preview" hidden></ul>
+        </div>
       </div>
     </div>
   </div>
@@ -585,6 +609,6 @@
     </div>
   </div>
 
-  <script type="module" src="js/main.js?v=20261019"></script>
+  <script type="module" src="js/main.js?v=20261020"></script>
 </body>
 </html>

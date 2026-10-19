@@ -154,6 +154,116 @@ async function validarExistente(nombre) {
   return categoria.nombre;
 }
 
+/* ── Asignación masiva por marca ── */
+
+/** Escapa los caracteres especiales de una expresión regular. */
+function escaparRegex(texto) {
+  return String(texto || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Cantidad máxima de productos que se muestran en la vista previa. */
+const MUESTRA_MAXIMA = 25;
+
+/**
+ * Arma el filtro del inventario para la asignación masiva.
+ * `marca` y `texto` buscan "contiene" sin distinguir mayúsculas.
+ * La marca mira tanto el producto como sus variantes (esquema Litton).
+ * Si `soloSinCategoria` es true, solo toca productos con la categoría vacía.
+ */
+function construirFiltroAsignacion({ marca, texto, soloSinCategoria } = {}) {
+  const condiciones = [{ archivado: { $ne: true } }];
+
+  const marcaLimpia = String(marca || "").trim();
+  if (marcaLimpia) {
+    const rx = new RegExp(escaparRegex(marcaLimpia), "i");
+    condiciones.push({ $or: [{ marca: rx }, { MARCA: rx }, { "variantes.marca": rx }] });
+  }
+
+  const textoLimpio = String(texto || "").trim();
+  if (textoLimpio) {
+    const rx = new RegExp(escaparRegex(textoLimpio), "i");
+    condiciones.push({
+      $or: [{ descripcion: rx }, { titulo: rx }, { codigo: rx }, { CODIGO: rx }],
+    });
+  }
+
+  if (soloSinCategoria) {
+    condiciones.push({
+      $or: [{ categoria: { $exists: false } }, { categoria: null }, { categoria: "" }],
+    });
+  }
+
+  return { $and: condiciones };
+}
+
+/**
+ * Lista las marcas distintas del inventario (del producto y de sus variantes).
+ * Alimenta el desplegable de la asignación masiva.
+ */
+async function listarMarcas() {
+  const filtro = { archivado: { $ne: true } };
+  const [marcas, alias, variantes] = await Promise.all([
+    Producto.distinct("marca", filtro),
+    Producto.distinct("MARCA", filtro),
+    Producto.distinct("variantes.marca", filtro),
+  ]);
+
+  const unicas = new Map();
+  for (const valor of [...marcas, ...alias, ...variantes]) {
+    const limpio = String(valor || "").trim();
+    if (limpio) unicas.set(limpio.toLowerCase(), limpio);
+  }
+  return [...unicas.values()].sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }));
+}
+
+/**
+ * Asigna una categoría a los productos que coinciden con una marca y/o un texto.
+ * Por seguridad funciona en modo prueba: solo escribe si `aplicar` es true.
+ * Devuelve el total de coincidencias y una muestra para revisar antes de aplicar.
+ */
+async function asignarMasivo({
+  marca = "",
+  texto = "",
+  categoria = "",
+  soloSinCategoria = true,
+  aplicar = false,
+} = {}) {
+  if (!String(marca).trim() && !String(texto).trim()) {
+    throw httpError(400, "Indicá una marca o un texto para filtrar los productos.");
+  }
+  if (!String(categoria || "").trim()) {
+    throw httpError(400, "Elegí la categoría que querés asignar.");
+  }
+
+  const categoriaCanonica = await validarExistente(categoria);
+  const filtro = construirFiltroAsignacion({ marca, texto, soloSinCategoria });
+
+  const [total, muestra] = await Promise.all([
+    Producto.countDocuments(filtro),
+    Producto.find(filtro)
+      .select("codigo CODIGO marca MARCA descripcion titulo categoria")
+      .sort({ codigo: 1, marca: 1 })
+      .limit(MUESTRA_MAXIMA)
+      .lean(),
+  ]);
+
+  const vistaPrevia = {
+    categoria: categoriaCanonica,
+    total,
+    muestra: muestra.map((producto) => ({
+      codigo: producto.codigo || producto.CODIGO || "",
+      marca: producto.marca || producto.MARCA || "",
+      descripcion: String(producto.descripcion || producto.titulo || "").slice(0, 80),
+      categoria: producto.categoria || "",
+    })),
+  };
+
+  if (!aplicar) return { ...vistaPrevia, aplicado: 0 };
+
+  const resultado = await Producto.updateMany(filtro, { $set: { categoria: categoriaCanonica } });
+  return { ...vistaPrevia, aplicado: resultado.modifiedCount || 0 };
+}
+
 module.exports = {
   listar,
   crear,
@@ -162,6 +272,9 @@ module.exports = {
   obtenerActiva,
   inicializarCategoriasBase,
   generarSlug,
+  listarMarcas,
+  asignarMasivo,
+  construirFiltroAsignacion,
   CATEGORIAS_BASE,
 };
 
