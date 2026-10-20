@@ -32,4 +32,29 @@ async function buscar(req, res, next) {
   }
 }
 
-module.exports = { buscarDetalle, buscar };
+async function vehiculosLitton(req, res) {
+  if (!betaHabilitada(res)) return;
+  try {
+    const data = await proveedoresService.obtenerVehiculosLitton();
+    res.json({ ok: true, data });
+  } catch (error) {
+    res.status(502).json({ ok: false, error: error.message || "No se pudo consultar los vehículos de Litton." });
+  }
+}
+
+async function buscarPorVehiculo(req, res) {
+  if (!betaHabilitada(res)) return;
+  const marca = typeof req.query.marca === "string" ? req.query.marca : "";
+  const modelo = typeof req.query.modelo === "string" ? req.query.modelo : "";
+  const page = req.query.page ? Number(req.query.page) : 1;
+  if (!marca) return res.status(400).json({ ok: false, error: "Falta la marca." });
+  if (!modelo) return res.status(400).json({ ok: false, error: "Falta el modelo." });
+  try {
+    const resultado = await proveedoresService.buscarPorVehiculoLitton({ marca, modelo, page });
+    res.json(resultado);
+  } catch (error) {
+    res.status(502).json({ ok: false, error: error.message || "No se pudo buscar pastillas por vehículo." });
+  }
+}
+
+module.exports = { buscarDetalle, buscar, vehiculosLitton, buscarPorVehiculo };

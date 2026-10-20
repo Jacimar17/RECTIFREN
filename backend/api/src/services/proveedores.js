@@ -2,6 +2,7 @@ const buscarLitton = require("../proveedores/litton");
 const buscarAimar = require("../proveedores/aimar");
 const buscarAtonor = require("../proveedores/atonor");
 const { buscarFamiliaLitton } = require("../proveedores/busqueda-familia-litton");
+const { obtenerMarcasModelos, buscarPorVehiculo } = require("../proveedores/litton-vehiculos");
 
 const PROVEEDORES = [{ nombre: "Litton", buscar: buscarLitton }];
 
@@ -29,4 +30,12 @@ async function buscarProductos(query) {
   return { ok: true, query, total: data.length, data, errores };
 }
 
-module.exports = { buscarDetalleFamilia, buscarProductos };
+async function obtenerVehiculosLitton() {
+  return obtenerMarcasModelos();
+}
+
+async function buscarPorVehiculoLitton({ marca, modelo, page }) {
+  return buscarPorVehiculo({ marca, modelo, page });
+}
+
+module.exports = { buscarDetalleFamilia, buscarProductos, obtenerVehiculosLitton, buscarPorVehiculoLitton };
