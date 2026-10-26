@@ -70,7 +70,7 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
     if (inventoryCache.has(code)) return inventoryCache.get(code);
     if (inventoryRequests.has(code)) return inventoryRequests.get(code);
 
-    const request = apiGet({ action: "search", q: code });
+    const request = apiGet({ action: "search", q: code, token: getAdminToken() });
     inventoryRequests.set(code, request);
     try {
       const response = await request;

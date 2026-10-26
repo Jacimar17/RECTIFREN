@@ -2,21 +2,14 @@
 
 > *"Si frena, es porque alguien lo rectificó bien."* 😎
 
-Sistema web de **RECTIFREN**, un taller de frenos, embragues y repuestos mecánicos. Tiene dos caras: una **página pública** para que los clientes vean qué trabajamos, y un **inventario privado** para que el taller sepa qué hay en el estante sin revolver cajas. 📦
+Sistema de inventario de **RECTIFREN**, un taller de frenos, embragues y repuestos mecánicos. La web pública está temporalmente desactivada; la URL raíz redirige al inventario privado.
 
 ---
 
 ## 🧰 ¿Qué hay adentro?
 
-### 🌐 Página pública
-- 🏠 **Inicio** con banner, categorías y un carrusel de marcas que se mueve solo (no se queda quieto ni para la foto).
-- 🔍 **Productos**: catálogo para que cualquiera busque por código. *(en obras 🚧)*
-- 💬 Botón flotante de **WhatsApp**, porque acá se resuelve todo por mensaje.
-- 📍 Contacto y mapa para que nadie diga "no sabía dónde quedaba".
-- ⚠️ Aviso de *"página en producción"*: todavía estamos con los guantes puestos.
-
 ### 🔒 Inventario privado
-Se entra por el botón **Inventario** (arriba a la derecha) y pide login. Adentro:
+Disponible en [`inventario.html`](inventario.html) y requiere iniciar sesión. Adentro:
 - 📋 Stock con filtros, ventana de detalle y campos editables.
 - 🕓 Historial por producto.
 - 📤 Exportar a CSV.
@@ -45,7 +38,8 @@ RECTIFREN/
 ├── backend/    ⚙️  API y conexión a la base
 ├── css/        🎨  estilos
 ├── js/         🧠  la lógica
-├── index.html  🏠  página pública
+├── index.html  ↪️  redirige al inventario
+├── inventario.html  🔒  aplicación de inventario
 └── manifest.json
 ```
 
@@ -59,7 +53,7 @@ RECTIFREN/
 ```
 2. Abrilo en VS Code y levantá el frontend con la extensión **Live Server**.
    > ⚠️ No lo abras con doble clic en el HTML: usa módulos de JS y el navegador se enoja si no hay servidor.
-3. Para el backend, mirá la carpeta `backend/` y cargá tus propias variables de entorno.
+3. Para el backend, mirá la carpeta `backend/` y cargá tus propias variables de entorno. El catálogo de rutas y contratos HTTP está en [`backend/api/API.md`](backend/api/API.md).
 
 ---
 

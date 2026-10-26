@@ -2,16 +2,9 @@ const express    = require("express");
 const mongoose   = require("mongoose");
 const cors       = require("cors");
 const helmet     = require("helmet");
-const rateLimit  = require("express-rate-limit");
 require("dotenv").config();
 
-const productosRouter     = require("./routes/productos");
-const stockRouter         = require("./routes/stock");
-const movimientosRouter   = require("./routes/movimientos");
-const authRouter          = require("./routes/auth");
-const equivalenciasRouter = require("./routes/equivalencias");
-const proveedoresRouter   = require("./routes/proveedores");
-const categoriasRouter    = require("./routes/categorias");
+const apiRouter = require("./routes");
 const migrarUbicacionesFaltantes = require("./migrations/ubicaciones");
 
 const app  = express();
@@ -39,22 +32,7 @@ app.use(cors({
 app.use(express.json({ limit: "100kb" }));
 app.use(express.urlencoded({ extended: true, limit: "100kb" }));
 
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  standardHeaders: "draft-7",
-  legacyHeaders: false,
-  message: { ok: false, error: "Demasiados intentos. Probá de nuevo en 15 minutos." }
-});
-
-app.use("/api/auth/login",   loginLimiter);
-app.use("/api/auth",         authRouter);
-app.use("/api/productos",    productosRouter);
-app.use("/api/stock",        stockRouter);
-app.use("/api/movimientos",  movimientosRouter);
-app.use("/api/equivalencias", equivalenciasRouter);
-app.use("/api/proveedores",  proveedoresRouter);
-app.use("/api/categorias",   categoriasRouter);
+app.use("/api", apiRouter);
 
 app.get("/", (req, res) => {
   res.json({ ok: true, app: "RECTIFREN API", version: "1.0.0" });

@@ -97,7 +97,11 @@ export async function apiPostForm(bodyObj, timeoutMs = 15000) {
 
   // Ajuste / editar producto
   if (action === "set") {
-    const lista = await request(`${API_URL}/api/productos/search?q=${encodeURIComponent(bodyObj.codigo || "")}`, {}, 45000);
+    const lista = await request(
+      `${API_URL}/api/productos/search?q=${encodeURIComponent(bodyObj.codigo || "")}`,
+      { headers: jsonHeaders(token) },
+      45000
+    );
     if (!lista.ok) return lista;
     const prod = (lista.data || []).find(p =>
       p.codigo === bodyObj.codigo
@@ -151,7 +155,11 @@ export async function apiPostForm(bodyObj, timeoutMs = 15000) {
 
   // Eliminar producto
   if (action === "delete") {
-    const lista = await request(`${API_URL}/api/productos/search?q=${encodeURIComponent(bodyObj.codigo || "")}`, {}, 45000);
+    const lista = await request(
+      `${API_URL}/api/productos/search?q=${encodeURIComponent(bodyObj.codigo || "")}`,
+      { headers: jsonHeaders(token) },
+      45000
+    );
     if (!lista.ok) return lista;
     const prod = (lista.data || []).find(p =>
       p.codigo === bodyObj.codigo
