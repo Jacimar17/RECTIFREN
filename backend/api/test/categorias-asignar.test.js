@@ -1,6 +1,11 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { construirFiltroAsignacion } = require("../src/services/categorias");
+const {
+  construirFiltroAsignacion,
+  crear,
+  renombrar,
+  asignarMasivo,
+} = require("../src/services/categorias");
 
 test("filtra por marca (producto y variantes) y por categoría vacía", () => {
   const filtro = construirFiltroAsignacion({ marca: "Litton", soloSinCategoria: true });
@@ -42,4 +47,14 @@ test("permite filtrar solo por texto (descripción, título o código)", () => {
   assert.equal(filtro.$and[1].$or.length, 4);
   assert.equal(filtro.$and[1].$or[0].descripcion.source, "cable");
   assert.equal(filtro.$and[1].$or[3].CODIGO.source, "cable");
+});
+
+test("rechaza datos de categoría con tipos inválidos antes de consultar la base", async () => {
+  await assert.rejects(crear({ nombre: 12 }), /nombre de la categoría/i);
+  await assert.rejects(crear({ nombre: "Accesorios", camposExtra: {} }), /campos extra/i);
+  await assert.rejects(renombrar("id", 12), /nuevo nombre/i);
+  await assert.rejects(
+    asignarMasivo({ marca: {}, categoria: "Accesorios" }),
+    /marca no es válida/i
+  );
 });

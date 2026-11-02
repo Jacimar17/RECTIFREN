@@ -64,9 +64,16 @@ async function listar() {
   return Categoria.find({ activa: { $ne: false } }).sort({ nombre: 1 }).lean();
 }
 
-async function crear({ nombre, descripcion = "", camposExtra = [] }) {
-  if (!nombre || !nombre.trim()) {
+async function crear(input = {}) {
+  const { nombre, descripcion = "", camposExtra = [] } = input;
+  if (typeof nombre !== "string" || !nombre.trim()) {
     throw httpError(400, "El nombre de la categoría es obligatorio.");
+  }
+  if (typeof descripcion !== "string") {
+    throw httpError(400, "La descripción de la categoría no es válida.");
+  }
+  if (!Array.isArray(camposExtra)) {
+    throw httpError(400, "Los campos extra de la categoría deben ser una lista.");
   }
   const nombreLimpio = nombre.trim();
   const slug = generarSlug(nombreLimpio);
@@ -82,14 +89,14 @@ async function crear({ nombre, descripcion = "", camposExtra = [] }) {
     nombre: nombreLimpio,
     slug,
     descripcion: descripcion.trim(),
-    camposExtra: Array.isArray(camposExtra) ? camposExtra : [],
+    camposExtra,
   });
 
   return categoria;
 }
 
 async function renombrar(id, nuevoNombre) {
-  if (!nuevoNombre || !nuevoNombre.trim()) {
+  if (typeof nuevoNombre !== "string" || !nuevoNombre.trim()) {
     throw httpError(400, "El nuevo nombre es obligatorio.");
   }
   const nombreLimpio = nuevoNombre.trim();
@@ -228,6 +235,16 @@ async function asignarMasivo({
   soloSinCategoria = true,
   aplicar = false,
 } = {}) {
+  for (const [valor, etiqueta] of [
+    [marca, "La marca"],
+    [texto, "El texto"],
+    [categoria, "La categoría"],
+  ]) {
+    if (typeof valor !== "string") throw httpError(400, `${etiqueta} no es válida.`);
+  }
+  if (typeof soloSinCategoria !== "boolean" || typeof aplicar !== "boolean") {
+    throw httpError(400, "Las opciones de asignación deben ser booleanas.");
+  }
   if (!String(marca).trim() && !String(texto).trim()) {
     throw httpError(400, "Indicá una marca o un texto para filtrar los productos.");
   }
@@ -277,4 +294,3 @@ module.exports = {
   construirFiltroAsignacion,
   CATEGORIAS_BASE,
 };
-

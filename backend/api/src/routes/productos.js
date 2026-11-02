@@ -1,16 +1,18 @@
 const express = require("express");
 const auth = require("../middleware/auth");
 const controller = require("../controllers/productos");
+const asyncHandler = require("../utils/async-handler");
+const requireJsonObject = require("../middleware/require-json-object");
 
 const router = express.Router();
 
-router.get("/catalogo", controller.catalogoPublico);
-router.get("/", auth, controller.listar);
-router.get("/search", auth, controller.buscar);
-router.post("/", auth, controller.agregar);
-router.put("/:id", auth, controller.actualizar);
-router.delete("/:id/variantes", auth, controller.eliminarVariante);
-router.delete("/:id", auth, controller.eliminar);
-router.patch("/:id/minimo", auth, controller.actualizarStockMinimo);
+router.get("/catalogo", asyncHandler(controller.catalogoPublico));
+router.get("/", auth, asyncHandler(controller.listar));
+router.get("/search", auth, asyncHandler(controller.buscar));
+router.post("/", auth, requireJsonObject, asyncHandler(controller.agregar));
+router.put("/:id", auth, requireJsonObject, asyncHandler(controller.actualizar));
+router.delete("/:id/variantes", auth, asyncHandler(controller.eliminarVariante));
+router.delete("/:id", auth, asyncHandler(controller.eliminar));
+router.patch("/:id/minimo", auth, requireJsonObject, asyncHandler(controller.actualizarStockMinimo));
 
 module.exports = router;

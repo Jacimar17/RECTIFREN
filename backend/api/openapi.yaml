@@ -1,0 +1,814 @@
+openapi: 3.1.0
+info:
+  title: RECTIFREN API
+  version: 1.0.0
+  license:
+    name: ISC
+    identifier: ISC
+  description: >-
+    API REST para el inventario de RECTIFREN. Se mantienen las rutas actuales
+    para compatibilidad con el frontend.
+servers:
+  - url: /
+    description: Host de la API
+tags:
+  - name: Salud
+    description: Estado y disponibilidad del servicio.
+  - name: Autenticación
+    description: Inicio de sesión y emisión del token de administrador.
+  - name: Productos
+    description: Consulta y administración del catálogo e inventario.
+  - name: Stock
+    description: Entradas y salidas de existencias.
+  - name: Movimientos
+    description: Historial de cambios de stock.
+  - name: Equivalencias
+    description: Búsqueda y administración de productos equivalentes.
+  - name: Categorías
+    description: Clasificación y actualización masiva de productos.
+  - name: Proveedores
+    description: Consultas beta a catálogos externos.
+paths:
+  /:
+    get:
+      tags: [Salud]
+      operationId: healthRoot
+      summary: Estado de la API
+      security: []
+      responses:
+        "200":
+          description: API disponible
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /health:
+    get:
+      tags: [Salud]
+      operationId: healthCheck
+      summary: Estado de la API
+      security: []
+      responses:
+        "200":
+          description: API disponible
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/auth/login:
+    post:
+      tags: [Autenticación]
+      operationId: login
+      summary: Iniciar sesión de administrador
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user, pass]
+              properties:
+                user:
+                  type: string
+                pass:
+                  type: string
+                  format: password
+      responses:
+        "200":
+          description: Token emitido
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, token, expiresAt]
+                properties:
+                  ok:
+                    const: true
+                  token:
+                    type: string
+                  expiresAt:
+                    type: integer
+                    description: Fecha de expiración en milisegundos Unix.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          description: Demasiados intentos de inicio de sesión.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/productos/catalogo:
+    get:
+      tags: [Productos]
+      operationId: catalogoProductos
+      summary: Consultar catálogo público
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/SearchQuery"
+        - name: marca
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/productos:
+    get:
+      tags: [Productos]
+      operationId: listarProductos
+      summary: Listar inventario
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Productos]
+      operationId: crearProducto
+      summary: Crear producto o sumar stock existente
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductoInput"
+      responses:
+        "201":
+          $ref: "#/components/responses/Success"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/productos/search:
+    get:
+      tags: [Productos]
+      operationId: buscarProductos
+      summary: Buscar productos y familias de equivalencias
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/SearchQuery"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/productos/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+    put:
+      tags: [Productos]
+      operationId: actualizarProducto
+      summary: Actualizar producto
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductoUpdate"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Productos]
+      operationId: eliminarProducto
+      summary: Eliminar producto
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/productos/{id}/variantes:
+    delete:
+      tags: [Productos]
+      operationId: eliminarVariante
+      summary: Eliminar una variante del producto
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                marca:
+                  type: string
+                ubicacion:
+                  $ref: "#/components/schemas/Ubicacion"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/productos/{id}/minimo:
+    patch:
+      tags: [Productos]
+      operationId: actualizarStockMinimo
+      summary: Actualizar el mínimo de stock
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [stockMinimo]
+              properties:
+                stockMinimo:
+                  type: number
+                  minimum: 0
+                marca:
+                  type: string
+                ubicacion:
+                  $ref: "#/components/schemas/Ubicacion"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/stock/in:
+    post:
+      tags: [Stock]
+      operationId: registrarEntradaStock
+      summary: Registrar entrada de stock
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MovimientoStock"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/stock/out:
+    post:
+      tags: [Stock]
+      operationId: registrarSalidaStock
+      summary: Registrar salida de stock
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MovimientoStock"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/movimientos:
+    get:
+      tags: [Movimientos]
+      operationId: listarMovimientos
+      summary: Consultar historial de movimientos
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: range
+          in: query
+          description: Rango de historial. Cualquier otro valor conserva el rango semanal actual.
+          schema:
+            type: string
+            enum: [week, month]
+            default: week
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/equivalencias/search:
+    get:
+      tags: [Equivalencias]
+      operationId: buscarEquivalencias
+      summary: Buscar equivalencias por texto
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/SearchQuery"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/equivalencias/{id}:
+    get:
+      tags: [Equivalencias]
+      operationId: obtenerEquivalencias
+      summary: Obtener equivalencias de un producto
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/equivalencias/{id}/vincular:
+    post:
+      tags: [Equivalencias]
+      operationId: vincularEquivalencia
+      summary: Vincular producto o equivalencia de texto
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EquivalenciaInput"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/equivalencias/{id}/desvincular:
+    delete:
+      tags: [Equivalencias]
+      operationId: desvincularEquivalencia
+      summary: Desvincular producto o equivalencia de texto
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EquivalenciaInput"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/categorias:
+    get:
+      tags: [Categorías]
+      operationId: listarCategorias
+      summary: Listar categorías
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Categorías]
+      operationId: crearCategoria
+      summary: Crear categoría
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nombre]
+              properties:
+                nombre:
+                  type: string
+                descripcion:
+                  type: string
+                camposExtra:
+                  type: array
+                  items:
+                    type: object
+      responses:
+        "201":
+          $ref: "#/components/responses/Success"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/categorias/marcas:
+    get:
+      tags: [Categorías]
+      operationId: listarMarcas
+      summary: Listar marcas
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/categorias/asignar:
+    post:
+      tags: [Categorías]
+      operationId: asignarCategoria
+      summary: Previsualizar o aplicar asignación masiva
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                marca:
+                  type: string
+                texto:
+                  type: string
+                categoria:
+                  type: string
+                soloSinCategoria:
+                  type: boolean
+                aplicar:
+                  type: boolean
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/categorias/{id}:
+    put:
+      tags: [Categorías]
+      operationId: renombrarCategoria
+      summary: Renombrar categoría
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nombre]
+              properties:
+                nombre:
+                  type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/proveedores:
+    post:
+      tags: [Proveedores]
+      operationId: buscarProveedores
+      summary: Buscar productos de proveedores beta
+      description: Requiere `BETA_PROVEEDORES=true` además de autenticación.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                q:
+                  type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/proveedores/detalle:
+    post:
+      tags: [Proveedores]
+      operationId: detalleProveedor
+      summary: Consultar detalle de familia de proveedor
+      description: Requiere `BETA_PROVEEDORES=true` además de autenticación.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [codigo]
+              properties:
+                codigo:
+                  type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "502":
+          $ref: "#/components/responses/BadGateway"
+  /api/proveedores/litton/vehiculos:
+    get:
+      tags: [Proveedores]
+      operationId: listarVehiculosLitton
+      summary: Listar marcas y modelos Litton
+      description: Requiere `BETA_PROVEEDORES=true` además de autenticación.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "502":
+          $ref: "#/components/responses/BadGateway"
+  /api/proveedores/litton/buscar-vehiculo:
+    get:
+      tags: [Proveedores]
+      operationId: buscarLittonPorVehiculo
+      summary: Buscar pastillas por vehículo
+      description: Requiere `BETA_PROVEEDORES=true` además de autenticación.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: marca
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: modelo
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "502":
+          $ref: "#/components/responses/BadGateway"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[a-fA-F0-9]{24}$"
+    SearchQuery:
+      name: q
+      in: query
+      schema:
+        type: string
+        maxLength: 100
+  schemas:
+    Health:
+      type: object
+      required: [ok, app, version]
+      properties:
+        ok:
+          const: true
+        app:
+          type: string
+          example: RECTIFREN API
+        version:
+          type: string
+          example: 1.0.0
+    Error:
+      type: object
+      required: [ok, error]
+      properties:
+        ok:
+          const: false
+        error:
+          type: string
+        codigoExiste:
+          type: boolean
+          description: Indica que el cliente puede ofrecer sumar stock al producto existente.
+    ProductoInput:
+      type: object
+      required: [codigo, marca]
+      properties:
+        codigo:
+          type: string
+        marca:
+          type: string
+        stock:
+          type: number
+          minimum: 0
+        descripcion:
+          type: string
+        equivalencias:
+          type: string
+        ubicacion:
+          $ref: "#/components/schemas/Ubicacion"
+        categoria:
+          type: string
+        camposExtra:
+          type: object
+          additionalProperties: true
+        sumarStock:
+          type: boolean
+    ProductoUpdate:
+      type: object
+      properties:
+        codigo:
+          type: string
+        marca:
+          type: string
+        marcaOrig:
+          type: string
+        stock:
+          type: number
+          minimum: 0
+        ubicacion:
+          $ref: "#/components/schemas/Ubicacion"
+        ubicacionOrig:
+          $ref: "#/components/schemas/Ubicacion"
+        equivalencias:
+          type: string
+        categoria:
+          type: string
+    Ubicacion:
+      type: string
+      enum: [NEGOCIO, DEPOSITO_GALPON]
+    MovimientoStock:
+      type: object
+      required: [codigo, marca]
+      properties:
+        codigo:
+          type: string
+        marca:
+          type: string
+        ubicacion:
+          $ref: "#/components/schemas/Ubicacion"
+        cantidad:
+          type: number
+          exclusiveMinimum: 0
+          default: 1
+        nota:
+          type: string
+    EquivalenciaInput:
+      type: object
+      properties:
+        equivalenteId:
+          type: string
+        equivalenteTexto:
+          type: string
+  responses:
+    Success:
+      description: Operación exitosa. La estructura de `data` depende del endpoint.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [ok]
+            properties:
+              ok:
+                const: true
+            additionalProperties: true
+    BadRequest:
+      description: Solicitud inválida o datos de entrada incompletos.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: Se requiere autenticación o las credenciales/token no son válidos.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Forbidden:
+      description: El origen de la solicitud no está autorizado por CORS.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Ruta o recurso no encontrado.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Conflict:
+      description: La operación entra en conflicto con el estado del recurso.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    BadGateway:
+      description: No se pudo completar una consulta al proveedor.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"

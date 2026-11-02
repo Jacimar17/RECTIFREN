@@ -4,8 +4,13 @@ const httpError = require("../utils/http-error");
 const TOKEN_TTL_SECONDS = 6 * 60 * 60;
 
 function iniciarSesion(body) {
-  const user = (body.user || "").trim();
-  const pass = (body.pass || "").trim();
+  const userValue = body?.user || "";
+  const passValue = body?.pass || "";
+  if (typeof userValue !== "string" || typeof passValue !== "string") {
+    throw httpError(400, "El usuario y la contraseña deben ser texto.");
+  }
+  const user = userValue.trim();
+  const pass = passValue.trim();
   const adminUser = (process.env.ADMIN_USER || "").trim();
   const adminPass = (process.env.ADMIN_PASS || "").trim();
 

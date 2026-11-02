@@ -1,11 +1,12 @@
 const productosRepository = require("../repositories/productos");
 const httpError = require("../utils/http-error");
+const { validarBusqueda } = require("../validators/productos");
 const { normalizarProducto } = require("./producto-view");
 
 async function buscar(queryValue) {
-  const query = (queryValue || "").trim();
+  const query = validarBusqueda(queryValue);
   if (query.length < 1) return [];
-  const regex = new RegExp(query, "i");
+  const regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
   const productos = await productosRepository.buscarCandidatos(regex);
   return productos.map(normalizarProducto);
 }
@@ -27,6 +28,7 @@ async function obtener(productoId) {
 }
 
 async function vincular(productoId, { equivalenteId, equivalenteTexto }) {
+  validarEntradaEquivalencia(equivalenteId, equivalenteTexto);
   const producto = await productosRepository.buscarPorId(productoId);
   if (!producto) throw httpError(404, "Producto no encontrado.");
 
@@ -59,6 +61,7 @@ async function vincular(productoId, { equivalenteId, equivalenteTexto }) {
 }
 
 async function desvincular(productoId, { equivalenteId, equivalenteTexto }) {
+  validarEntradaEquivalencia(equivalenteId, equivalenteTexto);
   const producto = await productosRepository.buscarPorId(productoId);
   if (!producto) throw httpError(404, "Producto no encontrado.");
 
@@ -84,6 +87,16 @@ async function desvincular(productoId, { equivalenteId, equivalenteTexto }) {
   }
 
   throw httpError(400, "Faltan datos.");
+}
+
+function validarEntradaEquivalencia(equivalenteId, equivalenteTexto) {
+  if (equivalenteId !== undefined && typeof equivalenteId !== "string") {
+    throw httpError(400, "El identificador de equivalencia no es válido.");
+  }
+  if (equivalenteTexto !== undefined
+    && (typeof equivalenteTexto !== "string" || equivalenteTexto.length > 100)) {
+    throw httpError(400, "El texto de equivalencia no es válido.");
+  }
 }
 
 module.exports = { buscar, obtener, vincular, desvincular };

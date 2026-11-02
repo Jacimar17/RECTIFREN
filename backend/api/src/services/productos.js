@@ -7,6 +7,7 @@ const { resolverFamiliasLittonEnVivo } = require("../proveedores/familia-litton-
 const httpError = require("../utils/http-error");
 const {
   validarBusqueda,
+  validarCatalogoPublico,
   validarNuevoProducto,
   validarActualizacion,
   validarStockMinimo,
@@ -462,10 +463,7 @@ async function eliminarVariante(id, body) {
  * Nunca expone costos, precios de proveedor, stock ni historial.
  */
 async function catalogoPublico(queryParams = {}) {
-  const query = (queryParams.q || "").trim();
-  const marca = (queryParams.marca || "").trim();
-  const page = Math.max(1, parseInt(queryParams.page, 10) || 1);
-  const limit = Math.min(100, Math.max(1, parseInt(queryParams.limit, 10) || 20));
+  const { query, marca, page, limit } = validarCatalogoPublico(queryParams);
   const skip = (page - 1) * limit;
 
   const { items, total } = await productosRepository.buscarCatalogoPublico({

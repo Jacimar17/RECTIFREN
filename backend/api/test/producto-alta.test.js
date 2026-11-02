@@ -2,6 +2,8 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   validarNuevoProducto,
+  validarBusqueda,
+  validarCatalogoPublico,
   normalizarCodigo,
   validarDescripcion,
 } = require("../src/validators/productos");
@@ -38,6 +40,26 @@ test("valida la descripción y su longitud máxima", () => {
   assert.equal(validarDescripcion("  pastilla delantera "), "pastilla delantera");
   assert.equal(validarDescripcion(undefined), "");
   assert.throws(() => validarDescripcion("x".repeat(501)), /500/);
+});
+
+test("valida búsquedas y paginación del catálogo público", () => {
+  assert.equal(validarBusqueda(" RF-1 "), "RF-1");
+  assert.throws(() => validarBusqueda(["RF-1"]), /búsqueda/i);
+  assert.throws(() => validarBusqueda("x".repeat(101)), /100/);
+  assert.deepEqual(validarCatalogoPublico({}), {
+    query: "",
+    marca: "",
+    page: 1,
+    limit: 20,
+  });
+  assert.deepEqual(validarCatalogoPublico({ q: "RF", marca: "LPR", page: "2", limit: "50" }), {
+    query: "RF",
+    marca: "LPR",
+    page: 2,
+    limit: 50,
+  });
+  assert.throws(() => validarCatalogoPublico({ page: "2abc" }), /página/i);
+  assert.throws(() => validarCatalogoPublico({ limit: 101 }), /límite/i);
 });
 
 test("usa la ubicación predeterminada según el prefijo del código", () => {

@@ -1,59 +1,57 @@
 const proveedoresService = require("../services/proveedores");
+const httpError = require("../utils/http-error");
 
 function textoEntrada(value) {
   return typeof value === "string" ? value.trim().slice(0, 100) : "";
 }
 
-function betaHabilitada(res) {
-  if (process.env.BETA_PROVEEDORES === "true") return true;
-  res.status(404).json({ ok: false, error: "Ruta no encontrada." });
-  return false;
+function exigirBeta() {
+  if (process.env.BETA_PROVEEDORES !== "true") {
+    throw httpError(404, "Ruta no encontrada.");
+  }
 }
 
 async function buscarDetalle(req, res) {
-  if (!betaHabilitada(res)) return;
+  exigirBeta();
   const codigo = textoEntrada(req.body.codigo);
-  if (!codigo) return res.status(400).json({ ok: false, error: "Falta el código del producto." });
+  if (!codigo) throw httpError(400, "Falta el código del producto.");
   try {
     res.json({ ok: true, ...await proveedoresService.buscarDetalleFamilia(codigo) });
-  } catch (error) {
-    res.status(502).json({ ok: false, error: error.message || "No se pudo consultar la familia Litton." });
+  } catch {
+    throw httpError(502, "No se pudo consultar la familia Litton.");
   }
 }
 
-async function buscar(req, res, next) {
-  if (!betaHabilitada(res)) return;
+async function buscar(req, res) {
+  exigirBeta();
   const query = textoEntrada(req.body.q);
   if (!query) return res.json({ ok: true, query, total: 0, data: [], errores: [] });
-  try {
-    res.json(await proveedoresService.buscarProductos(query));
-  } catch (error) {
-    next(error);
-  }
+  res.json(await proveedoresService.buscarProductos(query));
 }
 
 async function vehiculosLitton(req, res) {
-  if (!betaHabilitada(res)) return;
+  exigirBeta();
   try {
     const data = await proveedoresService.obtenerVehiculosLitton();
     res.json({ ok: true, data });
-  } catch (error) {
-    res.status(502).json({ ok: false, error: error.message || "No se pudo consultar los vehículos de Litton." });
+  } catch {
+    throw httpError(502, "No se pudo consultar los vehículos de Litton.");
   }
 }
 
 async function buscarPorVehiculo(req, res) {
-  if (!betaHabilitada(res)) return;
+  exigirBeta();
   const marca = typeof req.query.marca === "string" ? req.query.marca : "";
   const modelo = typeof req.query.modelo === "string" ? req.query.modelo : "";
   const page = req.query.page ? Number(req.query.page) : 1;
-  if (!marca) return res.status(400).json({ ok: false, error: "Falta la marca." });
-  if (!modelo) return res.status(400).json({ ok: false, error: "Falta el modelo." });
+  if (!marca) throw httpError(400, "Falta la marca.");
+  if (!modelo) throw httpError(400, "Falta el modelo.");
+  if (!Number.isInteger(page) || page < 1) throw httpError(400, "La página no es válida.");
   try {
     const resultado = await proveedoresService.buscarPorVehiculoLitton({ marca, modelo, page });
     res.json(resultado);
-  } catch (error) {
-    res.status(502).json({ ok: false, error: error.message || "No se pudo buscar pastillas por vehículo." });
+  } catch {
+    throw httpError(502, "No se pudo buscar pastillas por vehículo.");
   }
 }
 

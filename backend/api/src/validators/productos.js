@@ -10,6 +10,38 @@ function validarBusqueda(value) {
   return query;
 }
 
+function validarCatalogoPublico(queryParams = {}) {
+  if (!queryParams || typeof queryParams !== "object" || Array.isArray(queryParams)) {
+    throw httpError(400, "Los filtros del catálogo no son válidos.");
+  }
+
+  const query = validarBusqueda(queryParams.q);
+  const marcaValue = queryParams.marca;
+  if (marcaValue !== undefined && typeof marcaValue !== "string") {
+    throw httpError(400, "La marca no es válida.");
+  }
+  const marca = (marcaValue || "").trim();
+  if (marca.length > 100) throw httpError(400, "La marca no puede superar 100 caracteres.");
+
+  function enteroPositivo(value, fallback, maximo, etiqueta) {
+    if (value === undefined || value === null || value === "") return fallback;
+    const numero = typeof value === "number"
+      ? value
+      : (typeof value === "string" ? Number(value.trim()) : NaN);
+    if (!Number.isInteger(numero) || numero < 1 || (maximo && numero > maximo)) {
+      throw httpError(400, `${etiqueta} no es válida.`);
+    }
+    return numero;
+  }
+
+  return {
+    query,
+    marca,
+    page: enteroPositivo(queryParams.page, 1, null, "La página"),
+    limit: enteroPositivo(queryParams.limit, 20, 100, "El límite"),
+  };
+}
+
 function validarCategoria(valor) {
   if (valor === undefined || valor === null) return "";
   if (typeof valor !== "string") throw httpError(400, "La categoría no es válida.");
@@ -97,6 +129,7 @@ function validarStockMinimo(value) {
 
 module.exports = {
   validarBusqueda,
+  validarCatalogoPublico,
   validarNuevoProducto,
   validarActualizacion,
   validarStockMinimo,

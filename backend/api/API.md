@@ -3,21 +3,26 @@
 HTTP API implemented by `src/routes` and registered centrally in `src/routes/index.js`.
 The paths below are relative to `/api`, unless explicitly marked as the health check.
 Existing paths are kept stable for the frontend.
+The machine-readable contract is in [`openapi.yaml`](./openapi.yaml).
 
 ## Conventions
 
 - Send and receive JSON (`Content-Type: application/json`).
-- Protected endpoints require `Authorization: Bearer <token>`. Obtain a token from `POST /api/auth/login`; it expires after six hours.
+- Protected endpoints require the Bearer token from `POST /api/auth/login`; it expires after six hours.
 - Successful responses use JSON with `ok: true`. Depending on the endpoint, data is returned in `data`, `mensaje`, or additional top-level fields.
-- Errors generally use `{ "ok": false, "error": "..." }`. Depending on the route, validation, authentication, missing resources, and conflicts return HTTP `400`, `401`, `404`, or `409`.
+- Errors use `{ "ok": false, "error": "..." }`; validation, authentication, missing resources, and conflicts return appropriate HTTP statuses.
 - Login is limited to 10 attempts per IP per 15 minutes.
 - Provider endpoints are available only when `BETA_PROVEEDORES=true`; otherwise they return `404`.
+- JSON request bodies must be objects.
+
+The API uses a shared error handler for asynchronous route failures. Invalid JSON body shapes and malformed MongoDB identifiers return `400`; duplicate resources return `409`; unexpected server failures return `500` with a generic message.
 
 ## Health
 
 | Method | Path | Auth | Description | Success |
 |---|---|---|---|---|
 | `GET` | `/` | No | API health/version | `{ "ok": true, "app": "RECTIFREN API", "version": "1.0.0" }` |
+| `GET` | `/health` | No | Health check alias | `{ "ok": true, "app": "RECTIFREN API", "version": "1.0.0" }` |
 
 ## Authentication
 
@@ -29,7 +34,7 @@ Existing paths are kept stable for the frontend.
 
 | Method | Path | Auth | Request | Success |
 |---|---|---|---|---|
-| `GET` | `/api/productos/catalogo` | No | Query: `q`, `marca`, `page`, `limit` | `{ "ok": true, ...catalog }` |
+| `GET` | `/api/productos/catalogo` | No | Query: `q` (max. 100), `marca` (max. 100), `page` (mín. 1), `limit` (1–100, default 20) | `{ "ok": true, ...catalog }` |
 | `GET` | `/api/productos` | Yes | — | `{ "ok": true, "data": [...] }` |
 | `GET` | `/api/productos/search` | Yes | Query: `q` | `{ "ok": true, "data": [...], ...searchMetadata }` |
 | `POST` | `/api/productos` | Yes | Product fields: `codigo`, `marca`, optional `stock`, `descripcion`, `equivalencias`, `ubicacion`, `categoria`, `camposExtra`, `sumarStock` | `201`, `{ "ok": true, "data": product }` |
@@ -75,3 +80,7 @@ All provider endpoints require authentication and `BETA_PROVEEDORES=true`.
 | `POST` | `/api/proveedores/detalle` | `{ "codigo": "..." }` | Provider/family details |
 | `GET` | `/api/proveedores/litton/vehiculos` | — | `{ "ok": true, "data": [...] }` |
 | `GET` | `/api/proveedores/litton/buscar-vehiculo` | Query: `marca`, `modelo`, optional `page` | Vehicle search results |
+
+## Local validation
+
+Run the API test suite from `backend/api` with `npm test`. The app can be imported from `src/app.js` without connecting to MongoDB, which allows HTTP behavior to be tested independently from database startup.

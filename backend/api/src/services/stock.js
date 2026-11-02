@@ -4,7 +4,13 @@ const httpError = require("../utils/http-error");
 
 async function aplicarMovimiento(tipo, body) {
   const { codigo, marca, cantidad = 1, nota = "", ubicacion } = body;
-  if (!codigo || !marca) throw httpError(400, "Faltan campos: codigo, marca.");
+  if (typeof codigo !== "string" || !codigo.trim() || typeof marca !== "string" || !marca.trim()) {
+    throw httpError(400, "Faltan campos: codigo, marca.");
+  }
+  if (typeof nota !== "string") throw httpError(400, "La nota debe ser texto.");
+  if (ubicacion !== undefined && typeof ubicacion !== "string") {
+    throw httpError(400, "La ubicación del producto no es válida.");
+  }
 
   const cant = Number(cantidad);
   if (!cant || cant <= 0) throw httpError(400, "La cantidad debe ser positiva.");
