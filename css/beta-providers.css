@@ -29,13 +29,31 @@
 
 #betaOverlay .beta-content { color: var(--text); }
 #betaOverlay .beta-search-input { background: #23272f; border-color: #3a3f4a; }
+#betaOverlay .beta-search-field select { color: #f1f3f7; background: #23272f; border-color: #3a3f4a; }
 #betaOverlay .beta-searchbar input { color: #f1f3f7; }
 #betaOverlay .beta-searchbar input::placeholder { color: #8b93a1; }
-#betaOverlay .beta-searchbar button { background: #d32f2f; }
-#betaOverlay .beta-searchbar button:hover { background: #b71c1c; }
+#betaOverlay .beta-searchbar button,
+#betaOverlay .beta-vehicle-search button { color: #fff; background: #d32f2f; }
+#betaOverlay .beta-searchbar button:hover,
+#betaOverlay .beta-vehicle-search button:hover { background: #b71c1c; }
 #betaOverlay .beta-result-card,
 #betaOverlay .beta-provider-section,
 #betaOverlay .beta-empty-state { color: #f1f3f7; background: #16181e; border-color: #2a2e36; }
+#betaOverlay .beta-vehicle-table-wrap { border-color: #2a2e36; }
+#betaOverlay .beta-vehicle-table thead th { color: #b4bac4; background: #1c1f26; }
+#betaOverlay .beta-vehicle-table tbody th,
+#betaOverlay .beta-vehicle-table tbody td { color: #f1f3f7; background: #16181e; border-color: #2a2e36; }
+#betaOverlay .beta-vehicle-offer-heading a,
+#betaOverlay .beta-vehicle-offer-heading strong { color: #f1f3f7; }
+#betaOverlay .beta-vehicle-offer-heading > strong { color: #ff6b6b; }
+#betaOverlay .beta-vehicle-product span,
+#betaOverlay .beta-vehicle-product small,
+#betaOverlay .beta-vehicle-offer > span,
+#betaOverlay .beta-vehicle-offer > small,
+#betaOverlay .beta-vehicle-no-offer { color: #b4bac4; }
+#betaOverlay .beta-vehicle-offer-error { color: #f87171; }
+#betaOverlay .beta-vehicle-pagination { color: #b4bac4; }
+#betaOverlay .beta-vehicle-pagination button { color: #f1f3f7; background: #23272f; border-color: #3a3f4a; }
 #betaOverlay .beta-result-card:hover,
 #betaOverlay .beta-result-card:focus-visible { border-color: #e23b3b; }
 #betaOverlay .beta-photo-frame { background: #f8fafc; }

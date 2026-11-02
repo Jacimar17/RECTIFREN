@@ -618,8 +618,12 @@ paths:
     get:
       tags: [Proveedores]
       operationId: buscarLittonPorVehiculo
-      summary: Buscar pastillas por vehículo
-      description: Requiere `BETA_PROVEEDORES=true` además de autenticación.
+      summary: Buscar pastillas y comparar proveedores por vehículo
+      description: >-
+        Busca por marca y modelo (sin filtros de año o versión), conserva todas
+        las variantes Litton y las enriquece con equivalencias y ofertas de
+        Aimar/ATONOR. Los errores parciales se devuelven por candidato.
+        Requiere `BETA_PROVEEDORES=true` además de autenticación.
       security:
         - bearerAuth: []
       parameters:
@@ -628,16 +632,19 @@ paths:
           required: true
           schema:
             type: string
+            maxLength: 100
         - name: modelo
           in: query
           required: true
           schema:
             type: string
+            maxLength: 100
         - name: page
           in: query
           schema:
             type: integer
             minimum: 1
+            maximum: 1000
             default: 1
       responses:
         "200":

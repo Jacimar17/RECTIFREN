@@ -237,3 +237,16 @@ export async function apiDetalleProveedores(codigo, token) {
     body: JSON.stringify({ codigo })
   }, 90000);
 }
+
+export async function apiVehiculosLitton(token) {
+  return request(`${API_URL}/api/proveedores/litton/vehiculos`, {
+    headers: jsonHeaders(token)
+  }, 30000);
+}
+
+export async function apiBuscarVehiculoLitton({ marca, modelo, page = 1 }, token) {
+  const params = new URLSearchParams({ marca, modelo, page: String(page) });
+  return request(`${API_URL}/api/proveedores/litton/buscar-vehiculo?${params}`, {
+    headers: jsonHeaders(token)
+  }, 120000);
+}

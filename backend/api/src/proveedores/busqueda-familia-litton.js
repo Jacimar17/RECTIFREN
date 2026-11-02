@@ -50,6 +50,7 @@ async function buscarFamiliaLitton(codigoLitton, {
   obtenerDetalleLitton,
   buscarAimar,
   buscarAtonor,
+  proveedores,
   concurrency = 4,
 }) {
   const detalle = await obtenerDetalleLitton(codigoLitton);
@@ -62,16 +63,33 @@ async function buscarFamiliaLitton(codigoLitton, {
     throw new Error(`La ficha Litton de ${codigoLitton} no informa códigos para consultar.`);
   }
 
-  const tareas = equivalencias.flatMap((equivalencia) => [
-    { proveedor: "Aimar", codigo: equivalencia.codigo, buscar: buscarAimar },
-    { proveedor: "ATONOR", codigo: equivalencia.codigo, marca: equivalencia.marca, buscar: buscarAtonor },
-  ]);
+  const adaptadores = Array.isArray(proveedores) ? proveedores : [
+    { id: "aimar", nombre: "Aimar", buscar: buscarAimar },
+    { id: "atonor", nombre: "ATONOR", buscar: buscarAtonor },
+  ];
+  const providerIds = adaptadores.map((item) => item?.id);
+  if (
+    !adaptadores.length
+    || adaptadores.some((item) => !item?.id || !item?.nombre || typeof item.buscar !== "function")
+    || new Set(providerIds).size !== providerIds.length
+  ) {
+    throw new Error("La categoría no tiene adaptadores de proveedores válidos.");
+  }
+
+  const tareas = equivalencias.flatMap((equivalencia) =>
+    adaptadores.map((proveedor) => ({
+      proveedor,
+      codigo: equivalencia.codigo,
+      marca: equivalencia.marca,
+      buscar: proveedor.buscar,
+    }))
+  );
   const errores = [];
   const resultados = await mapConcurrent(tareas, concurrency, async (tarea) => {
     try {
       const items = await tarea.buscar(tarea.codigo, tarea.marca);
       if (!Array.isArray(items)) {
-        throw new Error(`${tarea.proveedor} devolvió una respuesta inválida.`);
+        throw new Error(`${tarea.proveedor.nombre} devolvió una respuesta inválida.`);
       }
       return {
         proveedor: tarea.proveedor,
@@ -82,7 +100,8 @@ async function buscarFamiliaLitton(codigoLitton, {
       };
     } catch (error) {
       errores.push({
-        proveedor: tarea.proveedor,
+        proveedorId: tarea.proveedor.id,
+        proveedor: tarea.proveedor.nombre,
         codigo: tarea.codigo,
         error: String(error?.message || error),
       });
@@ -90,10 +109,10 @@ async function buscarFamiliaLitton(codigoLitton, {
     }
   });
 
-  const data = { aimar: [], atonor: [] };
-  const vistos = { aimar: new Set(), atonor: new Set() };
+  const data = Object.fromEntries(adaptadores.map((proveedor) => [proveedor.id, []]));
+  const vistos = Object.fromEntries(adaptadores.map((proveedor) => [proveedor.id, new Set()]));
   for (const resultado of resultados) {
-    const grupo = resultado.proveedor === "Aimar" ? "aimar" : "atonor";
+    const grupo = resultado.proveedor.id;
     for (const item of resultado.items) {
       const key = normalizarCodigo(item.codigo);
       if (!key || vistos[grupo].has(key)) continue;
@@ -104,15 +123,16 @@ async function buscarFamiliaLitton(codigoLitton, {
 
   const erroresPorProveedor = new Map();
   for (const error of errores) {
-    if (!erroresPorProveedor.has(error.proveedor)) erroresPorProveedor.set(error.proveedor, []);
-    erroresPorProveedor.get(error.proveedor).push(`${error.codigo}: ${error.error}`);
+    if (!erroresPorProveedor.has(error.proveedorId)) erroresPorProveedor.set(error.proveedorId, []);
+    erroresPorProveedor.get(error.proveedorId).push(`${error.codigo}: ${error.error}`);
   }
   const erroresAgrupados = [...erroresPorProveedor].map(([proveedor, detalles]) => ({
-    proveedor,
+    proveedor: adaptadores.find((item) => item.id === proveedor)?.nombre || proveedor,
     error: detalles.join(" · "),
   }));
 
   return {
+    proveedores: adaptadores.map(({ id, nombre }) => ({ id, nombre })),
     codigo: detalle.code,
     familia: {
       codigo: detalle.code,

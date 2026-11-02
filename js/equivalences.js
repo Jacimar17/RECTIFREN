@@ -1,5 +1,5 @@
 import { API_URL } from "./config.js";
-import { authJsonHeaders } from "./api.js";
+import { authJsonHeaders } from "./api.js?v=20261102";
 import { $, escapeHtml } from "./ui.js";
 import { icon } from "./ui/icons.js";
 

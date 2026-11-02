@@ -13,7 +13,7 @@ Disponible en [`inventario.html`](inventario.html) y requiere iniciar sesión. A
 - 📋 Stock con filtros, ventana de detalle y campos editables.
 - 🕓 Historial por producto.
 - 📤 Exportar a CSV.
-- 🧪 **Buscador de proveedores (beta)**: pone un código de pastilla de Litton y busca equivalencias en **Aimar** y **ATONOR**, con precios e imágenes. Un lujo. 💅
+- 🧪 **Buscador de proveedores (beta)**: busca pastillas por código o por marca y modelo del vehículo, y compara equivalencias y ofertas de **Aimar** y **ATONOR** en una sola vista.
 
 ---
 

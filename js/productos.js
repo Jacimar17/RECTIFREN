@@ -5,7 +5,7 @@
  */
 
 import { CONTACT_INFO, MARCAS } from "./public-config.js";
-import { apiGetCatalogoPublico } from "./api.js";
+import { apiGetCatalogoPublico } from "./api.js?v=20261102";
 
 // Estado de la vista de catálogo
 let currentQuery = "";
@@ -399,4 +399,3 @@ function escapeHtml(str) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
-

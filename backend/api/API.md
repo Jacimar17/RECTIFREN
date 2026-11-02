@@ -79,7 +79,11 @@ All provider endpoints require authentication and `BETA_PROVEEDORES=true`.
 | `POST` | `/api/proveedores` | `{ "q": "..." }` | Search results with `ok`, `total`, `data`, and `errores` |
 | `POST` | `/api/proveedores/detalle` | `{ "codigo": "..." }` | Provider/family details |
 | `GET` | `/api/proveedores/litton/vehiculos` | — | `{ "ok": true, "data": [...] }` |
-| `GET` | `/api/proveedores/litton/buscar-vehiculo` | Query: `marca`, `modelo`, optional `page` | Vehicle search results |
+| `GET` | `/api/proveedores/litton/buscar-vehiculo` | Query: `marca`, `modelo` (máx. 100 caracteres), optional `page` (1–1000) | Litton vehicle candidates enriched with equivalences, configured supplier offers, and per-candidate provider errors |
+
+Vehicle lookup uses only `marca` and `modelo`. The response lists configured providers in `proveedores`; each returned candidate contains its Litton product data, `equivalencias`, an `ofertas` group keyed by provider ID, and `errores`. If a product detail or supplier lookup fails, the candidate remains in the response and reports the error instead of discarding other results.
+
+Each offer has `proveedor`, `codigoProveedor`, `marca`, `descripcion`, `precio` (`importe` and `moneda`), `stock` (`estado` and optional numeric `cantidad`), `url`, `imagen`, and `codigoCoincidente`. Unknown stock is represented as `desconocido` with `cantidad: null`, not as zero.
 
 ## Local validation
 

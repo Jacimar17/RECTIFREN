@@ -72,6 +72,92 @@ export function createBetaView(results) {
     results.innerHTML = html;
   }
 
+  function renderVehicleOffer(item, provider) {
+    const code = item.codigoProveedor || "Código s/d";
+    const priceAmount = item.precio?.importe;
+    const price = priceAmount === null || priceAmount === undefined
+      ? "Precio no informado"
+      : fmtPrecio(priceAmount);
+    const availability = item.stock?.cantidad !== null && item.stock?.cantidad !== undefined
+      ? `${item.stock.cantidad} u. · ${item.stock.estado === "sin_stock" ? "Sin stock" : "Disponible"}`
+      : ({
+        disponible: "Disponible",
+        limitado: "Stock limitado",
+        sin_stock: "Sin stock",
+        desconocido: "Disponibilidad s/d",
+      }[item.stock?.estado] || "Disponibilidad s/d");
+    const url = safeHttpUrl(item.url);
+    const codeMarkup = url
+      ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(code)}</a>`
+      : `<strong>${escapeHtml(code)}</strong>`;
+    return `<div class="beta-vehicle-offer beta-vehicle-offer-${provider.toLowerCase()}">
+      <div class="beta-vehicle-offer-heading">${codeMarkup}<strong>${escapeHtml(price)}</strong></div>
+      <span>${escapeHtml(item.marca || item.descripcion || provider)}</span>
+      <small>${escapeHtml(availability)}</small>
+    </div>`;
+  }
+
+  function renderVehicleOfferCell(product, provider) {
+    const items = product.ofertas?.[provider.id] || [];
+    if (items.length) return items.map((item) => renderVehicleOffer(item, provider.nombre)).join("");
+    const error = (product.errores || []).find((item) =>
+      String(item.proveedor || "").toLowerCase() === provider.nombre.toLowerCase()
+      || String(item.proveedor || "").toLowerCase() === "litton"
+    );
+    return error
+      ? `<span class="beta-vehicle-offer-error">${escapeHtml(error.error)}</span>`
+      : `<span class="beta-vehicle-no-offer">Sin coincidencias en ${escapeHtml(provider.nombre)}</span>`;
+  }
+
+  function renderVehicleResults(response, pageChanged) {
+    const items = Array.isArray(response.data) ? response.data : [];
+    const errors = Array.isArray(response.errores) ? response.errores : [];
+    const providers = Array.isArray(response.proveedores) && response.proveedores.length
+      ? response.proveedores
+      : [{ id: "aimar", nombre: "Aimar" }, { id: "atonor", nombre: "ATONOR" }];
+    const query = response.query || {};
+    let html = errors.map((error) =>
+      `<div class="hint beta-error"><strong>${escapeHtml(error.proveedor || "Litton")}:</strong> ${escapeHtml(error.error || "Error en la búsqueda.")}</div>`
+    ).join("");
+
+    if (!items.length && !errors.length) {
+      results.innerHTML = `${html}<div class="beta-empty-state">No encontré pastillas para ${escapeHtml(query.marca || "")} ${escapeHtml(query.modelo || "")}.</div>`;
+      return;
+    }
+
+    if (items.length) {
+      html += `<p class="beta-vehicle-summary">Aplicación: <strong>${escapeHtml(query.marca || "")} ${escapeHtml(query.modelo || "")}</strong>. Se muestran todas las variantes de esta página.</p>
+        <div class="beta-vehicle-table-wrap">
+          <table class="beta-vehicle-table">
+            <thead><tr><th scope="col">Pastilla Litton</th>${providers.map((provider) => `<th scope="col">${escapeHtml(provider.nombre)}</th>`).join("")}</tr></thead>
+            <tbody>${items.map((item) => `<tr>
+              <th scope="row"><div class="beta-vehicle-product">
+                ${photoMarkup(item.imagen, item.codigo, "beta-vehicle-photo")}
+                <div><strong>${escapeHtml(item.codigo || "Código s/d")}</strong><span>${escapeHtml(item.nombre || "Sin descripción disponible")}</span><small>${escapeHtml(item.marca || "LITTON")}</small></div>
+              </div></th>
+              ${providers.map((provider) => `<td>${renderVehicleOfferCell(item, provider)}</td>`).join("")}
+            </tr>`).join("")}</tbody>
+          </table>
+        </div>`;
+    }
+
+    const pagination = response.pagination || {};
+    const currentPage = Number(response.page || pagination.page || 1);
+    const totalPages = Number(pagination.pages || pagination.totalPages || pagination.total_pages || 0);
+    if (totalPages > 1) {
+      html += `<nav class="beta-vehicle-pagination" aria-label="Páginas de resultados">
+        <button type="button" class="beta-vehicle-page-button" data-page="${currentPage - 1}" ${currentPage <= 1 ? "disabled" : ""}>Anterior</button>
+        <span>Página ${currentPage} de ${totalPages}</span>
+        <button type="button" class="beta-vehicle-page-button" data-page="${currentPage + 1}" ${currentPage >= totalPages ? "disabled" : ""}>Siguiente</button>
+      </nav>`;
+    }
+
+    results.innerHTML = html;
+    results.querySelectorAll(".beta-vehicle-page-button").forEach((button) => {
+      button.addEventListener("click", () => pageChanged(Number(button.dataset.page)));
+    });
+  }
+
   function renderProviderItem(item, provider) {
     const code = item.codigo || "Código s/d";
     const brand = typeof item.marca === "string" ? item.marca.trim() : "";
@@ -189,6 +275,7 @@ export function createBetaView(results) {
     photoMarkup,
     semaforo,
     renderResults,
+    renderVehicleResults,
     renderInventorySection,
     updateInventorySection,
     renderProviderSection,

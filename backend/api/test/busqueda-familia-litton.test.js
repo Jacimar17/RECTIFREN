@@ -97,6 +97,31 @@ test("rejects an invalid Litton detail before searching other providers", async 
   assert.equal(supplierQueries, 0);
 });
 
+test("supports registered supplier adapters without provider-specific orchestration branches", async () => {
+  const result = await buscarFamiliaLitton("44980NA", {
+    obtenerDetalleLitton: async () => ({
+      code: "44980NA",
+      substitutes: [{ value: "PD/528", code: "FRASLE" }],
+    }),
+    proveedores: [{
+      id: "nuevo-proveedor",
+      nombre: "Nuevo proveedor",
+      buscar: async (code, brand) => {
+        assert.equal(code, "PD/528");
+        assert.equal(brand, "FRASLE");
+        return [{ codigo: "PD/528", precio: 100 }];
+      },
+    }],
+  });
+
+  assert.deepEqual(result.proveedores, [{ id: "nuevo-proveedor", nombre: "Nuevo proveedor" }]);
+  assert.deepEqual(result.data["nuevo-proveedor"], [{
+    codigo: "PD/528",
+    precio: 100,
+    codigoConsultado: "PD/528",
+  }]);
+});
+
 test("Aimar continues past a numeric-prefix page until it finds the exact family code", async () => {
   const searches = [];
   const results = await buscarAimar.buscarCoincidencia("05P1379", async (term) => {

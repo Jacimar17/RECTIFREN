@@ -1,4 +1,4 @@
-import { apiPostForm, apiCrearCategoria, authJsonHeaders } from "./api.js";
+import { apiPostForm, apiCrearCategoria, authJsonHeaders } from "./api.js?v=20261102";
 import { API_URL } from "./config.js";
 import { createProductActionEvents } from "./product-action-events.js";
 import { createProductAddModal } from "./product-add-modal.js";

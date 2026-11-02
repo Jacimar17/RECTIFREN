@@ -90,6 +90,13 @@ function redondear(n) {
   return Number.isFinite(v) ? Math.round(v * 100) / 100 : null;
 }
 
+function cantidadStock(value) {
+  if (value === null || value === undefined || String(value).trim() === "") return null;
+  if (typeof value !== "number" && typeof value !== "string") return null;
+  const stock = Number(value);
+  return Number.isFinite(stock) ? stock : null;
+}
+
 function mapear(p) {
   const d = p.data || {};
   const img = p.images && p.images[0] && p.images[0].url;
@@ -98,7 +105,7 @@ function mapear(p) {
     nombre:         (d.description || "").trim(),
     marca:          (d.rubro_titulo || "").trim(),
     precio:         redondear(d.precio_final ?? d.precio),
-    stockProveedor: Number(d.stock) || 0,
+    stockProveedor: cantidadStock(d.stock),
     medidas:        [d.largo, d.altura, d.espesor].filter(Boolean).join(" x "),
     equivalencias:  d.equivalencias || [],
     imagen:         img && !/sin_imagen/i.test(img) ? img : null,
@@ -144,3 +151,4 @@ async function buscarCoincidencia(codigo, consultar = buscarTermino) {
 
 module.exports.terminos = terminos;
 module.exports.buscarCoincidencia = buscarCoincidencia;
+module.exports.mapear = mapear;

@@ -1,4 +1,4 @@
-import { apiGet } from "./api.js";
+import { apiGet } from "./api.js?v=20261102";
 import { $, escapeHtml, fmtDate } from "./ui.js";
 
 export function createMovementController({ getIsAdmin, getAdminToken = () => "" }) {

@@ -41,17 +41,17 @@ async function vehiculosLitton(req, res) {
 
 async function buscarPorVehiculo(req, res) {
   exigirBeta();
-  const marca = typeof req.query.marca === "string" ? req.query.marca : "";
-  const modelo = typeof req.query.modelo === "string" ? req.query.modelo : "";
+  const marca = textoEntrada(req.query.marca);
+  const modelo = textoEntrada(req.query.modelo);
   const page = req.query.page ? Number(req.query.page) : 1;
   if (!marca) throw httpError(400, "Falta la marca.");
   if (!modelo) throw httpError(400, "Falta el modelo.");
-  if (!Number.isInteger(page) || page < 1) throw httpError(400, "La página no es válida.");
+  if (!Number.isInteger(page) || page < 1 || page > 1000) throw httpError(400, "La página no es válida.");
   try {
     const resultado = await proveedoresService.buscarPorVehiculoLitton({ marca, modelo, page });
     res.json(resultado);
-  } catch {
-    throw httpError(502, "No se pudo buscar pastillas por vehículo.");
+  } catch (error) {
+    throw httpError(502, error.message || "No se pudo buscar pastillas por vehículo.");
   }
 }
 

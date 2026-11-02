@@ -1,6 +1,12 @@
-import { apiBetaProveedores, apiDetalleProveedores, apiGet } from "./api.js";
+import {
+  apiBetaProveedores,
+  apiBuscarVehiculoLitton,
+  apiDetalleProveedores,
+  apiGet,
+  apiVehiculosLitton
+} from "./api.js?v=20261102";
 import { $, escapeHtml, showToast } from "./ui.js";
-import { createBetaView } from "./beta-view.js?v=20261019";
+import { createBetaView } from "./beta-view.js?v=20261102";
 import { icon } from "./ui/icons.js";
 
 export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }) {
@@ -12,6 +18,8 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
   let lastLittonResponse = null;
   let selectedResultIndex = -1;
   let activeViewId = 0;
+  let marcasModelosLitton = null;
+  let cargaMarcasModelos = null;
   const detailCache = new Map();
   const detailRequests = new Map();
   const inventoryCache = new Map();
@@ -23,6 +31,7 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
     photoMarkup,
     semaforo,
     renderResults,
+    renderVehicleResults,
     renderInventorySection,
     updateInventorySection,
     renderProviderSection,
@@ -33,7 +42,11 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
     $("betaStatus").textContent = "";
     overlay.style.display = "flex";
     overlay.setAttribute("aria-hidden", "false");
-    setTimeout(() => $("betaSearch")?.focus(), 80);
+    if ($("betaSearchMode").value === "vehiculo") {
+      setTimeout(() => $("betaVehicleMake")?.focus(), 80);
+    } else {
+      setTimeout(() => $("betaSearch")?.focus(), 80);
+    }
   }
 
   function closeBetaModal() {
@@ -144,6 +157,65 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
     }
   }
 
+  function setSelectOptions(select, placeholder, values) {
+    select.replaceChildren(new Option(placeholder, ""));
+    for (const value of values) {
+      select.add(new Option(value, value));
+    }
+  }
+
+  async function cargarMarcasModelosLitton() {
+    if (marcasModelosLitton) return marcasModelosLitton;
+    if (cargaMarcasModelos) return cargaMarcasModelos;
+
+    cargaMarcasModelos = (async () => {
+      const token = getAdminToken();
+      if (!token) {
+        adminLogout();
+        throw new Error("La sesión venció. Ingresá nuevamente.");
+      }
+      $("betaStatus").textContent = "Cargando marcas y modelos de Litton…";
+      const response = await apiVehiculosLitton(token);
+      if (!response.ok) throw new Error(response.error || "No se pudieron cargar las marcas de Litton.");
+      if (!Array.isArray(response.data)) throw new Error("Litton devolvió una lista de vehículos inválida.");
+      const entries = response.data.filter((item) =>
+        typeof item?.marca === "string"
+        && item.marca.trim()
+        && Array.isArray(item.modelos)
+        && item.modelos.some((model) => typeof model === "string" && model.trim())
+      );
+      const marcas = entries.map((item) => item.marca);
+      if (!marcas.length) throw new Error("Litton no informó marcas y modelos disponibles.");
+      marcasModelosLitton = entries;
+      setSelectOptions($("betaVehicleMake"), "Elegí una marca", marcas);
+      setSelectOptions($("betaVehicleModel"), "Elegí primero una marca", []);
+      $("betaVehicleModel").disabled = true;
+      $("betaStatus").textContent = "";
+      return marcasModelosLitton;
+    })();
+
+    try {
+      return await cargaMarcasModelos;
+    } finally {
+      cargaMarcasModelos = null;
+    }
+  }
+
+  function actualizarModoBusqueda() {
+    const vehicleMode = $("betaSearchMode").value === "vehiculo";
+    $("betaCodeSearch").hidden = vehicleMode;
+    $("betaVehicleSearch").hidden = !vehicleMode;
+    if (vehicleMode) {
+      cargarMarcasModelosLitton().catch((error) => {
+        setSelectOptions($("betaVehicleMake"), "No se pudieron cargar las marcas", []);
+        $("betaStatus").textContent = error.message || "No se pudieron cargar las marcas de Litton.";
+      });
+    } else {
+      $("betaStatus").textContent = "";
+      setTimeout(() => $("betaSearch")?.focus(), 0);
+    }
+  }
+
   function showResultsAndRestoreFocus() {
     ++activeViewId;
     if (!lastLittonResponse) return;
@@ -206,9 +278,60 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
     }
   }
 
+  async function buscarBetaVehiculo(page = 1) {
+    const marca = $("betaVehicleMake").value;
+    const modelo = $("betaVehicleModel").value;
+    if (!marca || !modelo) {
+      $("betaStatus").textContent = "Elegí la marca y el modelo del vehículo.";
+      return;
+    }
+    if (!getIsAdmin()) {
+      showToast("Ingresá como administrador para usar la beta.", "error");
+      return;
+    }
+
+    const button = $("btnBetaSearchVehicle");
+    button.disabled = true;
+    $("betaStatus").textContent = "";
+    results.innerHTML = `<div class="beta-search-loading"><div class="spinner" aria-hidden="true"></div><span>Buscando pastillas y comparando proveedores…</span></div>`;
+
+    try {
+      const token = getAdminToken();
+      if (!token) {
+        adminLogout();
+        showToast("La sesión venció. Ingresá nuevamente.", "error");
+        return;
+      }
+      const response = await apiBuscarVehiculoLitton({ marca, modelo, page }, token);
+      if (!response.ok) {
+        results.innerHTML = "";
+        $("betaStatus").textContent = response.error || "Error en la búsqueda por vehículo.";
+        return;
+      }
+      renderVehicleResults(response, buscarBetaVehiculo);
+      const total = response.pagination?.total ?? response.total ?? 0;
+      $("betaStatus").textContent = `${response.data?.length || 0} variante(s) para ${marca} ${modelo}${total > (response.data?.length || 0) ? ` · ${total} en total` : ""}`;
+    } catch (error) {
+      results.innerHTML = "";
+      $("betaStatus").textContent = `Error: ${error.message}`;
+    } finally {
+      button.disabled = false;
+    }
+  }
+
   $("btnBeta")?.addEventListener("click", () => { if (!isBusy()) openBetaModal(); });
   $("btnCloseBeta")?.addEventListener("click", () => { if (!isBusy()) closeBetaModal(); });
   $("btnBetaSearch")?.addEventListener("click", buscarBeta);
+  $("btnBetaSearchVehicle")?.addEventListener("click", () => buscarBetaVehiculo());
+  $("betaSearchMode")?.addEventListener("change", actualizarModoBusqueda);
+  $("betaVehicleMake")?.addEventListener("change", () => {
+    const make = $("betaVehicleMake").value;
+    const entry = marcasModelosLitton?.find((item) => item.marca === make);
+    const models = Array.isArray(entry?.modelos) ? entry.modelos.filter((model) => typeof model === "string" && model.trim()) : [];
+    setSelectOptions($("betaVehicleModel"), !make ? "Elegí primero una marca" : models.length ? "Elegí un modelo" : "Sin modelos disponibles", models);
+    $("betaVehicleModel").disabled = !make || models.length === 0;
+    $("betaStatus").textContent = make && !models.length ? "Litton no informó modelos para esta marca." : "";
+  });
   $("betaResults")?.addEventListener("click", event => {
     if (event.target.closest(".beta-back-button")) {
       showResultsAndRestoreFocus();

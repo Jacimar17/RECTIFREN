@@ -66,7 +66,34 @@
   border-radius: var(--radius-sm);
 }
 .beta-topbar > .modalClose:hover { color: #fff; background: var(--rojo-h); }
-.beta-searchbar { display: flex; gap: 12px; margin-top: 18px; }
+.beta-search-controls {
+  display: grid;
+  grid-template-columns: minmax(170px, .28fr) minmax(0, 1fr);
+  align-items: end;
+  gap: 12px;
+  margin-top: 18px;
+}
+.beta-search-mode { max-width: 260px; }
+.beta-search-field { min-width: 0; display: flex; flex-direction: column; gap: 7px; color: var(--muted); font-size: 12px; font-weight: 700; }
+.beta-search-field select {
+  width: 100%;
+  min-width: 0;
+  min-height: 54px;
+  padding: 0 14px;
+  color: var(--text);
+  background: var(--lift);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 15px;
+}
+.beta-search-field select:focus-visible { outline: 2px solid var(--rojo); outline-offset: 1px; }
+.beta-search-field select:disabled { opacity: .65; cursor: not-allowed; }
+.beta-searchbar { min-width: 0; display: flex; gap: 12px; }
+.beta-vehicle-search { min-width: 0; display: flex; align-items: end; gap: 12px; }
+.beta-vehicle-search .beta-search-field { flex: 1; }
+.beta-vehicle-search button { min-width: 160px; min-height: 54px; justify-content: center; font-size: 15px; }
+#betaCodeSearch[hidden], #betaVehicleSearch[hidden] { display: none; }
 .beta-search-input {
   min-width: 0;
   min-height: 54px;
@@ -118,6 +145,32 @@
 #betaStatus { margin: 0; font-size: 13px; }
 #betaResults { display: flex; flex-direction: column; gap: 18px; }
 .beta-results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 560px), 1fr)); gap: 16px; }
+.beta-vehicle-summary { margin: 0; color: var(--muted); font-size: 14px; }
+.beta-vehicle-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+.beta-vehicle-table { width: 100%; min-width: 860px; border-collapse: collapse; text-align: left; }
+.beta-vehicle-table th, .beta-vehicle-table td { min-width: 230px; padding: 14px; vertical-align: top; border-bottom: 1px solid var(--border); }
+.beta-vehicle-table thead th { color: var(--muted); background: var(--raised); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+.beta-vehicle-table tbody th { width: 34%; color: var(--text); font-weight: 400; background: var(--card); }
+.beta-vehicle-table tbody td { background: var(--card); }
+.beta-vehicle-table tbody tr:last-child th, .beta-vehicle-table tbody tr:last-child td { border-bottom: 0; }
+.beta-vehicle-product { display: flex; align-items: flex-start; gap: 12px; }
+.beta-vehicle-photo { width: 76px; height: 76px; flex: 0 0 76px; }
+.beta-vehicle-product > div { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.beta-vehicle-product strong { font-size: 17px; overflow-wrap: anywhere; }
+.beta-vehicle-product span { color: var(--muted); font-size: 12px; line-height: 1.4; }
+.beta-vehicle-product small { color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; }
+.beta-vehicle-offer { display: flex; flex-direction: column; gap: 5px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.beta-vehicle-offer:first-child { padding-top: 0; }
+.beta-vehicle-offer:last-child { padding-bottom: 0; border-bottom: 0; }
+.beta-vehicle-offer-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+.beta-vehicle-offer-heading a, .beta-vehicle-offer-heading strong { color: var(--text); font-size: 13px; overflow-wrap: anywhere; }
+.beta-vehicle-offer-heading > strong { color: var(--rojo); font-size: 17px; font-variant-numeric: tabular-nums; }
+.beta-vehicle-offer > span, .beta-vehicle-offer > small { color: var(--muted); font-size: 12px; }
+.beta-vehicle-no-offer, .beta-vehicle-offer-error { display: block; color: var(--muted); font-size: 13px; }
+.beta-vehicle-offer-error { color: var(--danger); }
+.beta-vehicle-pagination { display: flex; align-items: center; justify-content: center; gap: 16px; color: var(--muted); }
+.beta-vehicle-pagination button { min-height: 42px; padding: 8px 14px; color: var(--text); background: var(--raised); border: 1px solid var(--border2); border-radius: var(--radius-sm); cursor: pointer; }
+.beta-vehicle-pagination button:disabled { opacity: .5; cursor: not-allowed; }
 .beta-result-card {
   min-width: 0;
   min-height: 190px;
@@ -224,3 +277,10 @@
 .beta-no, .beta-stock-unknown { color: var(--muted); background: var(--lift); }
 .beta-stock-empty { color: var(--danger); border-color: rgba(239,68,68,.4); background: rgba(239,68,68,.08); }
 .beta-error { border-left-color: var(--danger); }
+
+@media (max-width: 760px) {
+  .beta-search-controls { grid-template-columns: 1fr; }
+  .beta-search-mode { max-width: none; }
+  .beta-vehicle-search { align-items: stretch; flex-direction: column; }
+  .beta-vehicle-search button { width: 100%; }
+}
