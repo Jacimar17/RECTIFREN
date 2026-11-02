@@ -4,7 +4,7 @@ const UBICACIONES = {
 };
 
 function normalizarCodigo(value) {
-  return String(value ?? "").trim().toUpperCase().replace(/[-/]/g, "");
+  return String(value ?? "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
 
 function codigosEquivalentes(value) {

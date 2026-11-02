@@ -108,6 +108,19 @@ async function resolverFamiliasLittonEnVivo(query, inventario, {
     };
   }
 
+  // La búsqueda de Litton solo indexa sustitutos: un código propio de Litton (ej. 098800) no devuelve nada.
+  const codigoDirecto = String(query ?? "").trim();
+  if (codigoDirecto && !resultados.length) {
+    try {
+      const detalle = await obtenerDetalle(codigoDirecto);
+      if (normalizarCodigo(detalle?.code) === normalizarCodigo(codigoDirecto)) {
+        resultados = [...resultados, { codigo: detalle.code, busquedaUsada: detalle.code }];
+      }
+    } catch {
+      // No es un código Litton: se conserva el resultado de la búsqueda normal.
+    }
+  }
+
   const errores = [];
   const details = await mapConcurrent(resultados, concurrency, async (item) => {
     let detalle;

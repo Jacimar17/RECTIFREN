@@ -168,3 +168,13 @@ test("keeps verified stock families when another Litton detail fails or is unver
   assert.match(result.error, /44980NA: Ficha no disponible/);
   assert.doesNotMatch(result.error, /098800/);
 });
+
+test("resuelve la familia cuando se busca por el código propio de Litton y Litton no lo indexa", async () => {
+  const result = await resolverFamiliasLittonEnVivo("44980ULT", inventory, {
+    buscarLitton: async () => [],
+    obtenerDetalle: async (code) => detail(code),
+  });
+
+  assert.equal(result.familias.length, 1);
+  assert.equal(result.error, "");
+});
