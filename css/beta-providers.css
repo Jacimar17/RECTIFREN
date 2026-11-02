@@ -225,3 +225,32 @@
   #betaOverlay .beta-provider-card { grid-template-columns: minmax(0, 1fr); }
   #betaOverlay .beta-provider-photo { width: min(100%, 180px); height: min(48vw, 180px); }
 }
+
+@media (min-width: 901px) {
+  #betaOverlay .beta-vehicle-summary {
+    padding: 12px 16px;
+    color: #dfe3ea;
+    background: #16181e;
+    border: 1px solid #2a2e36;
+    border-left: 3px solid #e23b3b;
+    border-radius: 8px;
+  }
+
+  #betaOverlay .beta-vehicle-table thead th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 12;
+    box-shadow: 1px 0 0 #3a3f4a;
+  }
+
+  #betaOverlay .beta-vehicle-table tbody th {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    box-shadow: 1px 0 0 #2a2e36;
+  }
+
+  #betaOverlay .beta-vehicle-table tbody tr:nth-child(even) td { background: #1b1e25; }
+  #betaOverlay .beta-vehicle-table tbody tr:hover th,
+  #betaOverlay .beta-vehicle-table tbody tr:hover td { background: #242932; }
+}

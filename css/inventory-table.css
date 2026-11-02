@@ -78,6 +78,7 @@ th.col-acciones, td.col-acciones { width: 290px; max-width: 290px; text-align: r
 
 /* Stock cell */
 td.col-stock { font-family: var(--font-display); font-weight: 800; font-size: 18px; text-align: center; }
+td.col-stock .stock-num { font-variant-numeric: tabular-nums; }
 
 .stock-bar-wrap { display: flex; align-items: center; justify-content: center; gap: 8px; }
 .stock-bar { width: 44px; height: 4px; border-radius: 99px; background: var(--border2); overflow: hidden; flex-shrink: 0; }
@@ -157,7 +158,7 @@ td.col-acciones { display: table-cell; }
 .btn-group { display: flex; align-items: center; justify-content: flex-end; gap: 3px; flex-wrap: nowrap; height: 100%; }
 
 /* Status */
-#status { margin: 14px 0 0; font-size: 12px; color: var(--dim); }
+#status { margin: 0 0 12px; font-size: 12px; color: var(--muted); }
 .center { text-align: center; }
 
 /* ============================================================

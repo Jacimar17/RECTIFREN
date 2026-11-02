@@ -178,6 +178,34 @@
   font-weight: 600;
 }
 
+@media (min-width: 1024px) {
+  .toolbar {
+    align-items: center;
+    gap: 14px 20px;
+    padding: 16px 18px;
+  }
+
+  .toolbar .search { flex-basis: 340px; }
+  .toolbar-right { flex: 1 1 600px; justify-content: flex-end; }
+  .toolbar-right .filters { margin-right: auto; }
+}
+
+.inventory-result-summary {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  color: var(--muted);
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--rojo);
+  border-radius: var(--radius-xs);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ============================================================
    VENTANA DE CATEGORÍAS
    ============================================================ */

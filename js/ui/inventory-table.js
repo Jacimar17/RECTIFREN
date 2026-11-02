@@ -133,7 +133,17 @@ export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, so
   }
 
   const filteredUnits = working.reduce((acc, i) => acc + Number(i.stock || 0), 0);
+  const activeFilters = [];
+  if (viewFilter === "out") activeFilters.push("sin stock");
+  if (viewFilter === "low") activeFilters.push("bajo stock");
+  if (rangeMin !== null && rangeMin !== undefined) activeFilters.push(`stock ≥ ${rangeMin}`);
+  if (rangeMax !== null && rangeMax !== undefined) activeFilters.push(`stock ≤ ${rangeMax}`);
+  if (categoriaFilter) activeFilters.push(`categoría: ${categoriaFilter}`);
+  if (ubicacionFilter) {
+    activeFilters.push(`ubicación: ${ubicacionFilter === "NEGOCIO" ? "Negocio" : "Depósito/Galpón"}`);
+  }
+  const filterSummary = activeFilters.length ? ` · Filtros: ${activeFilters.join(", ")}` : "";
   $("status").textContent = q
-    ? `Mostrando ${working.length} de ${list.length} coincidencias · ${filteredUnits} unidades en vista.`
+    ? `Mostrando ${working.length} de ${list.length} coincidencias · ${filteredUnits} unidades en vista${filterSummary}.`
     : "Escribí un código o marca para buscar.";
 }
