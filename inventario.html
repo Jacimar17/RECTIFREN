@@ -182,6 +182,7 @@
             <option value="week">7 días</option>
             <option value="month">30 días</option>
           </select>
+          <button id="btnRestock" class="btn-export" type="button" title="Lista de salidas para pedir a proveedores"><span data-icon="list"></span> Lista de reposición</button>
           <span id="movStatus" class="muted"></span>
         </div>
         <div class="tableWrap">
@@ -323,6 +324,23 @@
           </table>
         </div>
         <p id="histStatus" class="muted"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Lista de reposición -->
+  <div id="restockOverlay" class="modalOverlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="restockTitle">
+      <div class="modalHeader">
+        <h2 class="modalTitle"><span data-icon="list"></span><span id="restockTitle">Lista de reposición</span></h2>
+        <button id="btnCloseRestock" class="modalClose" aria-label="Cerrar"><span data-icon="close"></span></button>
+      </div>
+      <div class="modalBody" style="gap:10px">
+        <textarea id="restockText" readonly rows="12" style="width:100%;font-family:inherit;resize:vertical"></textarea>
+        <p id="restockStatus" class="muted" role="status"></p>
+        <div class="modalActions">
+          <button id="btnCopyRestock" class="primary" type="button">Copiar</button>
+        </div>
       </div>
     </div>
   </div>
@@ -627,6 +645,6 @@
     </div>
   </div>
 
-  <script type="module" src="js/main.js?v=20261102"></script>
+  <script type="module" src="js/main.js?v=20261110"></script>
 </body>
 </html>

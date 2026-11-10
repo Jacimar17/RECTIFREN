@@ -1,5 +1,6 @@
 import { apiGet } from "./api.js?v=20261102";
 import { $, escapeHtml, fmtDate } from "./ui.js";
+import { buildRestockText } from "./restock-list.js";
 
 export function createMovementController({ getIsAdmin, getAdminToken = () => "" }) {
   let sortCol = "fecha";
@@ -124,7 +125,55 @@ export function createMovementController({ getIsAdmin, getAdminToken = () => "" 
     });
   }
 
+  function closeRestockModal() {
+    const overlay = $("restockOverlay");
+    if (!overlay) return;
+    overlay.style.display = "none";
+    overlay.setAttribute("aria-hidden", "true");
+  }
+
+  function openRestockModal() {
+    const overlay = $("restockOverlay");
+    if (!overlay) return;
+    const text = buildRestockText(cache, $("movRange").value);
+    $("restockText").value = text;
+    $("restockStatus").textContent = text ? "" : "No hubo salidas en el período elegido.";
+    $("btnCopyRestock").disabled = !text;
+    overlay.style.display = "flex";
+    overlay.setAttribute("aria-hidden", "false");
+  }
+
+  async function copyRestockText() {
+    const area = $("restockText");
+    const status = $("restockStatus");
+    try {
+      await navigator.clipboard.writeText(area.value);
+      status.textContent = "Copiado. Ya podés pegarlo en WhatsApp.";
+    } catch {
+      area.focus();
+      area.select();
+      status.textContent = document.execCommand("copy")
+        ? "Copiado. Ya podés pegarlo en WhatsApp."
+        : "No se pudo copiar automáticamente: mantené presionado el texto para copiarlo.";
+    }
+  }
+
+  function bindRestockModal() {
+    const overlay = $("restockOverlay");
+    if (!overlay) return;
+    $("btnRestock")?.addEventListener("click", openRestockModal);
+    $("btnCloseRestock")?.addEventListener("click", closeRestockModal);
+    $("btnCopyRestock")?.addEventListener("click", copyRestockText);
+    overlay.addEventListener("click", event => {
+      if (event.target === overlay) closeRestockModal();
+    });
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape" && overlay.style.display === "flex") closeRestockModal();
+    });
+  }
+
   function bindHistModal() {
+    bindRestockModal();
     const overlay = $("histOverlay");
     if (!overlay) return;
     $("btnCloseHist")?.addEventListener("click", closeHistModal);
