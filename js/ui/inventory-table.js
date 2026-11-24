@@ -1,5 +1,5 @@
 import { $, escapeHtml, getStockState, ubicacionBadge } from "./dom.js";
-import { FAMILIAS_HABILITADAS } from "../config.js?v=20261124-familias";
+import { FAMILIAS_HABILITADAS } from "../config.js?v=20261124-persistedfamilies";
 import { highlight, sortByCodigo } from "./render-utils.js";
 import { icon } from "./icons.js";
 

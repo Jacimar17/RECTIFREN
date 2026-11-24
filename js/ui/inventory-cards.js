@@ -1,7 +1,7 @@
 import { $, escapeHtml, getStockState, ubicacionBadge } from "./dom.js";
 import { highlight } from "./render-utils.js";
 import { icon } from "./icons.js";
-import { FAMILIAS_HABILITADAS } from "../config.js?v=20261124-familias";
+import { FAMILIAS_HABILITADAS } from "../config.js?v=20261124-persistedfamilies";
 
 export function renderCards({ list, isAdmin, viewFilter, query, highlightKey, sortCol, sortDir, rangeMin, rangeMax, categoriaFilter, ubicacionFilter, familyMemberIds }) {
   const grid = document.getElementById("cardGrid");

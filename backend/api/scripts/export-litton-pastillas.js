@@ -2,18 +2,11 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
+const { validarFichas } = require("../src/services/catalogo-pastillas");
 
-const LANG = "arg";
 const CATEGORY = "PASTILLA DE FRENO";
 const SEARCH_BASE = "https://orders-dot-littonbrakes-services.rj.r.appspot.com/public/products/simple-search";
 const PRODUCT_BASE = "https://orders-dot-littonbrakes-services.rj.r.appspot.com/public/products";
-const PER_PAGE = 20;
-const CONCURRENT_DETAIL_REQUESTS = 3;
-
-function csvValue(value) {
-  const text = value == null ? "" : String(value);
-  return `"${text.replace(/"/g, '""')}"`;
-}
 
 async function fetchJson(url, timeoutMs = 15000) {
   let lastError;
@@ -22,19 +15,10 @@ async function fetchJson(url, timeoutMs = 15000) {
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
       const res = await fetch(url, { signal: ctrl.signal });
-      if (res.status === 429) {
-        lastError = new Error(`Litton respondió 429 al consultar ${url}`);
-      } else if (!res.ok) {
-        throw new Error(`Litton respondió ${res.status} al consultar ${url}`);
-      } else {
-        return await res.json();
-      }
+      if (!res.ok) throw new Error(`Litton respondió ${res.status}`);
+      return await res.json();
     } catch (error) {
-      if (error.name === "AbortError") {
-        lastError = new Error(`Litton tardó demasiado al consultar ${url}`);
-      } else {
-        lastError = error;
-      }
+      lastError = error;
     } finally {
       clearTimeout(timer);
     }
@@ -45,164 +29,110 @@ async function fetchJson(url, timeoutMs = 15000) {
 
 async function mapWithConcurrency(items, limit, mapper) {
   const results = new Array(items.length);
-  let nextIndex = 0;
-
-  async function worker() {
-    while (nextIndex < items.length) {
-      const index = nextIndex++;
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const index = next++;
       results[index] = await mapper(items[index], index);
     }
-  }
-
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  }));
   return results;
 }
 
-async function main() {
-  const args = process.argv.slice(2);
-  if (args.length === 1 && args[0] === "--retry-errors") {
-    const jsonPath = path.resolve(__dirname, "../../../litton-pastillas.json");
-    const rows = JSON.parse(fs.readFileSync(jsonPath, "utf8"));
-    if (!Array.isArray(rows)) throw new Error("El archivo JSON debe contener una lista de productos.");
-    const indices = rows.map((row, index) => row.error ? index : -1).filter((index) => index >= 0);
-    for (let index = 0; index < indices.length; index++) {
-      const position = indices[index];
-      const row = rows[position];
-      try {
-        const detail = await fetchJson(`${PRODUCT_BASE}/${encodeURIComponent(row.code)}`);
-        if (detail?.code !== row.code || detail.category !== CATEGORY || !Array.isArray(detail.substitutes)) {
-          throw new Error(`Litton devolvió una ficha inválida para ${row.code}`);
-        }
-        rows[position] = {
-          code: row.code,
-          name: String(detail.name || row.name || "").trim(),
-          brand: String(detail.subcategory || row.brand || "").trim(),
-          category: detail.category,
-          supplierCode: String(detail.supplier_code || row.supplierCode || "").trim(),
-          substitutes: detail.substitutes,
-        };
-      } catch (error) {
-        rows[position] = { ...row, error: error.message };
-      }
-      process.stdout.write(`Reintentando fichas: ${index + 1} de ${indices.length}\r`);
-      if (index + 1 < indices.length) await new Promise((resolve) => setTimeout(resolve, 1200));
-    }
-    process.stdout.write("\n");
-    guardarResultados(rows);
-    return;
+async function extraerCatalogo({ consultar = fetchJson, pausa = () => new Promise(r => setTimeout(r, 1200)) } = {}) {
+  const urlPagina = (page) => `${SEARCH_BASE}?lang=arg&category=${encodeURIComponent(CATEGORY)}&page=${page}`;
+  const first = await consultar(urlPagina(1));
+  const total = first?.pagination?.total;
+  const perPage = first?.pagination?.perPage;
+  if (!Number.isSafeInteger(total) || total <= 0 || !Number.isSafeInteger(perPage) || perPage <= 0) {
+    throw new Error("Paginación Litton inválida");
   }
-  if (args.length) throw new Error(`Argumentos desconocidos: ${args.join(" ")}`);
-
-  const firstUrl = `${SEARCH_BASE}?lang=${LANG}&category=${encodeURIComponent(CATEGORY)}&page=1`;
-  const first = await fetchJson(firstUrl);
-  const total = Number(first?.pagination?.total || 0);
-  const perPage = Number(first?.pagination?.perPage || PER_PAGE);
-  const totalPages = Math.max(1, Math.ceil(total / perPage));
-
+  const pages = Math.ceil(total / perPage);
   const products = [];
-  for (let page = 1; page <= totalPages; page++) {
-    const url = `${SEARCH_BASE}?lang=${LANG}&category=${encodeURIComponent(CATEGORY)}&page=${page}`;
-    const data = page === 1 ? first : await fetchJson(url);
-    for (const item of Array.isArray(data?.results) ? data.results : []) {
-      if (String(item.category || "").trim().toUpperCase() === CATEGORY) {
-        products.push(item);
-      }
+  const codes = new Set();
+  for (let page = 1; page <= pages; page++) {
+    const data = page === 1 ? first : await consultar(urlPagina(page));
+    const pagination = data?.pagination;
+    if (!pagination || pagination.total !== total || pagination.perPage !== perPage ||
+        (pagination.page != null && Number(pagination.page) !== page) ||
+        !Array.isArray(data.results) ||
+        data.results.length !== Math.min(perPage, total - (page - 1) * perPage)) {
+      throw new Error(`Página ${page} incompleta o paginación inconsistente`);
     }
-    process.stdout.write(`Leyendo catálogo: ${Math.min(page * perPage, total)} de ${total}\r`);
-    await new Promise((resolve) => setTimeout(resolve, 1200));
-  }
-  process.stdout.write("\n");
-
-  const unique = new Map();
-  for (const item of products) {
-    const code = String(item.code || "").trim();
-    if (code) unique.set(code, item);
-  }
-
-  const detailRows = await mapWithConcurrency(
-    [...unique.values()],
-    CONCURRENT_DETAIL_REQUESTS,
-    async (item, index) => {
-      const code = String(item.code || "").trim();
-      try {
-        const detail = await fetchJson(`${PRODUCT_BASE}/${encodeURIComponent(code)}`);
-        return {
-          code,
-          name: String(detail.name || item.name || "").trim(),
-          brand: String(detail.subcategory || item.subcategory || "").trim(),
-          category: String(detail.category || item.category || "").trim(),
-          supplierCode: String(detail.supplier_code || item.supplier_code || "").trim(),
-          substitutes: Array.isArray(detail.substitutes) ? detail.substitutes : [],
-        };
-      } catch (error) {
-        return {
-          code,
-          name: String(item.name || "").trim(),
-          brand: String(item.subcategory || "").trim(),
-          category: String(item.category || "").trim(),
-          supplierCode: String(item.supplier_code || "").trim(),
-          substitutes: [],
-          error: error.message,
-        };
-      } finally {
-        process.stdout.write(`Consultando fichas: ${index + 1} de ${unique.size}\r`);
+    for (const item of data.results) {
+      if (typeof item?.code !== "string" || !item.code.trim() || item.category !== CATEGORY) {
+        throw new Error(`Producto inválido en página ${page}`);
       }
+      const key = item.code.trim().toUpperCase();
+      if (codes.has(key)) throw new Error(`Código repetido en páginas: ${item.code}`);
+      codes.add(key);
+      products.push(item);
     }
-  );
-  process.stdout.write("\n");
-
-  guardarResultados(detailRows);
+    if (page < pages) await pausa();
+  }
+  const rows = await mapWithConcurrency(products, 3, async (item) => {
+    const detail = await consultar(`${PRODUCT_BASE}/${encodeURIComponent(item.code.trim())}`);
+    if (!detail || detail.code !== item.code || detail.category !== CATEGORY || !Array.isArray(detail.substitutes)) {
+      throw new Error(`Ficha incompleta o distinta: ${item.code}`);
+    }
+    return {
+      code: detail.code,
+      name: detail.name,
+      brand: detail.subcategory,
+      category: detail.category,
+      supplierCode: typeof detail.supplier_code === "number" ? String(detail.supplier_code) : detail.supplier_code,
+      substitutes: detail.substitutes,
+    };
+  });
+  return validarFichas(rows);
 }
 
-function guardarResultados(detailRows) {
+function csvValue(value) {
+  return `"${String(value == null ? "" : value).replace(/"/g, '""')}"`;
+}
+
+function guardarResultados(rows) {
   const outputDir = path.resolve(__dirname, "../../../");
-  fs.mkdirSync(outputDir, { recursive: true });
   const jsonPath = path.join(outputDir, "litton-pastillas.json");
   const csvPath = path.join(outputDir, "litton-pastillas.csv");
-
-  fs.writeFileSync(jsonPath, JSON.stringify(detailRows, null, 2), "utf8");
-
-  const csvRows = [
-    [
-      "codigo",
-      "nombre",
-      "marca",
-      "categoria",
-      "codigo_proveedor",
-      "equivalencias",
-      "error",
-    ],
-  ];
-  for (const row of detailRows) {
-    const equivalencias = row.substitutes
-      .map((item) => `${String(item.code || "").trim()}:${String(item.value || "").trim()}`)
-      .filter((item) => item !== ":")
-      .join(" | ");
-    csvRows.push([
-      row.code,
-      row.name,
-      row.brand,
-      row.category,
-      row.supplierCode,
-      equivalencias,
-      row.error || "",
-    ]);
+  const csvRows = [["codigo", "nombre", "marca", "categoria", "codigo_proveedor", "equivalencias", "error"]];
+  for (const row of rows) {
+    csvRows.push([row.code, row.name, row.brand, row.category, row.supplierCode,
+      row.substitutes.map(item => `${item.code}:${item.value}`).join(" | "), ""]);
   }
-  fs.writeFileSync(
-    csvPath,
-    "\ufeff" + csvRows.map((row) => row.map(csvValue).join(",")).join("\r\n") + "\r\n",
-    "utf8"
-  );
-
-  const errors = detailRows.filter((row) => row.error);
-  console.log(`Productos únicos: ${detailRows.length}`);
-  console.log(`Con equivalencias: ${detailRows.filter((row) => row.substitutes.length).length}`);
-  console.log(`Fichas con error: ${errors.length}`);
-  console.log(`JSON: ${jsonPath}`);
-  console.log(`CSV: ${csvPath}`);
+  fs.writeFileSync(jsonPath, JSON.stringify(rows, null, 2), "utf8");
+  fs.writeFileSync(csvPath, "\ufeff" + csvRows.map(row => row.map(csvValue).join(",")).join("\r\n") + "\r\n", "utf8");
+  console.log(`Productos únicos: ${rows.length}\nJSON: ${jsonPath}\nCSV: ${csvPath}`);
 }
 
-main().catch((error) => {
-  console.error(error.message);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  const args = process.argv.slice(2);
+  if (args.length && !(args.length === 1 && args[0] === "--retry-errors")) {
+    console.error("Uso: export-litton-pastillas.js [--retry-errors]");
+    process.exitCode = 1;
+  } else {
+    const ejecutar = async () => {
+      if (!args.length) return extraerCatalogo();
+      const jsonPath = path.resolve(__dirname, "../../../litton-pastillas.json");
+      const rows = JSON.parse(fs.readFileSync(jsonPath, "utf8"));
+      if (!Array.isArray(rows)) throw new Error("El archivo JSON debe contener una lista de productos");
+      for (let i = 0; i < rows.length; i++) {
+        if (!rows[i].error) continue;
+        const detail = await fetchJson(`${PRODUCT_BASE}/${encodeURIComponent(rows[i].code)}`);
+        if (!detail || detail.code !== rows[i].code || detail.category !== CATEGORY || !Array.isArray(detail.substitutes)) {
+          throw new Error(`Ficha incompleta o distinta: ${rows[i].code}`);
+        }
+        rows[i] = { code: detail.code, name: detail.name, brand: detail.subcategory,
+          category: detail.category, supplierCode: typeof detail.supplier_code === "number"
+            ? String(detail.supplier_code) : detail.supplier_code, substitutes: detail.substitutes };
+      }
+      return validarFichas(rows);
+    };
+    ejecutar().then(guardarResultados).catch(error => {
+      console.error(error.message);
+      process.exitCode = 1;
+    });
+  }
+}
+
+module.exports = { extraerCatalogo, guardarResultados };

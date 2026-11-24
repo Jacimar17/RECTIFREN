@@ -1,5 +1,15 @@
 import { $, escapeHtml, ubicacionBadge } from "./dom.js";
 
+let showZeroStockRows = false;
+let currentFamilies = [];
+let toggleBound = false;
+
+export function isZeroStockRow(item) {
+  if (item.stock === null || item.stock === undefined || item.stock === "") return false;
+  const stock = Number(item.stock);
+  return Number.isFinite(stock) && stock === 0;
+}
+
 function specificationEntries(ficha) {
   const raw = ficha.specifications || ficha.specs || ficha.attributes || {};
   const entries = Array.isArray(raw)
@@ -24,17 +34,46 @@ function specificationEntries(ficha) {
 export function renderFamilySummaries(families) {
   const container = $("familySummary");
   if (!container) return;
-  if (!Array.isArray(families) || !families.length) {
+  const nextFamilies = Array.isArray(families) ? families : [];
+  if (nextFamilies !== currentFamilies) showZeroStockRows = false;
+  currentFamilies = nextFamilies;
+  if (!toggleBound) {
+    container.addEventListener("click", (event) => {
+      if (!event.target.closest("[data-family-zero-toggle]")) return;
+      showZeroStockRows = !showZeroStockRows;
+      renderFamilySummaries(currentFamilies);
+    });
+    toggleBound = true;
+  }
+  if (!currentFamilies.length) {
     container.innerHTML = "";
     return;
   }
 
-  container.innerHTML = families.map((family) => {
+  const hiddenRows = currentFamilies.reduce((total, family) =>
+    total + (Array.isArray(family.filas) ? family.filas.filter(isZeroStockRow).length : 0), 0);
+  const controls = hiddenRows
+    ? `<div class="family-summary-controls">
+        <button type="button" class="btn-export" data-family-zero-toggle aria-expanded="${showZeroStockRows}">
+          ${showZeroStockRows ? "Ocultar resultados sin stock" : `Mostrar resultados ocultos (${hiddenRows})`}
+        </button>
+      </div>`
+    : "";
+  const displayedFamilies = currentFamilies.map((family) => ({
+    ...family,
+    filas: (Array.isArray(family.filas) ? family.filas : [])
+      .filter((item) => showZeroStockRows || !isZeroStockRow(item)),
+  })).filter((family) => family.filas.length);
+
+  container.innerHTML = `${controls}${displayedFamilies.map((family) => {
     const rows = family.filas.map((item) => {
+      const stock = item.stock === null || item.stock === undefined || item.stock === ""
+        ? "s/d"
+        : String(item.stock);
       return `<li class="family-summary-row">
         <span class="family-summary-product"><strong>${escapeHtml(item.codigo || "Código s/d")}</strong> · ${escapeHtml(item.marca || "Marca no informada")}</span>
         ${ubicacionBadge(item.ubicacion)}
-        <span class="family-summary-stock">${escapeHtml(String(item.stock ?? 0))} u.</span>
+        <span class="family-summary-stock">${escapeHtml(stock)}${stock === "s/d" ? "" : " u."}</span>
       </li>`;
     }).join("");
     const totals = family.totales || {};
@@ -72,5 +111,5 @@ export function renderFamilySummaries(families) {
       ${catalog}
       <ul class="family-summary-rows">${rows}</ul>
     </article>`;
-  }).join("");
+  }).join("")}`;
 }

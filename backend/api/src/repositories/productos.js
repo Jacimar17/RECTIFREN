@@ -8,7 +8,7 @@ function buscarDirectos(regex, limit, { incluirFamilias = true } = {}) {
   return Producto.find({
     archivado: { $ne: true },
     $or: [
-      { codigo: regex }, { CODIGO: regex },
+      { codigo: regex }, { CODIGO: regex }, { codigosAnteriores: regex },
       { marca: regex }, { MARCA: regex },
       { "fichaLitton.name": regex },
       { "variantes.marca": regex },
@@ -24,7 +24,7 @@ function buscarDirectos(regex, limit, { incluirFamilias = true } = {}) {
 
 function listarInventarioParaFamilias() {
   return Producto.find({ archivado: { $ne: true } })
-    .select("_id codigo CODIGO marca MARCA stock STOCK ubicacion ubicacionPendiente categoria equivalencias equivalenciasCatalogo equivalentesVinculados schemaVersion fichaLitton variantes")
+    .select("_id codigo CODIGO codigosAnteriores marca MARCA stock STOCK ubicacion ubicacionPendiente categoria equivalencias equivalenciasCatalogo equivalentesVinculados schemaVersion fichaLitton variantes")
     .lean();
 }
 
@@ -39,7 +39,10 @@ function buscarPorCodigoMarca(codigo, marca, ubicacion) {
       { $or: [
         { codigo, marca },
         { CODIGO: codigo, MARCA: marca },
+        { codigosAnteriores: codigo, marca },
+        { codigosAnteriores: codigo, MARCA: marca },
         { schemaVersion: 2, codigo },
+        { schemaVersion: 2, codigosAnteriores: codigo },
         { schemaVersion: 2, "equivalenciasCatalogo.codigo": codigo },
         { schemaVersion: 2, "fichaLitton.substitutes.value": codigo },
       ] },
@@ -67,7 +70,7 @@ function buscarCandidatos(regex) {
   return Producto.find({
     archivado: { $ne: true },
     $or: [
-      { codigo: regex }, { CODIGO: regex }, { marca: regex }, { MARCA: regex },
+      { codigo: regex }, { CODIGO: regex }, { codigosAnteriores: regex }, { marca: regex }, { MARCA: regex },
       { equivalencias: regex },
       { "equivalenciasCatalogo.codigo": regex },
       { "equivalenciasCatalogo.marca": regex },
@@ -110,7 +113,7 @@ async function buscarCatalogoPublico({ query, marca, skip = 0, limit = 20 }) {
     const regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
     conditions.push({
       $or: [
-        { codigo: regex }, { CODIGO: regex },
+        { codigo: regex }, { CODIGO: regex }, { codigosAnteriores: regex },
         { titulo: regex },
         { descripcion: regex },
         { equivalencias: regex },

@@ -45,7 +45,7 @@ export function createInventoryRenderer({
     if (littonNotice) {
       littonNotice.hidden = !inventoryLittonError || !query;
       littonNotice.textContent = inventoryLittonError
-        ? `No se pudo ampliar esta búsqueda con Litton; se muestran las coincidencias locales disponibles. ${inventoryLittonError}`
+        ? `No se pudo consultar el catálogo local de familias; se muestran las coincidencias directas disponibles. ${inventoryLittonError}`
         : "";
     }
     renderFamilySummaries(query ? inventoryFamilies : []);

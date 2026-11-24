@@ -2,9 +2,9 @@ services:
   - type: web
     name: rectifren-api
     runtime: node
-    rootDir: backend/api
-    buildCommand: npm ci
-    startCommand: npm start
+    rootDir: .
+    buildCommand: npm ci --prefix backend/api
+    startCommand: npm start --prefix backend/api
     envVars:
       - key: MONGODB_URI
         sync: false
@@ -16,6 +16,8 @@ services:
         sync: false
       - key: CORS_ORIGINS
         sync: false
+      - key: FAMILIAS_CATALOGO_PERSISTIDO_HABILITADAS
+        value: "true"
       - key: NODE_ENV
         value: production
       - key: PORT

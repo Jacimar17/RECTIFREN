@@ -6,9 +6,12 @@ import {
   apiVehiculosLitton
 } from "./api.js?v=20261102";
 import { $, escapeHtml, showToast } from "./ui.js";
-import { createBetaView } from "./beta-view.js?v=20261124-familias";
+import { createBetaView } from "./beta-view.js?v=20261124-providerflag";
 import { icon } from "./ui/icons.js";
-import { FAMILIAS_HABILITADAS } from "./config.js?v=20261124-familias";
+import {
+  FAMILIAS_HABILITADAS,
+  FAMILIAS_CATALOGO_PERSISTIDO_HABILITADAS
+} from "./config.js?v=20261124-persistedfamilies";
 
 export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }) {
   const overlay = $("betaOverlay");
@@ -113,18 +116,19 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
           <div class="beta-name">${escapeHtml(item.nombre || "Sin descripción disponible")}</div>
           ${category}
           <div class="beta-result-badges">${semaforo(item.stockProveedor)}</div>
-          ${FAMILIAS_HABILITADAS ? '<div class="beta-family-codes" aria-live="polite"></div>' : ""}
+          ${FAMILIAS_HABILITADAS && FAMILIAS_CATALOGO_PERSISTIDO_HABILITADAS ? '<div class="beta-family-codes" aria-live="polite"></div>' : ""}
         </div>
       </section>
-      ${FAMILIAS_HABILITADAS ? `${renderInventorySection()}
+      ${FAMILIAS_CATALOGO_PERSISTIDO_HABILITADAS ? renderInventorySection() : ""}
+      ${FAMILIAS_HABILITADAS && FAMILIAS_CATALOGO_PERSISTIDO_HABILITADAS ? `
       <h2 class="beta-suppliers-title">Dónde conseguirla</h2>
       <div class="beta-suppliers-grid">
         ${renderProviderSection("ATONOR")}
         ${renderProviderSection("Aimar")}
-      </div>` : '<p class="muted">Familias y comparación de proveedores temporalmente deshabilitadas.</p>'}`;
+      </div>` : '<p class="muted">Comparación de proveedores temporalmente deshabilitada.</p>'}`;
 
-    if (!FAMILIAS_HABILITADAS) return;
-    loadInventoryDetails(item, viewId);
+    if (FAMILIAS_CATALOGO_PERSISTIDO_HABILITADAS) loadInventoryDetails(item, viewId);
+    if (!FAMILIAS_HABILITADAS || !FAMILIAS_CATALOGO_PERSISTIDO_HABILITADAS) return;
     if (detailCache.has(code)) {
       updateProviderSections(detailCache.get(code));
       return;

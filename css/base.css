@@ -102,6 +102,7 @@
 }
 .family-summary-list:empty { display: none; }
 .family-summary-list { display: grid; gap: 12px; margin: 0 0 16px; }
+.family-summary-controls { display: flex; justify-content: flex-end; }
 .family-summary-card {
   min-width: 0;
   padding: 16px;

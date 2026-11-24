@@ -15,7 +15,11 @@ Disponible en [`inventario.html`](inventario.html) y requiere iniciar sesión. A
 - 📤 Exportar a CSV.
 - 🧪 **Buscador de proveedores (beta)**: busca pastillas por código o por marca y modelo del vehículo.
 
-Las familias, equivalencias y comparación de proveedores están temporalmente deshabilitadas; los datos existentes se conservan. La búsqueda directa y la búsqueda por marca y modelo siguen disponibles. Para reactivarlas, configurar `FAMILIAS_HABILITADAS=true` en la API y cambiar `FAMILIAS_HABILITADAS` a `true` en `js/config.js`, desplegando ambos componentes.
+La búsqueda de familias de pastillas usa el archivo versionado [`litton-pastillas.json`](litton-pastillas.json), sin publicar el catálogo en MongoDB. Está habilitada por defecto con `FAMILIAS_CATALOGO_PERSISTIDO_HABILITADAS` en la API (solo `false` la desactiva) y su bandera correspondiente en `js/config.js`. El archivo se valida y carga una vez por proceso; tras actualizarlo hay que volver a desplegar o reiniciar la API. Si falta o falla, se conservan los resultados directos y se muestra un aviso.
+
+Para productos registrados con marca comprobada, también reconoce el prefijo exacto de marca y las abreviaturas TRW exactas presentes en el catálogo. Esto solo agrupa resultados de búsqueda: no confirma duplicados ni fusiona productos.
+
+Esta bandera no habilita `FAMILIAS_HABILITADAS`, las rutas manuales de equivalencias ni la comparación externa de proveedores. Estas funciones siguen deshabilitadas por defecto y sus datos se conservan. La búsqueda directa y la búsqueda por marca y modelo siguen disponibles. La comparación y las rutas manuales requieren habilitar expresamente `FAMILIAS_HABILITADAS=true` en la API y en `js/config.js`, desplegando ambos componentes; el detalle de proveedores también requiere el archivo local.
 
 ---
 

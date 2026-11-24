@@ -1,5 +1,7 @@
 const proveedoresService = require("../services/proveedores");
+const { CatalogoLocalError } = require("../services/catalogo-pastillas");
 const httpError = require("../utils/http-error");
+const { familiasCatalogoPersistidoHabilitadas } = require("../utils/familias-catalogo-persistido");
 const { familiasHabilitadas } = require("../utils/familias");
 
 function textoEntrada(value) {
@@ -14,15 +16,26 @@ function exigirBeta() {
 
 async function buscarDetalle(req, res) {
   exigirBeta();
+  if (!familiasCatalogoPersistidoHabilitadas()) {
+    return res.status(503).json({ ok: false, error: "La búsqueda de familias con catálogo persistido está deshabilitada." });
+  }
   if (!familiasHabilitadas()) {
-    return res.status(503).json({ ok: false, error: "Las familias y equivalencias están deshabilitadas temporalmente." });
+    return res.status(503).json({ ok: false, error: "La comparación de proveedores está deshabilitada temporalmente." });
   }
   const codigo = textoEntrada(req.body.codigo);
   if (!codigo) throw httpError(400, "Falta el código del producto.");
   try {
     res.json({ ok: true, ...await proveedoresService.buscarDetalleFamilia(codigo) });
-  } catch {
-    throw httpError(502, "No se pudo consultar la familia Litton.");
+  } catch (error) {
+    const message = String(error?.message || "");
+    if (error instanceof CatalogoLocalError) {
+      console.error("No se pudo cargar el catálogo local de pastillas.", { name: error.name });
+      throw httpError(503, "El catálogo local de pastillas no está disponible.");
+    }
+    if (message.startsWith("No se encontró una familia única")) {
+      throw httpError(404, "No se encontró una familia única para ese código.");
+    }
+    throw httpError(502, "No se pudo resolver la familia de pastillas o consultar sus ofertas.");
   }
 }
 

@@ -1,11 +1,13 @@
 const productosRepository = require("../repositories/productos");
 const movimientosRepository = require("../repositories/movimientos");
 const categoriasService = require("./categorias");
-const { resolverFamiliasInventario, UBICACIONES } = require("../proveedores/familia-inventario");
+const { UBICACIONES, resolverFamiliasInventario } = require("../proveedores/familia-inventario");
+const { resolverFamiliasCatalogo } = require("../proveedores/familias-catalogo-persistido");
 const buscarLitton = require("../proveedores/litton");
-const { resolverFamiliasLittonEnVivo } = require("../proveedores/familia-litton-en-vivo");
+const catalogoPastillas = require("./catalogo-pastillas");
 const httpError = require("../utils/http-error");
 const { familiasHabilitadas } = require("../utils/familias");
+const { familiasCatalogoPersistidoHabilitadas } = require("../utils/familias-catalogo-persistido");
 const {
   validarBusqueda,
   validarCatalogoPublico,
@@ -19,35 +21,9 @@ const { normalizarProducto, normalizarProductos, normalizarVariante } = require(
 const SEARCH_LIMIT = 100;
 const FAMILY_RESULT_LIMIT = 300;
 
-function fusionarFamilias(familias) {
-  const merged = [];
-  for (const familia of familias) {
-    const rows = new Map(familia.filas.map((row) => [row._id, row]));
-    let changed = true;
-    while (changed) {
-      changed = false;
-      for (let index = merged.length - 1; index >= 0; index--) {
-        if (!merged[index].filas.some((row) => rows.has(row._id))) continue;
-        const [overlap] = merged.splice(index, 1);
-        for (const row of overlap.filas) rows.set(row._id, row);
-        changed = true;
-      }
-    }
-    const filas = [...rows.values()].sort((a, b) =>
-      a.codigo.localeCompare(b.codigo, "es", { numeric: true, sensitivity: "base" })
-      || a.marca.localeCompare(b.marca, "es", { sensitivity: "base" })
-    );
-    const totales = filas.reduce((result, row) => {
-      const stock = Number(row.stock);
-      if (!Number.isFinite(stock)) return result;
-      if (row.ubicacion) result[row.ubicacion] += stock;
-      else result.SIN_UBICACION = (result.SIN_UBICACION || 0) + stock;
-      result.total += stock;
-      return result;
-    }, { NEGOCIO: 0, DEPOSITO_GALPON: 0, total: 0 });
-    merged.push({ id: filas.map((row) => row._id).sort()[0], filas, totales });
-  }
-  return merged;
+function categoriaNoPastillas(producto) {
+  const categoria = String(producto.categoria || "").trim().toUpperCase();
+  return categoria && !categoria.includes("PASTILL") ? categoria : "";
 }
 
 async function listar() {
@@ -60,12 +36,15 @@ async function buscar(value) {
   if (!query) return { data: [], familias: [], matchedIds: [] };
 
   const regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
-  const enabled = familiasHabilitadas();
-  const direct = await productosRepository.buscarDirectos(regex, SEARCH_LIMIT, { incluirFamilias: enabled });
+  const direct = await productosRepository.buscarDirectos(regex, SEARCH_LIMIT, {
+    incluirFamilias: familiasHabilitadas(),
+  });
   const hasMoreDirect = direct.length > SEARCH_LIMIT;
   const seeds = direct.slice(0, SEARCH_LIMIT);
-  if (!enabled) {
-    const allResults = seeds.flatMap(normalizarProductos);
+  let allResults = seeds.flatMap(normalizarProductos);
+  const persistedEnabled = familiasCatalogoPersistidoHabilitadas();
+  const legacyEnabled = familiasHabilitadas();
+  if (!persistedEnabled && !legacyEnabled) {
     const data = allResults.slice(0, FAMILY_RESULT_LIMIT);
     return {
       data,
@@ -77,86 +56,69 @@ async function buscar(value) {
       familiasDeshabilitadas: true,
     };
   }
-  const inventario = (await productosRepository.listarInventarioParaFamilias())
-    .filter((producto) => producto.schemaVersion !== 2);
-  const littonSeeds = seeds.filter((producto) => producto.schemaVersion !== 2);
-  const canonicalSeeds = seeds.filter((producto) => producto.schemaVersion === 2);
-  const inventarioPorId = new Map(inventario.map((producto) => [String(producto._id), producto]));
-  const expansionLitton = await resolverFamiliasLittonEnVivo(query, inventario, {
-    buscarLitton,
-    obtenerDetalle: buscarLitton.obtenerDetalle,
-  });
-  const familiasLocales = resolverFamiliasInventario(inventario, littonSeeds);
-  const familias = fusionarFamilias([
-    ...familiasLocales,
-    ...expansionLitton.familias,
-  ]).filter((familia) => familia.filas.length > 1);
-
-  const rowsById = new Map();
-  const agregarFilas = (producto) => {
-    for (const item of normalizarProductos(producto)) {
-      const key = producto.schemaVersion === 2
-        ? `${producto._id}|${item.marca}|${item.ubicacion}`
-        : String(item._id);
-      rowsById.set(key, item);
+  let familias = [];
+  let familiasError = "";
+  let catalogoVersion;
+  let inventario;
+  if (legacyEnabled) {
+    inventario = await productosRepository.listarInventarioParaFamilias();
+    const porCategoria = new Map();
+    for (const producto of inventario) {
+      const categoria = categoriaNoPastillas(producto);
+      if (!categoria || producto.schemaVersion === 2) continue;
+      if (!porCategoria.has(categoria)) porCategoria.set(categoria, []);
+      porCategoria.get(categoria).push(producto);
     }
-  };
-  for (const item of littonSeeds) agregarFilas(item);
-  const familiasLitton = [];
-  for (const producto of canonicalSeeds) {
-    const filas = normalizarProductos(producto);
-    agregarFilas(producto);
-    if (filas.length) {
-      const totales = filas.reduce((result, row) => {
-        const stock = Number(row.stock);
-        if (!Number.isFinite(stock)) return result;
-        if (row.ubicacion) result[row.ubicacion] += stock;
-        else result.SIN_UBICACION = (result.SIN_UBICACION || 0) + stock;
-        result.total += stock;
-        return result;
-      }, { NEGOCIO: 0, DEPOSITO_GALPON: 0, total: 0 });
-      familiasLitton.push({
-        id: String(producto._id),
-        filas,
-        totales,
-        fichaLitton: producto.fichaLitton || {},
-        equivalenciasCatalogo: producto.equivalenciasCatalogo || [],
-        imagenLitton: producto.imagenLitton || "",
-      });
+    const porId = new Map(inventario.map((producto) => [String(producto._id), producto]));
+    const resultados = new Map(seeds.map((producto) => [String(producto._id), producto]));
+    for (const [categoria, productos] of porCategoria) {
+      const semillas = seeds.filter((producto) =>
+        producto.schemaVersion !== 2 && categoriaNoPastillas(producto) === categoria);
+      const locales = resolverFamiliasInventario(productos, semillas).filter((familia) => familia.filas.length > 1);
+      familias.push(...locales);
+      for (const familia of locales) {
+        for (const fila of familia.filas) {
+          const producto = porId.get(fila._id);
+          if (producto) resultados.set(fila._id, producto);
+        }
+      }
     }
+    allResults = [...resultados.values()].flatMap(normalizarProductos);
   }
-  for (const id of expansionLitton.matchedIds) {
-    const original = inventarioPorId.get(id);
-    if (original) agregarFilas(original);
+  if (!persistedEnabled) {
+    const data = allResults.slice(0, FAMILY_RESULT_LIMIT);
+    return {
+      data, familias, matchedIds: seeds.map((item) => String(item._id)),
+      total: data.length, hasMore: hasMoreDirect || allResults.length > FAMILY_RESULT_LIMIT,
+      query, familiasDeshabilitadas: true,
+    };
   }
-  for (const familia of familias) {
-    for (const item of familia.filas) {
-      const original = inventarioPorId.get(item._id);
-      if (original) agregarFilas(original);
-    }
+  try {
+    const catalogo = await catalogoPastillas.obtenerCatalogoLocal();
+    catalogoVersion = catalogo.version;
+    if (!inventario) inventario = await productosRepository.listarInventarioParaFamilias();
+    familias.push(...resolverFamiliasCatalogo(query, inventario.filter((producto) => !categoriaNoPastillas(producto)), catalogo.fichas));
+  } catch (error) {
+    const knownNames = new Set(["Error", "CatalogoLocalError", "MongoNetworkError", "MongoServerError", "MongooseError", "TypeError"]);
+    const name = knownNames.has(error?.name) ? error.name : "Error";
+    const rawCode = error?.code;
+    const code = Number.isInteger(rawCode) && rawCode >= 0 && rawCode <= 99999
+      ? rawCode
+      : /^(ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENOTFOUND|EHOSTUNREACH|ENETUNREACH)$/i.test(String(rawCode || ""))
+        ? String(rawCode)
+        : undefined;
+    console.error("No se pudo cargar una familia desde el catálogo local.", { name, ...(code ? { code } : {}) });
+    familiasError = "No se pudo cargar la familia desde el catálogo local; se mantienen las coincidencias directas.";
   }
-
-  const allResults = [...rowsById.values()].sort((a, b) =>
-    String(a.codigo || a.CODIGO || "").localeCompare(
-      String(b.codigo || b.CODIGO || ""), "es", { numeric: true, sensitivity: "base" }
-    ) || String(a.marca || a.MARCA || "").localeCompare(String(b.marca || b.MARCA || ""), "es")
-      || String(a.ubicacion || "").localeCompare(String(b.ubicacion || ""), "es")
-  );
-  const hasMore = hasMoreDirect || allResults.length > FAMILY_RESULT_LIMIT;
-  const results = allResults.slice(0, FAMILY_RESULT_LIMIT);
+  const data = allResults.slice(0, FAMILY_RESULT_LIMIT);
   return {
-    data: results,
-    familias: [
-      ...familias.map(({ id, filas, totales }) => ({ id, filas, totales })),
-      ...familiasLitton,
-    ],
-    matchedIds: [...new Set([
-      ...seeds.map((item) => String(item._id)),
-      ...expansionLitton.matchedIds,
-    ])],
-    littonError: expansionLitton.error,
-    total: results.length,
-    hasMore,
+    data,
+    familias,
+    matchedIds: seeds.map((item) => String(item._id)),
+    ...(catalogoVersion !== undefined ? { catalogoVersion } : {}),
+    ...(familiasError ? { familiasError } : {}),
+    total: data.length,
+    hasMore: hasMoreDirect || allResults.length > FAMILY_RESULT_LIMIT,
     query,
   };
 }
@@ -531,7 +493,6 @@ module.exports = {
   eliminar,
   actualizarStockMinimo,
   eliminarVariante,
-  fusionarFamilias,
   normalizarProducto,
   UBICACIONES,
 };

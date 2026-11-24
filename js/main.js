@@ -2,17 +2,17 @@ import { apiGet, apiPostForm } from "./api.js?v=20261102";
 import { bindMainEvents } from "./main-events.js";
 import { createAdminSession } from "./admin-session.js";
 import { pushUrlParams, readUrlParams } from "./app-url.js";
-import { createInventoryRenderer } from "./inventory-render.js";
+import { createInventoryRenderer } from "./inventory-render.js?v=20261124-localcatalog";
 import { applyTheme, initTheme } from "./theme.js";
 import {
   $,
   renderStock, setBusy,
   showToast, updateStats, showSkeleton, updateChipCounts, renderCards, renderFamilySummaries
-} from "./ui.js?v=20261124-familias";
+} from "./ui.js?v=20261124-persistedfamilies";
 import { createEquivalencesController } from "./equivalences.js";
-import { FAMILIAS_HABILITADAS } from "./config.js?v=20261124-familias";
+import { FAMILIAS_CATALOGO_PERSISTIDO_HABILITADAS } from "./config.js?v=20261124-persistedfamilies";
 import { createMovementController } from "./movements.js";
-import { bindBetaModal } from "./beta.js?v=20261124-familias";
+import { bindBetaModal } from "./beta.js?v=20261124-providerflag";
 import { createProductActions } from "./product-actions.js";
 import { icon, hydrateIcons } from "./ui/icons.js";
 import {
@@ -198,14 +198,9 @@ async function loadStock(query = $("search")?.value.trim() || "", { notify = fal
       return;
     }
     cache = data.data || [];
-    inventoryFamilies = FAMILIAS_HABILITADAS && Array.isArray(data.familias) ? data.familias : [];
-    inventoryLittonError = FAMILIAS_HABILITADAS ? data.littonError || "" : "";
-    familyMemberIds = new Set([
-      ...(Array.isArray(data.matchedIds) ? data.matchedIds.map(String) : []),
-      ...inventoryFamilies.flatMap((family) =>
-        Array.isArray(family.filas) ? family.filas.map((item) => String(item._id)) : []
-      )
-    ]);
+    inventoryFamilies = FAMILIAS_CATALOGO_PERSISTIDO_HABILITADAS && Array.isArray(data.familias) ? data.familias : [];
+    inventoryLittonError = data.familiasError || "";
+    familyMemberIds = new Set(Array.isArray(data.matchedIds) ? data.matchedIds.map(String) : []);
     searchHasMore = Boolean(data.hasMore);
     updateStats(cache);
     updateChipCounts(cache);

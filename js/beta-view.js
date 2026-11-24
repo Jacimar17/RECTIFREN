@@ -1,6 +1,6 @@
 import { escapeHtml, ubicacionBadge } from "./ui.js";
 import { icon } from "./ui/icons.js";
-import { FAMILIAS_HABILITADAS } from "./config.js?v=20261124-familias";
+import { FAMILIAS_HABILITADAS } from "./config.js?v=20261124-persistedfamilies";
 
 export function createBetaView(results) {
   function fmtPrecio(value) {
@@ -207,9 +207,11 @@ export function createBetaView(results) {
     const families = Array.isArray(response.familias) ? response.familias : [];
     const familyRows = families.flatMap((family) => Array.isArray(family.filas) ? family.filas : []);
     const items = familyRows.length ? familyRows : (Array.isArray(response.data) ? response.data : []);
-    const warning = response.littonError
-      ? `<p class="beta-inventory-warning">El cruce con Litton fue parcial: ${escapeHtml(response.littonError)}</p>`
-      : "";
+    const warning = response.familiasError
+      ? `<p class="beta-inventory-warning">${escapeHtml(response.familiasError)}</p>`
+      : response.littonError
+        ? `<p class="beta-inventory-warning">El cruce con Litton fue parcial: ${escapeHtml(response.littonError)}</p>`
+        : "";
     const uniqueItems = [...new Map(items.map((item) => [
       String(item._id || `${item.codigo}|${item.marca}|${item.ubicacion}`),
       item

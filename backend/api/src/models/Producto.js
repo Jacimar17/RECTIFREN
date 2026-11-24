@@ -34,6 +34,7 @@ const productoSchema = new mongoose.Schema(
       marca: { type: String, trim: true, default: "" },
       productoLitton: { type: String, trim: true, default: "" },
     }],
+    codigosAnteriores: { type: [String], default: [] },
     stockMinimo:     { type: Number, default: 2, min: 0 },
 
     // Referencias a otros productos del inventario

@@ -45,6 +45,14 @@ The API uses a shared error handler for asynchronous route failures. Invalid JSO
 
 Products explicitly marked as pending location can omit `ubicacion` in inventory responses. Their stock is included in `total` and, when present, in `SIN_UBICACION`, rather than in either known location. Updating the product with a valid `ubicacion` assigns it and clears the pending status.
 
+### Brake-pad families
+
+`FAMILIAS_CATALOGO_PERSISTIDO_HABILITADAS` defaults to enabled in the API; set it to `false` to disable it. The frontend has a separate flag of the same name in `js/config.js`. Family lookup reads the checked-in `litton-pastillas.json`, validates it and caches it for the process lifetime; restart or redeploy after updating it. `catalogoVersion` is `local-` followed by the normalized catalog SHA-256. It does not publish to MongoDB or query Litton live; if the file is missing or invalid, `/api/productos/search` keeps direct results and returns `familiasError` with a safe warning.
+
+For products with a matching recorded brand, exact brand-prefixed catalog codes and exact TRW abbreviations are also recognized. This associates search results only; it does not confirm duplicates or merge products.
+
+This flag does not enable `FAMILIAS_HABILITADAS`, manual equivalence routes, or external provider offers. Those remain disabled unless the original flag is explicitly enabled. When enabled, legacy local families remain available for explicitly categorized non-pad products within the same category; uncategorized products cannot safely be classified as non-pad. Provider detail requires both flags and `BETA_PROVEEDORES=true`, otherwise it returns `503` (or `404` when beta is disabled).
+
 ## Stock and movements
 
 | Method | Path | Auth | Request | Success |
@@ -83,7 +91,7 @@ All provider endpoints require authentication and `BETA_PROVEEDORES=true`.
 | `GET` | `/api/proveedores/litton/vehiculos` | — | `{ "ok": true, "data": [...] }` |
 | `GET` | `/api/proveedores/litton/buscar-vehiculo` | Query: `marca`, `modelo` (máx. 100 caracteres), optional `page` (1–1000) | Litton vehicle candidates enriched with equivalences, configured supplier offers, and per-candidate provider errors |
 
-Vehicle lookup uses only `marca` and `modelo`. The response lists configured providers in `proveedores`; each returned candidate contains its Litton product data, `equivalencias`, an `ofertas` group keyed by provider ID, and `errores`. If a product detail or supplier lookup fails, the candidate remains in the response and reports the error instead of discarding other results.
+Vehicle lookup uses only `marca` and `modelo`. When `FAMILIAS_HABILITADAS` is disabled, it returns Litton candidates without provider offers. When enabled, the response lists configured providers in `proveedores`; each returned candidate contains its Litton product data, `equivalencias`, an `ofertas` group keyed by provider ID, and `errores`. If a product detail or supplier lookup fails, the candidate remains in the response and reports the error instead of discarding other results.
 
 Each offer has `proveedor`, `codigoProveedor`, `marca`, `descripcion`, `precio` (`importe` and `moneda`), `stock` (`estado` and optional numeric `cantidad`), `url`, `imagen`, and `codigoCoincidente`. Unknown stock is represented as `desconocido` with `cantidad: null`, not as zero.
 
