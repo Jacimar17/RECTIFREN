@@ -21,6 +21,7 @@ function construirVariantes(productos) {
     const marca = String(producto.marca || producto.MARCA || "").trim();
     if (!marca) throw new Error(`Falta la marca en el registro ${producto._id || codigoInventario(producto)}.`);
     const ubicacion = ubicacionEfectiva(producto);
+    if (!ubicacion) throw new Error(`Falta la ubicación en ${codigoInventario(producto)} — ${marca}.`);
     const cantidad = Number(producto.stock ?? producto.STOCK ?? 0);
     if (!Number.isFinite(cantidad) || cantidad < 0) {
       throw new Error(`Stock inválido en ${codigoInventario(producto)} — ${marca}.`);

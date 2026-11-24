@@ -66,7 +66,7 @@ export function bindMainEvents({ state, actions, searchDebounceMs }) {
   if (btnExport) btnExport.addEventListener("click", () => {
     if (!state.cache.length) { showToast("No hay datos para exportar.", "info"); return; }
     const rows = [["CODIGO","MARCA","STOCK","UBICACION"]];
-    for (const item of state.cache) rows.push([item.codigo||"", item.marca||"", String(item.stock||0), item.ubicacion === "NEGOCIO" ? "Negocio" : "Depósito/Galpón"]);
+    for (const item of state.cache) rows.push([item.codigo||"", item.marca||"", String(item.stock||0), item.ubicacion === "NEGOCIO" ? "Negocio" : item.ubicacion === "DEPOSITO_GALPON" ? "Depósito/Galpón" : ""]);
     const csv  = rows.map(r => r.map(c => `"${String(c).replaceAll('"','""')}"`).join(",")).join("\r\n");
     const blob = new Blob(["\uFEFF"+csv], { type:"text/csv;charset=utf-8;" });
     const url  = URL.createObjectURL(blob);

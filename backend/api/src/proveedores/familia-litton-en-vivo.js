@@ -185,7 +185,8 @@ async function resolverFamiliasLittonEnVivo(query, inventario, {
     const totales = rowsList.reduce((totals, row) => {
       const stock = Number(row.stock);
       if (!Number.isFinite(stock)) return totals;
-      totals[row.ubicacion] += stock;
+      if (row.ubicacion) totals[row.ubicacion] += stock;
+      else totals.SIN_UBICACION = (totals.SIN_UBICACION || 0) + stock;
       totals.total += stock;
       return totals;
     }, { NEGOCIO: 0, DEPOSITO_GALPON: 0, total: 0 });

@@ -31,10 +31,9 @@ export function renderFamilySummaries(families) {
 
   container.innerHTML = families.map((family) => {
     const rows = family.filas.map((item) => {
-      const location = item.ubicacion === "NEGOCIO" ? "NEGOCIO" : "DEPOSITO_GALPON";
       return `<li class="family-summary-row">
         <span class="family-summary-product"><strong>${escapeHtml(item.codigo || "Código s/d")}</strong> · ${escapeHtml(item.marca || "Marca no informada")}</span>
-        ${ubicacionBadge(location)}
+        ${ubicacionBadge(item.ubicacion)}
         <span class="family-summary-stock">${escapeHtml(String(item.stock ?? 0))} u.</span>
       </li>`;
     }).join("");
@@ -66,6 +65,7 @@ export function renderFamilySummaries(families) {
         <div class="family-summary-totals">
           <span>Negocio: <strong>${escapeHtml(String(totals.NEGOCIO ?? 0))} u.</strong></span>
           <span>Depósito/Galpón: <strong>${escapeHtml(String(totals.DEPOSITO_GALPON ?? 0))} u.</strong></span>
+          ${totals.SIN_UBICACION ? `<span>Sin ubicación: <strong>${escapeHtml(String(totals.SIN_UBICACION))} u.</strong></span>` : ""}
           <span>Total: <strong>${escapeHtml(String(totals.total ?? 0))} u.</strong></span>
         </div>
       </div>

@@ -39,7 +39,8 @@ function fusionarFamilias(familias) {
     const totales = filas.reduce((result, row) => {
       const stock = Number(row.stock);
       if (!Number.isFinite(stock)) return result;
-      result[row.ubicacion] += stock;
+      if (row.ubicacion) result[row.ubicacion] += stock;
+      else result.SIN_UBICACION = (result.SIN_UBICACION || 0) + stock;
       result.total += stock;
       return result;
     }, { NEGOCIO: 0, DEPOSITO_GALPON: 0, total: 0 });
@@ -94,7 +95,8 @@ async function buscar(value) {
       const totales = filas.reduce((result, row) => {
         const stock = Number(row.stock);
         if (!Number.isFinite(stock)) return result;
-        result[row.ubicacion] += stock;
+        if (row.ubicacion) result[row.ubicacion] += stock;
+        else result.SIN_UBICACION = (result.SIN_UBICACION || 0) + stock;
         result.total += stock;
         return result;
       }, { NEGOCIO: 0, DEPOSITO_GALPON: 0, total: 0 });
@@ -364,7 +366,10 @@ async function actualizar(id, body) {
   if (marca) { producto.marca = marca.trim(); producto.MARCA = marca.trim(); }
   if (stock !== undefined) { producto.stock = Number(stock); producto.STOCK = Number(stock); }
   if (equivalencias !== undefined) producto.equivalencias = equivalencias;
-  if (ubicacion !== undefined) producto.ubicacion = ubicacion;
+  if (ubicacion !== undefined) {
+    producto.ubicacion = ubicacion;
+    producto.ubicacionPendiente = false;
+  }
   await productosRepository.guardar(producto);
 
   if (stock !== undefined && Number(stock) !== stockAntes) {

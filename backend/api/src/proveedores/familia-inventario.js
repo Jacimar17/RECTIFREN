@@ -30,7 +30,8 @@ function calcularTotales(filas) {
   return filas.reduce((acc, fila) => {
     const stock = Number(fila.stock);
     if (Number.isFinite(stock)) {
-      acc[fila.ubicacion] += stock;
+      if (fila.ubicacion) acc[fila.ubicacion] += stock;
+      else acc.SIN_UBICACION = (acc.SIN_UBICACION || 0) + stock;
       acc.total += stock;
     }
     return acc;
@@ -46,6 +47,7 @@ function ubicacionPredeterminada(producto) {
 
 function ubicacionEfectiva(producto) {
   if (Object.values(UBICACIONES).includes(producto.ubicacion)) return producto.ubicacion;
+  if (producto.ubicacionPendiente) return undefined;
   return ubicacionPredeterminada(producto);
 }
 

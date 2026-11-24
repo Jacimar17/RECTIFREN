@@ -1,4 +1,4 @@
-import { escapeHtml } from "./ui.js";
+import { escapeHtml, ubicacionBadge } from "./ui.js";
 import { icon } from "./ui/icons.js";
 
 export function createBetaView(results) {
@@ -221,13 +221,13 @@ export function createBetaView(results) {
     const rows = uniqueItems.map((item) => {
       const stock = Number(item.stock ?? 0);
       const quantity = Number.isFinite(stock) ? stock : 0;
-      const location = item.ubicacion === "NEGOCIO" ? "NEGOCIO" : "DEPOSITO_GALPON";
-      totals[location] += quantity;
+      const location = item.ubicacion;
+      if (location) totals[location] += quantity;
+      else totals.SIN_UBICACION = (totals.SIN_UBICACION || 0) + quantity;
       totals.total += quantity;
-      const locationLabel = location === "NEGOCIO" ? "Negocio" : "Depósito/Galpón";
       return `<li class="beta-inventory-row">
         <span class="beta-inventory-product"><strong>${escapeHtml(item.codigo || "Código s/d")}</strong><span>${escapeHtml(item.marca || "Marca no informada")}</span></span>
-        <span class="inventory-location-badge ${location === "NEGOCIO" ? "inventory-location-business" : "inventory-location-depot"}">${locationLabel}</span>
+        ${ubicacionBadge(location)}
         <span class="beta-inventory-stock">${escapeHtml(String(quantity))} u.</span>
       </li>`;
     }).join("");
@@ -236,6 +236,7 @@ export function createBetaView(results) {
       <div class="beta-inventory-totals">
         <span>Negocio: <strong>${escapeHtml(String(totals.NEGOCIO))} u.</strong></span>
         <span>Depósito/Galpón: <strong>${escapeHtml(String(totals.DEPOSITO_GALPON))} u.</strong></span>
+        ${totals.SIN_UBICACION ? `<span>Sin ubicación: <strong>${escapeHtml(String(totals.SIN_UBICACION))} u.</strong></span>` : ""}
         <span>Total: <strong>${escapeHtml(String(totals.total))} u.</strong></span>
       </div>`;
   }

@@ -34,7 +34,7 @@ export function createProductActionEvents({
       const codigo = button.getAttribute("data-c");
       const marca = button.getAttribute("data-m");
       const stock = Number(button.getAttribute("data-s") || 0);
-      const ubicacion = button.getAttribute("data-u") || "DEPOSITO_GALPON";
+      const ubicacion = button.getAttribute("data-u") || undefined;
       if (action === "in" || action === "out") { openNoteModal(action, codigo, marca, stock, ubicacion); return; }
       if (action === "set") {
         refrescarSelectsCategorias();

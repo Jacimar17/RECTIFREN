@@ -3,6 +3,7 @@ const { ubicacionPredeterminada } = require("../proveedores/familia-inventario")
 
 async function migrarUbicacionesFaltantes() {
   const productos = await Producto.find({
+    ubicacionPendiente: { $ne: true },
     $or: [
       { ubicacion: { $exists: false } },
       { ubicacion: null },
@@ -16,6 +17,7 @@ async function migrarUbicacionesFaltantes() {
     updateOne: {
       filter: {
         _id: producto._id,
+        ubicacionPendiente: { $ne: true },
         $or: [
           { ubicacion: { $exists: false } },
           { ubicacion: null },

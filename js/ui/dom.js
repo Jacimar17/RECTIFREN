@@ -20,6 +20,7 @@ export function getStockState(item) {
 }
 
 export function ubicacionBadge(ubicacion) {
+  if (!ubicacion) return `<span class="inventory-location-badge">Sin ubicación</span>`;
   const enNegocio = ubicacion === "NEGOCIO";
   const label = enNegocio ? "Negocio" : "Depósito/Galpón";
   return `<span class="inventory-location-badge ${enNegocio ? "inventory-location-business" : "inventory-location-depot"}">${label}</span>`;
@@ -31,5 +32,6 @@ export function normalizarCodigo(valor) {
 }
 
 export function ubicacionLabel(ubicacion) {
+  if (!ubicacion) return "Sin ubicación";
   return ubicacion === "NEGOCIO" ? "Negocio" : "Depósito/Galpón";
 }

@@ -27,6 +27,7 @@ const productoSchema = new mongoose.Schema(
     foto:          { type: String, trim: true, default: "" },
     stock:         { type: Number, default: 0, min: 0 },
     ubicacion: { type: String, enum: ["NEGOCIO", "DEPOSITO_GALPON"] },
+    ubicacionPendiente: { type: Boolean, default: false },
     equivalencias:   { type: String, default: "", trim: true },
     equivalenciasCatalogo: [{
       codigo: { type: String, trim: true },

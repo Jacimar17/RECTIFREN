@@ -50,3 +50,13 @@ test("explicit location overrides the legacy code-based default", () => {
   assert.equal(ubicacionEfectiva({ codigo: "05P1379" }), "DEPOSITO_GALPON");
   assert.equal(ubicacionEfectiva({ codigo: "RF-528", ubicacion: "DEPOSITO_GALPON" }), "DEPOSITO_GALPON");
 });
+
+test("keeps explicitly pending locations separate from known stock", () => {
+  const pending = { _id: "pending", codigo: "FLEX-1", marca: "FLEXIBLES", stock: 5, ubicacionPendiente: true };
+  const known = { _id: "known", codigo: "FLEX-1", marca: "OTRA", stock: 2, ubicacion: "NEGOCIO" };
+  assert.equal(ubicacionEfectiva(pending), undefined);
+  assert.equal(ubicacionEfectiva({ ...pending, ubicacion: "NEGOCIO" }), "NEGOCIO");
+  assert.deepEqual(resolverFamiliaInventario([pending, known], ["FLEX-1"]).totales, {
+    NEGOCIO: 2, DEPOSITO_GALPON: 0, SIN_UBICACION: 5, total: 7,
+  });
+});

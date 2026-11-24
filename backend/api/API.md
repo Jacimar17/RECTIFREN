@@ -43,6 +43,8 @@ The API uses a shared error handler for asynchronous route failures. Invalid JSO
 | `DELETE` | `/api/productos/{id}/variantes` | Yes | `{ "marca": "...", "ubicacion": "..." }` | `{ "ok": true, "mensaje": "..." }` |
 | `PATCH` | `/api/productos/{id}/minimo` | Yes | `{ "stockMinimo": 0, "marca": "...", "ubicacion": "..." }` | `{ "ok": true, "data": ... }` |
 
+Products explicitly marked as pending location can omit `ubicacion` in inventory responses. Their stock is included in `total` and, when present, in `SIN_UBICACION`, rather than in either known location. Updating the product with a valid `ubicacion` assigns it and clears the pending status.
+
 ## Stock and movements
 
 | Method | Path | Auth | Request | Success |
