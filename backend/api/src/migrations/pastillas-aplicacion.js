@@ -1,4 +1,5 @@
 const { createHash } = require("node:crypto");
+const { createReadStream } = require("node:fs");
 const { EJSON } = require("mongoose").mongo.BSON;
 const { crearInformeVerificable, huella } = require("./pastillas-informe");
 const { normalizarCodigo } = require("../proveedores/familia-inventario");
@@ -435,10 +436,9 @@ async function ejecutarFusionTransaccional({ session, almacen, productos, catalo
   return { estado: "aplicado", seleccionados: 1 };
 }
 
-// El adaptador de prueba debe proporcionar aislamiento serializable para todas
-// las lecturas, escrituras condicionales y una auditoría única por hash de plan.
-// Una instantánea MongoDB por sí sola no satisface este contrato.
-async function ejecutarMotorAislado({ session, almacen, bytesInforme, hashAprobado, bytesPlan, hashPlan, fecha }) {
+// El aislamiento debe cubrir todas las lecturas y escrituras. Una instantánea
+// MongoDB por sí sola no satisface este contrato.
+async function ejecutarMotor({ session, almacen, bytesInforme, hashAprobado, bytesPlan, hashPlan, fecha }) {
   if (!Buffer.isBuffer(bytesInforme) || !/^[a-f0-9]{64}$/.test(hashAprobado || "") ||
       hashArchivo(bytesInforme) !== hashAprobado || !Buffer.isBuffer(bytesPlan) ||
       !/^[a-f0-9]{64}$/.test(hashPlan || "") || hashArchivo(bytesPlan) !== hashPlan ||
@@ -448,6 +448,7 @@ async function ejecutarMotorAislado({ session, almacen, bytesInforme, hashAproba
   session.startTransaction({ readConcern: { level: "snapshot" }, readPreference: "primary",
     writeConcern: { w: "majority" } });
   let finalizada = false;
+  let commitIntentado = false;
   try {
     await almacen.comprobarAislamiento(session);
     const productos = await almacen.leerProductos(session);
@@ -524,38 +525,27 @@ async function ejecutarMotorAislado({ session, almacen, bytesInforme, hashAproba
       const modificados = await almacen.reemplazarProducto(cambio.antes, cambio.despues, session);
       if (modificados !== 1) throw new ErrorSeguro("Conflicto al reemplazar un producto.");
     }
+    commitIntentado = true;
     await session.commitTransaction();
     finalizada = true;
     return { estado: "aplicado", seleccionados: cambios.length };
   } catch (error) {
     if (finalizada) throw error;
+    if (commitIntentado) {
+      throw new ErrorSeguro("No se pudo confirmar el commit; verificar la auditoría y el estado antes de reintentar.", { cause: error });
+    }
     return conLimpieza(async () => { throw error; }, () => session.abortTransaction(), "abortar");
   }
 }
 
-// Las comprobaciones de conexión reducen el riesgo de usar producción por
-// accidente; no sustituyen el aislamiento operacional del servidor local.
-async function ejecutarEnReplicaAislada({ db, session, leerCatalogo, verificarAislamiento, verificarCobertura,
-  soloPruebas, bytesInforme, hashAprobado, bytesPlan, hashPlan, fecha }) {
-  const cliente = db && db.client;
-  const opciones = cliente && cliente.options;
-  const hosts = opciones && opciones.hosts;
-  if (soloPruebas !== true || !db || typeof db.collection !== "function" ||
-      !/^test_pastillas_[a-f0-9]{32}$/.test(db.databaseName || "") ||
-      !cliente || !session || session.client !== cliente || !opciones || !opciones.directConnection ||
-      !Array.isArray(hosts) || hosts.length !== 1 || !hosts[0] || hosts[0].host !== "127.0.0.1" ||
-      typeof leerCatalogo !== "function" || typeof verificarAislamiento !== "function") {
-    throw new ErrorSeguro("Se requiere un entorno de pruebas aislado y verificación operacional.");
-  }
+function crearAlmacen(db, leerCatalogo, verificarAislamiento, verificarCobertura) {
   const productos = db.collection("productos");
   const movimientos = db.collection("movimientos");
   const auditorias = db.collection("pastillas_aplicacion_auditoria");
-  return ejecutarMotorAislado({
-    session, bytesInforme, hashAprobado, bytesPlan, hashPlan, fecha,
-    almacen: {
+  return {
       async comprobarAislamiento(s) {
         if (await verificarAislamiento(db, s) !== true) {
-          throw new ErrorSeguro("No se garantizó el aislamiento de prueba.");
+          throw new ErrorSeguro("No se garantizó el aislamiento de la operación.");
         }
       },
       leerProductos: s => productos.find({}, { session: s }).sort({ _id: 1 }).toArray(),
@@ -572,13 +562,91 @@ async function ejecutarEnReplicaAislada({ db, session, leerCatalogo, verificarAi
         const resultado = await movimientos.replaceOne({ _id: antes._id }, despues, { session: s });
         return resultado.matchedCount;
       },
-    },
+  };
+}
+
+// Las comprobaciones de conexión reducen el riesgo de usar producción por
+// accidente; no sustituyen el aislamiento operacional del servidor local.
+async function ejecutarEnReplicaAislada({ db, session, leerCatalogo, verificarAislamiento, verificarCobertura,
+  soloPruebas, bytesInforme, hashAprobado, bytesPlan, hashPlan, fecha }) {
+  const cliente = db && db.client;
+  const opciones = cliente && cliente.options;
+  const hosts = opciones && opciones.hosts;
+  if (soloPruebas !== true || !db || typeof db.collection !== "function" ||
+      !/^test_pastillas_[a-f0-9]{32}$/.test(db.databaseName || "") ||
+      !cliente || !session || session.client !== cliente || !opciones || !opciones.directConnection ||
+      !Array.isArray(hosts) || hosts.length !== 1 || !hosts[0] || hosts[0].host !== "127.0.0.1" ||
+      typeof leerCatalogo !== "function" || typeof verificarAislamiento !== "function") {
+    throw new ErrorSeguro("Se requiere un entorno de pruebas aislado y verificación operacional.");
+  }
+  return ejecutarMotor({
+    session, bytesInforme, hashAprobado, bytesPlan, hashPlan, fecha,
+    almacen: crearAlmacen(db, leerCatalogo, verificarAislamiento, verificarCobertura),
   });
 }
 
+async function hashRespaldo(ruta) {
+  const hash = createHash("sha256");
+  let bytes = 0;
+  for await (const chunk of createReadStream(ruta)) {
+    bytes += chunk.length;
+    hash.update(chunk);
+  }
+  if (!bytes) throw new ErrorSeguro("El respaldo está vacío.");
+  return hash.digest("hex");
+}
+
+async function ejecutarCodigosConVentana({ db, session, leerCatalogo, bytesInforme, hashAprobado,
+  bytesPlan, hashPlan, fecha, baseAprobada, replicaAprobada, archivoRespaldo, hashRespaldoAprobado,
+  hashInventarioRespaldo, restauracionComprobada, ventanaSinEscritoresConfirmada, referenciasExternasRevisadas }) {
+  if (!db || !db.client || !session || session.client !== db.client ||
+      typeof db.collection !== "function" || typeof db.admin !== "function" ||
+      typeof leerCatalogo !== "function" || typeof baseAprobada !== "string" ||
+      !baseAprobada || db.databaseName !== baseAprobada || typeof replicaAprobada !== "string" ||
+      !replicaAprobada || typeof archivoRespaldo !== "string" || !archivoRespaldo ||
+      !/^[a-f0-9]{64}$/.test(hashRespaldoAprobado || "") ||
+      !/^[a-f0-9]{64}$/.test(hashInventarioRespaldo || "") ||
+      restauracionComprobada !== true || ventanaSinEscritoresConfirmada !== true ||
+      referenciasExternasRevisadas !== true) {
+    throw new ErrorSeguro("Faltan destino, respaldo restaurado, ventana sin escritores o revisión de referencias.");
+  }
+  if (!Buffer.isBuffer(bytesPlan) || JSON.parse(bytesPlan.toString("utf8")).version !== 1) {
+    throw new ErrorSeguro("Solo se admiten planes de cambios individuales; las fusiones siguen bloqueadas.");
+  }
+  if (!Buffer.isBuffer(bytesInforme) ||
+      JSON.parse(bytesInforme.toString("utf8"))?.inventario?.sha256 !== hashInventarioRespaldo) {
+    throw new ErrorSeguro("El inventario del respaldo restaurado no coincide con el informe aprobado.");
+  }
+  if (await hashRespaldo(archivoRespaldo) !== hashRespaldoAprobado) {
+    throw new ErrorSeguro("La huella del respaldo no coincide con la aprobada.");
+  }
+  const hello = await db.admin().command({ hello: 1 });
+  if (!hello.isWritablePrimary || hello.setName !== replicaAprobada) {
+    throw new ErrorSeguro("La réplica o el servidor primario no coinciden con el destino aprobado.");
+  }
+  const almacen = crearAlmacen(db, leerCatalogo, async () => ventanaSinEscritoresConfirmada, null);
+  const leerAuditoria = almacen.leerAuditoria;
+  const insertarAuditoria = almacen.insertarAuditoria;
+  almacen.leerAuditoria = async (hash, s) => {
+    const audit = await leerAuditoria(hash, s);
+    if (audit && (audit.respaldoSha256 !== hashRespaldoAprobado ||
+        audit.inventarioRespaldoSha256 !== hashInventarioRespaldo ||
+        audit.base !== baseAprobada || audit.replica !== replicaAprobada)) {
+      throw new ErrorSeguro("La auditoría existente no coincide con el respaldo o el destino aprobados.");
+    }
+    return audit;
+  };
+  almacen.insertarAuditoria = (audit, s) => insertarAuditoria({
+    ...audit, respaldoSha256: hashRespaldoAprobado, inventarioRespaldoSha256: hashInventarioRespaldo,
+    base: baseAprobada, replica: replicaAprobada,
+  }, s);
+  return ejecutarMotor({ session, almacen, bytesInforme, hashAprobado, bytesPlan, hashPlan, fecha });
+}
+
 function aplicar() {
-  throw new ErrorSeguro("Aplicación bloqueada: faltan controles de respaldo, cobertura de referencias y validación para producción.");
+  throw new ErrorSeguro("Aplicación bloqueada: se requieren todas las opciones y confirmaciones obligatorias.");
 }
 
 module.exports = { hashArchivo, verificarInforme, seleccionarCambios, construirActualizacion,
-  inspeccionarEnTransaccion, crearPlan, crearPlanFusion, verificarPlan, ejecutarEnReplicaAislada, aplicar };
+  inspeccionarEnTransaccion, crearPlan, crearPlanFusion, verificarPlan, ejecutarEnReplicaAislada,
+  ejecutarCodigosConVentana, aplicar };

@@ -6,7 +6,8 @@ const { crearInformeVerificable } = require("../src/migrations/pastillas-informe
 const { huella } = require("../src/migrations/pastillas-informe");
 const { ErrorSeguro, conLimpieza, diagnosticos } = require("../src/migrations/pastillas-errores");
 const { hashArchivo, verificarInforme, seleccionarCambios, construirActualizacion,
-  inspeccionarEnTransaccion, crearPlan, crearPlanFusion, ejecutarEnReplicaAislada, aplicar } = require("../src/migrations/pastillas-aplicacion");
+  inspeccionarEnTransaccion, crearPlan, crearPlanFusion, ejecutarEnReplicaAislada,
+  ejecutarCodigosConVentana, aplicar } = require("../src/migrations/pastillas-aplicacion");
 
 const catalogo = { version: "v1", fichas: [{ code: "A", brand: "LITTON", substitutes: [
   { code: "FRASLE", value: "PD/528" }, { code: "LPR", value: "05P1379" },
@@ -221,6 +222,72 @@ function opcionesReplica(replica, productos = [producto]) {
     hashPlan: hashArchivo(bytesPlan), fecha: new Date("2026-01-01T00:00:00Z") };
 }
 
+test("aplicación de códigos exige respaldo, destino y garantías explícitas", async () => {
+  const fs = require("node:fs");
+  const os = require("node:os");
+  const ruta = fs.mkdtempSync(path.join(os.tmpdir(), "pastillas-respaldo-"));
+  const respaldo = path.join(ruta, "respaldo.gz");
+  fs.writeFileSync(respaldo, "respaldo de prueba");
+  const replica = replicaDePrueba([producto]);
+  replica.db.admin = () => ({ command: async () => ({ isWritablePrimary: true, setName: "rs-test" }) });
+  const opciones = { ...opcionesReplica(replica), baseAprobada: replica.db.databaseName,
+    replicaAprobada: "rs-test", archivoRespaldo: respaldo,
+    hashRespaldoAprobado: hashArchivo(fs.readFileSync(respaldo)),
+    hashInventarioRespaldo: huella([producto]),
+    restauracionComprobada: true, ventanaSinEscritoresConfirmada: true, referenciasExternasRevisadas: true };
+  try {
+    for (const cambio of [
+      { restauracionComprobada: false },
+      { ventanaSinEscritoresConfirmada: false },
+      { referenciasExternasRevisadas: false },
+      { baseAprobada: "otra" },
+      { replicaAprobada: "otra" },
+      { hashRespaldoAprobado: "0".repeat(64) },
+      { hashInventarioRespaldo: "0".repeat(64) },
+      { bytesPlan: Buffer.from(JSON.stringify({ version: 2 })) },
+    ]) {
+      await assert.rejects(ejecutarCodigosConVentana({ ...opciones, ...cambio }));
+      assert.equal(replica.estado().auditorias.length, 0);
+      assert.equal(replica.estado().productos[0].codigo, "PD/528");
+    }
+    assert.deepEqual(await ejecutarCodigosConVentana(opciones), { estado: "aplicado", seleccionados: 1 });
+    const estado = replica.estado();
+    assert.equal(estado.productos[0].codigo, "05P1379");
+    assert.equal(estado.productos[0].stock, 5);
+    assert.equal(estado.productos[0].ubicacion, "NEGOCIO");
+    assert.equal(estado.auditorias[0].respaldoSha256, opciones.hashRespaldoAprobado);
+    assert.equal(estado.auditorias[0].base, opciones.baseAprobada);
+    assert.equal(estado.auditorias[0].replica, opciones.replicaAprobada);
+    assert.deepEqual(await ejecutarCodigosConVentana(opciones), { estado: "ya_aplicado", seleccionados: 1 });
+    assert.deepEqual(replica.estado(), estado);
+    replica.alterar(e => { e.auditorias[0].respaldoSha256 = "0".repeat(64); });
+    await assert.rejects(ejecutarCodigosConVentana(opciones), /auditoría existente/);
+  } finally {
+    fs.rmSync(respaldo);
+    fs.rmdirSync(ruta);
+  }
+});
+
+test("un fallo del commit comunica resultado incierto en lugar de afirmar reversión", async () => {
+  const replica = replicaDePrueba([producto]);
+  replica.fallos.commit = true;
+  await assert.rejects(ejecutarEnReplicaAislada(opcionesReplica(replica)), /No se pudo confirmar el commit/);
+});
+
+test("una respuesta perdida tras el commit se reconoce al reintentar mediante la auditoría", async () => {
+  const replica = replicaDePrueba([producto]);
+  const opciones = opcionesReplica(replica);
+  const commit = replica.session.commitTransaction;
+  replica.session.commitTransaction = async () => {
+    await commit();
+    throw new Error("respuesta perdida");
+  };
+  await assert.rejects(ejecutarEnReplicaAislada(opciones), /No se pudo confirmar el commit/);
+  assert.equal(replica.estado().productos[0].codigo, "05P1379");
+  assert.equal(replica.estado().auditorias.length, 1);
+  assert.deepEqual(await ejecutarEnReplicaAislada(opciones), { estado: "ya_aplicado", seleccionados: 1 });
+});
+
 test("motor aislado registra respaldo integral y conserva datos; repetición comprobada es idempotente", async () => {
   const original = { ...producto, equivalentesVinculados: ["otra"], datosNoEsquematizados: { a: 9 } };
   const replica = replicaDePrueba([original]);
@@ -261,8 +328,8 @@ test("rechaza alteraciones de plan, informe, catálogo o inventario antes de esc
   }
 });
 
-test("un fallo de auditoría, reemplazo o commit revierte toda la operación", async () => {
-  for (const fallo of ["auditoria", "reemplazo", "commit"]) {
+test("fallos de auditoría y reemplazo no dejan cambios visibles en el adaptador de prueba", async () => {
+  for (const fallo of ["auditoria", "reemplazo"]) {
     const replica = replicaDePrueba([producto]);
     const antes = replica.estado();
     replica.fallos[fallo] = true;

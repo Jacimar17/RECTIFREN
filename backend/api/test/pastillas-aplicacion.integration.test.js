@@ -1,7 +1,12 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { randomUUID } = require("node:crypto");
+const { spawnSync } = require("node:child_process");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
 const { MongoClient, ObjectId } = require("mongoose").mongo;
+const { EJSON } = require("mongoose").mongo.BSON;
 const { crearInformeVerificable } = require("../src/migrations/pastillas-informe");
 const { crearPlan, crearPlanFusion, ejecutarEnReplicaAislada, hashArchivo } = require("../src/migrations/pastillas-aplicacion");
 
@@ -111,6 +116,127 @@ test("replica set: cambios posteriores al informe impiden la aplicación", { ski
     }
   });
 });
+
+test("replica set: CLI de códigos individuales verifica respaldo y conserva stock", { skip: !uri }, async () => {
+  await conBaseDePrueba(async ({ db }) => {
+    const archivoDir = fs.mkdtempSync(path.join(os.tmpdir(), "pastillas-cli-"));
+    const inventario = path.join(archivoDir, "inventario.ejson");
+    const informe = path.join(archivoDir, "informe.json");
+    const plan = path.join(archivoDir, "plan.json");
+    const respaldo = path.join(archivoDir, "respaldo.gz");
+    const ejecutable = path.join(__dirname, "..", "scripts", "aplicar-pastillas.js");
+    const destino = new URL(uri);
+    destino.pathname = `/${db.databaseName}`;
+    const env = { ...process.env, PASTILLAS_MONGODB_URI: destino.toString() };
+    const run = args => {
+      const resultado = spawnSync(process.execPath, [ejecutable, ...args], { encoding: "utf8", env });
+      assert.equal(resultado.status, 0, resultado.stderr);
+      return JSON.parse(resultado.stdout);
+    };
+    try {
+      await db.collection("productos").insertOne({ _id: new ObjectId(), codigo: "PD/528", marca: "LPR",
+        stock: 5, ubicacion: "NEGOCIO" });
+      const productos = await db.collection("productos").find().sort({ _id: 1 }).toArray();
+      fs.writeFileSync(inventario, EJSON.stringify({ productos }));
+      fs.writeFileSync(respaldo, "respaldo de prueba");
+      const resumen = run(["--informe-local", "--inventario", inventario, "--salida", informe]);
+      const preparado = run(["--planificar", "--informe", informe, "--sha256", resumen.sha256,
+        "--inventario", inventario, "--salida", plan]);
+      assert.equal(preparado.seleccionados, 1);
+      const documentoInforme = JSON.parse(fs.readFileSync(informe));
+      const hello = await db.admin().command({ hello: 1 });
+      const args = ["--aplicar", "--informe", informe, "--sha256", resumen.sha256,
+        "--plan", plan, "--sha256-plan", preparado.sha256, "--respaldo", respaldo,
+        "--sha256-respaldo", hashArchivo(fs.readFileSync(respaldo)),
+        "--sha256-inventario-respaldo", documentoInforme.inventario.sha256,
+        "--base", db.databaseName, "--replica", hello.setName,
+        "--confirmar-restauracion", "--confirmar-ventana", "--confirmar-referencias"];
+      assert.equal(run(args).estado, "aplicado");
+      const producto = await db.collection("productos").findOne();
+      assert.equal(producto.codigo, "05P1379");
+      assert.equal(producto.stock, 5);
+      assert.equal(producto.ubicacion, "NEGOCIO");
+      assert.equal(run(args).estado, "ya_aplicado");
+      assert.equal(await db.collection("pastillas_aplicacion_auditoria").countDocuments(), 1);
+    } finally {
+      for (const file of [inventario, informe, plan, respaldo]) {
+        if (fs.existsSync(file)) fs.rmSync(file);
+      }
+      fs.rmdirSync(archivoDir);
+    }
+  });
+});
+
+test("replica set: plan individual conserva el inventario de una instantánea real",
+  { skip: !uri || !process.env.PASTILLAS_TEST_SNAPSHOT || !process.env.PASTILLAS_TEST_BACKUP }, async () => {
+    await conBaseDePrueba(async ({ db }) => {
+      const snapshot = EJSON.parse(fs.readFileSync(process.env.PASTILLAS_TEST_SNAPSHOT, "utf8"));
+      assert.ok(Array.isArray(snapshot.productos) && Array.isArray(snapshot.movimientos));
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pastillas-inventario-"));
+      const informe = path.join(dir, "informe.json");
+      const plan = path.join(dir, "plan.json");
+      const ejecutable = path.join(__dirname, "..", "scripts", "aplicar-pastillas.js");
+      const destino = new URL(uri);
+      destino.pathname = `/${db.databaseName}`;
+      const env = { ...process.env, PASTILLAS_MONGODB_URI: destino.toString() };
+      const run = args => {
+        const resultado = spawnSync(process.execPath, [ejecutable, ...args], { encoding: "utf8", env });
+        assert.equal(resultado.status, 0, resultado.stderr);
+        return JSON.parse(resultado.stdout);
+      };
+      try {
+        await db.collection("productos").insertMany(snapshot.productos);
+        if (snapshot.movimientos.length) await db.collection("movimientos").insertMany(snapshot.movimientos);
+        const resumen = run(["--informe-local", "--inventario", process.env.PASTILLAS_TEST_SNAPSHOT,
+          "--salida", informe]);
+        const preparado = run(["--planificar", "--informe", informe, "--sha256", resumen.sha256,
+          "--inventario", process.env.PASTILLAS_TEST_SNAPSHOT, "--salida", plan]);
+        if (process.env.PASTILLAS_TEST_EXPECTED_COUNT) {
+          assert.equal(preparado.seleccionados, Number(process.env.PASTILLAS_TEST_EXPECTED_COUNT));
+        }
+        const datosPlan = JSON.parse(fs.readFileSync(plan));
+        const cambios = new Map(datosPlan.seleccionados.map(c => [c.id, c]));
+        const inventarioHash = JSON.parse(fs.readFileSync(informe)).inventario.sha256;
+        const backup = process.env.PASTILLAS_TEST_BACKUP;
+        const hello = await db.admin().command({ hello: 1 });
+        const args = ["--aplicar", "--informe", informe, "--sha256", resumen.sha256,
+          "--plan", plan, "--sha256-plan", preparado.sha256, "--respaldo", backup,
+          "--sha256-respaldo", hashArchivo(fs.readFileSync(backup)),
+          "--sha256-inventario-respaldo", inventarioHash, "--base", db.databaseName,
+          "--replica", hello.setName, "--confirmar-restauracion", "--confirmar-ventana",
+          "--confirmar-referencias"];
+        assert.equal(run(args).estado, "aplicado");
+        const posteriores = await db.collection("productos").find().sort({ _id: 1 }).toArray();
+        assert.equal(posteriores.length, snapshot.productos.length);
+        const originales = new Map(snapshot.productos.map(p => [String(p._id), p]));
+        for (const actual of posteriores) {
+          const anterior = originales.get(String(actual._id));
+          assert.ok(anterior);
+          const cambio = cambios.get(String(actual._id));
+          if (!cambio) {
+            assert.deepEqual(actual, anterior);
+            continue;
+          }
+          const { codigo, CODIGO, codigosAnteriores, migracionPastillas, ...resto } = actual;
+          const { codigo: previo, CODIGO: PREVIO, codigosAnteriores: anteriores,
+            migracionPastillas: migracionAnterior, ...restoAnterior } = anterior;
+          assert.deepEqual(resto, restoAnterior);
+          if (previo != null) assert.equal(codigo, cambio.codigoOficial);
+          if (PREVIO != null) assert.equal(CODIGO, cambio.codigoOficial);
+          for (const alias of [...(anteriores || []), previo, PREVIO].filter(Boolean)) {
+            assert.ok(codigosAnteriores.includes(alias));
+          }
+          assert.equal(migracionAnterior, undefined);
+          assert.equal(migracionPastillas.codigoAnterior, cambio.codigoAnterior);
+        }
+        assert.deepEqual(await db.collection("movimientos").find().sort({ _id: 1 }).toArray(), snapshot.movimientos);
+        assert.equal(run(args).estado, "ya_aplicado");
+      } finally {
+        for (const file of [informe, plan]) if (fs.existsSync(file)) fs.rmSync(file);
+        fs.rmdirSync(dir);
+      }
+    });
+  });
 
 async function prepararFusion({ client, db }, { rechazarMovimiento = false } = {}) {
   const [origenId, destinoId, otroId, movimientoId] = Array.from({ length: 4 }, () => new ObjectId());
