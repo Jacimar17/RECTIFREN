@@ -1,3 +1,7 @@
+# Exportación de pastillas Litton
+
+`node scripts/export-litton-pastillas.js` consulta el catálogo y genera en la raíz del repositorio `litton-pastillas.json` y `litton-pastillas.csv`. Para reintentar únicamente las fichas que fallaron en la exportación existente, ejecutar `node scripts/export-litton-pastillas.js --retry-errors`. Los errores pendientes se mantienen en el campo `error`. Ninguna de estas opciones modifica MongoDB.
+
 # Migración de inventario RF a variantes Litton
 
 `migrate-litton-variants.js` transforma grupos de productos `RF-*` en un documento por código principal Litton. La ficha, descripción, familia, especificaciones, imagen y equivalencias provienen del catálogo de Litton; las cantidades quedan agrupadas por marca y ubicación. Los documentos RF originales se conservan con `archivado: true` para mantener las referencias de movimientos históricos.
