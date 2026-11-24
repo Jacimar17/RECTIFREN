@@ -7,8 +7,10 @@ const os = require("node:os");
 const path = require("node:path");
 const { MongoClient, ObjectId } = require("mongoose").mongo;
 const { EJSON } = require("mongoose").mongo.BSON;
-const { crearInformeVerificable } = require("../src/migrations/pastillas-informe");
-const { crearPlan, crearPlanFusion, ejecutarEnReplicaAislada, hashArchivo } = require("../src/migrations/pastillas-aplicacion");
+const { crearInformeVerificable, huella } = require("../src/migrations/pastillas-informe");
+const { obtenerCatalogoLocal } = require("../src/services/catalogo-pastillas");
+const { crearPlan, crearPlanFusion, ejecutarEnReplicaAislada, ejecutarFusionesConVentana,
+  hashArchivo } = require("../src/migrations/pastillas-aplicacion");
 
 const uri = process.env.PASTILLAS_TEST_MONGODB_URI;
 const catalogo = { version: "v1", fichas: [{ code: "A", brand: "LITTON", substitutes: [
@@ -238,6 +240,131 @@ test("replica set: plan individual conserva el inventario de una instantánea re
     });
   });
 
+test("replica restaurada: lote real conserva stock, ubicaciones y referencias",
+  { skip: !process.env.PASTILLAS_TEST_RESTORED_URI || !process.env.PASTILLAS_TEST_BATCH_DIR }, async () => {
+    const restoredUri = process.env.PASTILLAS_TEST_RESTORED_URI;
+    const parsed = new URL(restoredUri);
+    if (parsed.protocol !== "mongodb:" || parsed.hostname !== "127.0.0.1" ||
+        !parsed.port || parsed.searchParams.get("directConnection") !== "true") {
+      throw new Error("La prueba del lote solo admite una réplica local directa.");
+    }
+    const dir = process.env.PASTILLAS_TEST_BATCH_DIR;
+    const snapshot = EJSON.parse(fs.readFileSync(path.join(dir, "inventario-y-movimientos.ejson"), "utf8"));
+    const bytesInforme = fs.readFileSync(path.join(dir, "informe.json"));
+    const bytesPlan = fs.readFileSync(path.join(dir, "plan-12-fusiones.json"));
+    const plan = JSON.parse(bytesPlan);
+    const backup = path.join(dir, "atlas.archive.gz");
+    const client = new MongoClient(restoredUri);
+    try {
+      await client.connect();
+      const db = client.db("rectifren");
+      const hello = await db.admin().command({ hello: 1 });
+      const productosAntes = await db.collection("productos").find().sort({ _id: 1 }).toArray();
+      const movimientosAntes = await db.collection("movimientos").find().sort({ _id: 1 }).toArray();
+      assert.equal(huella(productosAntes), huella(snapshot.productos));
+      assert.equal(huella(movimientosAntes), huella(snapshot.movimientos));
+      const opciones = { db, session: client.startSession(), leerCatalogo: obtenerCatalogoLocal,
+        bytesInforme, hashAprobado: hashArchivo(bytesInforme), bytesPlan, hashPlan: hashArchivo(bytesPlan),
+        fecha: new Date("2026-01-01"), baseAprobada: db.databaseName, replicaAprobada: hello.setName,
+        archivoRespaldo: backup, hashRespaldoAprobado: hashArchivo(fs.readFileSync(backup)),
+        hashInventarioRespaldo: huella(productosAntes), restauracionComprobada: true,
+        ventanaSinEscritoresConfirmada: true, referenciasExternasRevisadas: true };
+      try {
+        assert.deepEqual(await ejecutarFusionesConVentana(opciones), { estado: "aplicado", fusiones: 12 });
+        const posteriores = await db.collection("productos").find().sort({ _id: 1 }).toArray();
+        const movimientos = await db.collection("movimientos").find().sort({ _id: 1 }).toArray();
+        const antesPorId = new Map(productosAntes.map(p => [String(p._id), p]));
+        const despuesPorId = new Map(posteriores.map(p => [String(p._id), p]));
+        const fuentes = new Map();
+        const grupoIds = new Set(plan.fusiones.flatMap(f => f.ids));
+        assert.equal(posteriores.length, productosAntes.length);
+        for (const fusion of plan.fusiones) {
+          const destino = despuesPorId.get(fusion.destino);
+          const esperados = new Map();
+          for (const id of fusion.ids) {
+            const anterior = antesPorId.get(id);
+            esperados.set(anterior.ubicacion, (esperados.get(anterior.ubicacion) || 0) +
+              (anterior.stock ?? anterior.STOCK));
+            if (id !== fusion.destino) {
+              fuentes.set(id, fusion.destino);
+              const archivado = despuesPorId.get(id);
+              assert.equal(archivado.archivado, true);
+              assert.equal(String(archivado.migracionPastillas.reemplazadoPor), fusion.destino);
+              assert.equal(archivado.ubicacion, anterior.ubicacion);
+              assert.equal(archivado.stock ?? archivado.STOCK, anterior.stock ?? anterior.STOCK);
+            }
+          }
+          assert.equal(destino.codigo, fusion.codigoOficial);
+          assert.deepEqual(new Map(destino.variantes.map(v => [v.ubicacion, v.cantidad])), esperados);
+        }
+        for (const actual of posteriores) {
+          if (!grupoIds.has(String(actual._id))) {
+            assert.equal(huella(actual), huella(antesPorId.get(String(actual._id))));
+          }
+        }
+        const movimientosPorId = new Map(movimientos.map(m => [String(m._id), m]));
+        let redirigidos = 0;
+        for (const previo of movimientosAntes) {
+          const actual = movimientosPorId.get(String(previo._id));
+          assert.ok(actual);
+          const nuevoId = fuentes.get(String(previo.productoId));
+          if (!nuevoId) {
+            assert.equal(huella(actual), huella(previo));
+            continue;
+          }
+          const { productoId, referenciaPastillasOriginal, ...otros } = actual;
+          const { productoId: referenciaPrevia, ...otrosPrevios } = previo;
+          assert.equal(String(productoId), nuevoId);
+          assert.equal(String(referenciaPastillasOriginal.productoId), String(referenciaPrevia));
+          assert.equal(huella(otros), huella(otrosPrevios));
+          redirigidos++;
+        }
+        const audit = await db.collection("pastillas_aplicacion_auditoria").findOne({ _id: opciones.hashPlan });
+        assert.equal(audit.respaldos.length, 24);
+        assert.equal(audit.respaldosMovimientos.length, redirigidos);
+        assert.deepEqual(await ejecutarFusionesConVentana(opciones), { estado: "ya_aplicado", fusiones: 12 });
+        const mongoose = require("mongoose");
+        const destino = new URL(restoredUri);
+        destino.pathname = "/rectifren";
+        const anterioresFlags = {
+          familias: process.env.FAMILIAS_HABILITADAS,
+          catalogo: process.env.FAMILIAS_CATALOGO_PERSISTIDO_HABILITADAS,
+        };
+        process.env.FAMILIAS_HABILITADAS = "false";
+        process.env.FAMILIAS_CATALOGO_PERSISTIDO_HABILITADAS = "true";
+        try {
+          await mongoose.connect(destino.toString());
+          const servicioProductos = require("../src/services/productos");
+          const servicioStock = require("../src/services/stock");
+          for (const codigo of ["528", "05P1379"]) {
+            const resultado = await servicioProductos.buscar(codigo);
+            assert.equal(resultado.familiasError, undefined);
+            const filas = resultado.familias.flatMap(f => f.filas).filter(f => f.marca === "LPR");
+            assert.ok(filas.some(f => f.ubicacion === "NEGOCIO" && f.stock === 8));
+            assert.ok(filas.some(f => f.ubicacion === "DEPOSITO_GALPON" && f.stock === 10));
+          }
+          const movimiento = await servicioStock.aplicarMovimiento("SALIDA",
+            { codigo: "PD/528", marca: "LPR", ubicacion: "NEGOCIO", cantidad: 1 });
+          assert.equal(movimiento.stock_anterior, 8);
+          assert.equal(movimiento.stock_nuevo, 7);
+        } finally {
+          await mongoose.disconnect();
+          for (const [nombre, valor] of Object.entries({
+            FAMILIAS_HABILITADAS: anterioresFlags.familias,
+            FAMILIAS_CATALOGO_PERSISTIDO_HABILITADAS: anterioresFlags.catalogo,
+          })) {
+            if (valor === undefined) delete process.env[nombre];
+            else process.env[nombre] = valor;
+          }
+        }
+      } finally {
+        await opciones.session.endSession();
+      }
+    } finally {
+      await client.close();
+    }
+  });
+
 async function prepararFusion({ client, db }, { rechazarMovimiento = false } = {}) {
   const [origenId, destinoId, otroId, movimientoId] = Array.from({ length: 4 }, () => new ObjectId());
   const comun = { marca: "LPR", stockMinimo: 2, camposExtra: { nota: "preservar" },
@@ -304,6 +431,12 @@ test("replica set: fusión, referencias, ubicaciones y repetición", { skip: !ur
       const audit = await db.collection("pastillas_aplicacion_auditoria").findOne();
       assert.equal(audit.respaldos.length, 3);
       assert.equal(audit.respaldosMovimientos.length, 1);
+      assert.equal(audit.versionPlan, 2);
+      assert.equal(audit.informeSha256, opciones.hashAprobado);
+      assert.equal(audit.planSha256, opciones.hashPlan);
+      assert.equal(audit.inventarioDespues, huella(await db.collection("productos").find().sort({ _id: 1 }).toArray()));
+      assert.equal(audit.movimientosDespues, huella(await db.collection("movimientos").find().sort({ _id: 1 }).toArray()));
+      assert.equal(audit.catalogoSha256, huella(catalogo));
       assert.deepEqual(await ejecutarEnReplicaAislada(opciones), { estado: "ya_aplicado", seleccionados: 1 });
     } finally {
       await opciones.session.endSession();

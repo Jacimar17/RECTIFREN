@@ -429,6 +429,39 @@ html[data-theme="dark"] .auth-gate-card {
     border-radius: 18px;
   }
 
+  .family-summary-card {
+    padding: 14px;
+  }
+
+  .family-summary-heading {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .family-summary-totals {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .family-summary-totals.has-unlocated {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .family-summary-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 10px;
+  }
+
+  .family-summary-row .inventory-location-badge {
+    grid-column: 1;
+    grid-row: 2;
+    width: fit-content;
+  }
+
+  .family-summary-stock {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    align-self: center;
+  }
+
   .stock-card:hover {
     transform: none;
   }
@@ -437,6 +470,12 @@ html[data-theme="dark"] .auth-gate-card {
     position: sticky;
     top: 0;
     z-index: 5;
+  }
+}
+
+@media (max-width: 380px) {
+  .family-summary-totals {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

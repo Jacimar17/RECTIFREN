@@ -2,6 +2,7 @@ const { createHash } = require("node:crypto");
 const { createReadStream } = require("node:fs");
 const { EJSON } = require("mongoose").mongo.BSON;
 const { crearInformeVerificable, huella } = require("./pastillas-informe");
+const { camposMetadatosEnConflicto } = require("./pastillas-preview");
 const { normalizarCodigo } = require("../proveedores/familia-inventario");
 const { identidadMarca } = require("../proveedores/familias-catalogo-persistido");
 const { ErrorSeguro, conLimpieza } = require("./pastillas-errores");
@@ -137,6 +138,18 @@ function camposConReferenciaDesconocida(doc, permitidos, ids, codigos) {
     !permitidos.has(campo) && contieneIds(valor, ids, codigos));
 }
 
+function referenciasProductoDesconocidas(producto, ids, codigos) {
+  const { migracionPastillas, ...resto } = producto;
+  if (camposConReferenciaDesconocida(resto, new Set(["_id", "equivalentesVinculados",
+    "codigo", "CODIGO", "codigosAnteriores"]), ids, codigos)) return true;
+  if (!migracionPastillas || Object.getPrototypeOf(migracionPastillas) !== Object.prototype) {
+    return contieneIds(migracionPastillas, ids, codigos);
+  }
+  const { codigoAnterior, ...otrasReferencias } = migracionPastillas;
+  return (typeof codigoAnterior === "string" && !ids.has(codigoAnterior)
+    ? false : contieneIds(codigoAnterior, ids, codigos)) || contieneIds(otrasReferencias, ids, codigos);
+}
+
 function prepararFusion(propuesta, productos, movimientos, confirmacion, informeSha256, fecha) {
   const fallar = motivo => { throw new ErrorSeguro(motivo); };
   if (!confirmacion || !Array.isArray(confirmacion.ids) || confirmacion.ids.length < 2 ||
@@ -209,16 +222,11 @@ function prepararFusion(propuesta, productos, movimientos, confirmacion, informe
   const codigosGrupo = new Set([oficial, anterior, ...grupo.flatMap(p =>
     [p.codigo, p.CODIGO, ...(p.codigosAnteriores || [])])]
     .map(normalizarCodigo).filter(Boolean));
-  const variables = new Set(["_id", "codigo", "CODIGO", "marca", "MARCA", "stock", "STOCK",
-    "ubicacion", "ubicacionPendiente", "createdAt", "updatedAt", "__v"]);
-  const metadatos = p => Object.fromEntries(Object.entries(p).filter(([k]) => !variables.has(k)));
-  const huellaMetadatos = p => huella(canonico(JSON.parse(EJSON.stringify(metadatos(p), { relaxed: false }))));
-  if (grupo.some(p => huellaMetadatos(p) !== huellaMetadatos(destino))) {
+  if (camposMetadatosEnConflicto(grupo).length) {
     fallar("Metadatos incompatibles.");
   }
   for (const p of productos) {
-    if (camposConReferenciaDesconocida(p, new Set(["_id", "equivalentesVinculados",
-      "codigo", "CODIGO", "codigosAnteriores"]), ids, codigosGrupo)) {
+    if (referenciasProductoDesconocidas(p, ids, codigosGrupo)) {
       fallar("Hay referencias de producto en campos no reconocidos.");
     }
     if (p.equivalentesVinculados != null && (!Array.isArray(p.equivalentesVinculados) ||
@@ -283,7 +291,13 @@ function prepararFusion(propuesta, productos, movimientos, confirmacion, informe
       if (codigo && codigo !== oficial && !alias.includes(codigo)) alias.push(codigo);
     }
   }
-  const fusionado = { ...destino, codigo: oficial, schemaVersion: 2, archivado: false,
+  const camposVariables = new Set(["_id", "codigo", "CODIGO", "marca", "MARCA", "stock", "STOCK",
+    "ubicacion", "ubicacionPendiente", "createdAt", "updatedAt", "__v", "stockMinimo"]);
+  const metadatos = Object.assign({}, ...grupo.map(p =>
+    Object.fromEntries(Object.entries(p).filter(([campo]) => !camposVariables.has(campo)))));
+  const metadatosFaltantes = Object.fromEntries(Object.entries(metadatos)
+    .filter(([campo]) => !Object.prototype.hasOwnProperty.call(destino, campo)));
+  const fusionado = { ...destino, ...metadatosFaltantes, codigo: oficial, schemaVersion: 2, archivado: false,
     variantes: [...variantes.values()], codigosAnteriores: alias,
     migracionPastillas: { informeSha256, fecha, fusionados: grupo.filter(p => p !== destino).map(p => p._id) } };
   if (destino.CODIGO != null) fusionado.CODIGO = oficial;
@@ -329,6 +343,43 @@ function crearPlanFusion(informe, productos, movimientos, informeSha256, confirm
   return { version: 2, informeSha256, movimientosSha256: huella(movimientos), confirmacion: copia,
     fusion: motivo ? null : { ids: copia.ids, destino: copia.destino },
     excluidos: motivo ? [motivo] : [] };
+}
+
+function simularFusiones(informe, productos, movimientos, catalogo, informeSha256, confirmaciones, fecha) {
+  let actuales = productos;
+  let movimientosActuales = movimientos;
+  const fusiones = [];
+  const idsUsados = new Set();
+  for (const confirmacion of confirmaciones) {
+    if (!confirmacion || !Array.isArray(confirmacion.ids) ||
+        confirmacion.ids.some(idGrupo => idsUsados.has(idGrupo))) {
+      throw new ErrorSeguro("Las fusiones contienen identificadores repetidos o inválidos.");
+    }
+    const propuestas = informe.propuestas.filter(p => Array.isArray(p.documentos) &&
+      p.documentos.length === confirmacion.ids.length &&
+      p.documentos.every(d => confirmacion.ids.includes(d.id)));
+    if (propuestas.length !== 1) throw new ErrorSeguro("La confirmación no identifica una única propuesta.");
+    const propuesta = propuestas[0];
+    const resultado = prepararFusion(propuesta, actuales, movimientosActuales, confirmacion, informeSha256, fecha);
+    for (const idGrupo of confirmacion.ids) idsUsados.add(idGrupo);
+    fusiones.push({ ids: confirmacion.ids, destino: confirmacion.destino,
+      marca: propuesta.marca, codigoOficial: propuesta.codigoOficial });
+    actuales = resultado.productosDespues;
+    movimientosActuales = resultado.movimientosDespues;
+    informe = crearInformeVerificable(actuales, catalogo);
+  }
+  return { productos: actuales, movimientos: movimientosActuales, fusiones };
+}
+
+function crearPlanFusiones(informe, productos, movimientos, catalogo, informeSha256, confirmaciones) {
+  if (!/^[a-f0-9]{64}$/.test(informeSha256 || "") || !Array.isArray(movimientos) ||
+      !Array.isArray(confirmaciones) || !confirmaciones.length) {
+    throw new ErrorSeguro("Datos del lote de fusiones inválidos.");
+  }
+  const copia = JSON.parse(JSON.stringify(confirmaciones));
+  const simulacion = simularFusiones(informe, productos, movimientos, catalogo, informeSha256, copia, new Date(0));
+  return { version: 3, informeSha256, movimientosSha256: huella(movimientos),
+    confirmaciones: copia, fusiones: simulacion.fusiones };
 }
 
 function verificarPlan(bytesPlan, hashPlan, informe, productos, informeSha256, movimientos) {
@@ -643,10 +694,116 @@ async function ejecutarCodigosConVentana({ db, session, leerCatalogo, bytesInfor
   return ejecutarMotor({ session, almacen, bytesInforme, hashAprobado, bytesPlan, hashPlan, fecha });
 }
 
+async function ejecutarFusionesConVentana({ db, session, leerCatalogo, bytesInforme, hashAprobado,
+  bytesPlan, hashPlan, fecha, baseAprobada, replicaAprobada, archivoRespaldo, hashRespaldoAprobado,
+  hashInventarioRespaldo, restauracionComprobada, ventanaSinEscritoresConfirmada, referenciasExternasRevisadas }) {
+  if (!db || !db.client || !session || session.client !== db.client ||
+      typeof db.collection !== "function" || typeof db.admin !== "function" ||
+      typeof leerCatalogo !== "function" || typeof baseAprobada !== "string" ||
+      !baseAprobada || db.databaseName !== baseAprobada || typeof replicaAprobada !== "string" ||
+      !replicaAprobada || typeof archivoRespaldo !== "string" || !archivoRespaldo ||
+      !/^[a-f0-9]{64}$/.test(hashRespaldoAprobado || "") ||
+      !/^[a-f0-9]{64}$/.test(hashInventarioRespaldo || "") ||
+      restauracionComprobada !== true || ventanaSinEscritoresConfirmada !== true ||
+      referenciasExternasRevisadas !== true) {
+    throw new ErrorSeguro("Faltan destino, respaldo restaurado, ventana sin escritores o revisión de referencias.");
+  }
+  if (!Buffer.isBuffer(bytesInforme) || hashArchivo(bytesInforme) !== hashAprobado ||
+      JSON.parse(bytesInforme.toString("utf8"))?.inventario?.sha256 !== hashInventarioRespaldo ||
+      !Buffer.isBuffer(bytesPlan) || hashArchivo(bytesPlan) !== hashPlan ||
+      !(fecha instanceof Date) || !Number.isFinite(fecha.getTime())) {
+    throw new ErrorSeguro("Informe, plan, respaldo o fecha no coinciden con la aprobación.");
+  }
+  const plan = JSON.parse(bytesPlan.toString("utf8"));
+  if (plan.version !== 3) throw new ErrorSeguro("Se requiere un plan de lote de fusiones.");
+  if (await hashRespaldo(archivoRespaldo) !== hashRespaldoAprobado) {
+    throw new ErrorSeguro("La huella del respaldo no coincide con la aprobada.");
+  }
+  const hello = await db.admin().command({ hello: 1 });
+  if (!hello.isWritablePrimary || hello.setName !== replicaAprobada) {
+    throw new ErrorSeguro("La réplica o el servidor primario no coinciden con el destino aprobado.");
+  }
+  const almacen = crearAlmacen(db, leerCatalogo, async () => true, null);
+  session.startTransaction({ readConcern: { level: "snapshot" }, readPreference: "primary",
+    writeConcern: { w: "majority" } });
+  let finalizada = false;
+  let commitIntentado = false;
+  try {
+    const productos = await almacen.leerProductos(session);
+    const movimientos = await almacen.leerMovimientos(session);
+    const catalogo = await almacen.leerCatalogo(session);
+    const auditoria = await almacen.leerAuditoria(hashPlan, session);
+    let anteriores = productos;
+    let movimientosAntes = movimientos;
+    if (auditoria) {
+      if (auditoria.versionPlan !== 3 || auditoria.informeSha256 !== hashAprobado ||
+          auditoria.respaldoSha256 !== hashRespaldoAprobado ||
+          auditoria.inventarioRespaldoSha256 !== hashInventarioRespaldo ||
+          auditoria.base !== baseAprobada || auditoria.replica !== replicaAprobada ||
+          auditoria.inventarioDespues !== huella(productos) ||
+          auditoria.movimientosDespues !== huella(movimientos) ||
+          auditoria.catalogoSha256 !== huella(catalogo) ||
+          !(auditoria.fecha instanceof Date) || !Number.isFinite(auditoria.fecha.getTime())) {
+        throw new ErrorSeguro("La auditoría o el estado actual no se pueden verificar.");
+      }
+      anteriores = reconstruirAntes(productos, auditoria.respaldos);
+      movimientosAntes = reconstruirAntes(movimientos, auditoria.respaldosMovimientos);
+    }
+    const informe = verificarInforme(bytesInforme, hashAprobado, anteriores, catalogo);
+    const esperado = crearPlanFusiones(informe, anteriores, movimientosAntes, catalogo,
+      hashAprobado, plan.confirmaciones);
+    if (JSON.stringify(canonico(plan)) !== JSON.stringify(canonico(esperado))) {
+      throw new ErrorSeguro("El lote aprobado no coincide con los datos actuales.");
+    }
+    const resultado = simularFusiones(informe, anteriores, movimientosAntes, catalogo,
+      hashAprobado, plan.confirmaciones, auditoria ? auditoria.fecha : fecha);
+    const productosCambiados = documentosAlterados(anteriores, resultado.productos);
+    const movimientosCambiados = documentosAlterados(movimientosAntes, resultado.movimientos);
+    if (auditoria) {
+      if (huella(resultado.productos) !== huella(productos) || huella(resultado.movimientos) !== huella(movimientos) ||
+          huella(productosCambiados.map(c => c.antes)) !== huella(auditoria.respaldos) ||
+          huella(movimientosCambiados.map(c => c.antes)) !== huella(auditoria.respaldosMovimientos)) {
+        throw new ErrorSeguro("El estado aplicado no coincide con las fusiones aprobadas.");
+      }
+      await session.abortTransaction();
+      finalizada = true;
+      return { estado: "ya_aplicado", fusiones: plan.fusiones.length };
+    }
+    await almacen.insertarAuditoria({
+      versionPlan: 3, planSha256: hashPlan, informeSha256: hashAprobado, fecha,
+      respaldoSha256: hashRespaldoAprobado, inventarioRespaldoSha256: hashInventarioRespaldo,
+      base: baseAprobada, replica: replicaAprobada, catalogoSha256: huella(catalogo),
+      inventarioDespues: huella(resultado.productos), movimientosDespues: huella(resultado.movimientos),
+      respaldos: productosCambiados.map(c => c.antes),
+      respaldosMovimientos: movimientosCambiados.map(c => c.antes),
+    }, session);
+    for (const cambio of productosCambiados) {
+      if (await almacen.reemplazarProducto(cambio.antes, cambio.despues, session) !== 1) {
+        throw new ErrorSeguro("Conflicto al reemplazar un producto.");
+      }
+    }
+    for (const cambio of movimientosCambiados) {
+      if (await almacen.reemplazarMovimiento(cambio.antes, cambio.despues, session) !== 1) {
+        throw new ErrorSeguro("Conflicto al reemplazar un movimiento.");
+      }
+    }
+    commitIntentado = true;
+    await session.commitTransaction();
+    finalizada = true;
+    return { estado: "aplicado", fusiones: plan.fusiones.length };
+  } catch (error) {
+    if (finalizada) throw error;
+    if (commitIntentado) {
+      throw new ErrorSeguro("No se pudo confirmar el commit; verificar la auditoría y el estado antes de reintentar.", { cause: error });
+    }
+    return conLimpieza(async () => { throw error; }, () => session.abortTransaction(), "abortar");
+  }
+}
+
 function aplicar() {
   throw new ErrorSeguro("Aplicación bloqueada: se requieren todas las opciones y confirmaciones obligatorias.");
 }
 
 module.exports = { hashArchivo, verificarInforme, seleccionarCambios, construirActualizacion,
-  inspeccionarEnTransaccion, crearPlan, crearPlanFusion, verificarPlan, ejecutarEnReplicaAislada,
-  ejecutarCodigosConVentana, aplicar };
+  inspeccionarEnTransaccion, crearPlan, crearPlanFusion, crearPlanFusiones, verificarPlan, ejecutarEnReplicaAislada,
+  ejecutarCodigosConVentana, ejecutarFusionesConVentana, aplicar };

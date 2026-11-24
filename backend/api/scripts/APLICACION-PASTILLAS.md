@@ -79,11 +79,21 @@ cambios posteriores y requiere autorización separada.
 
 ## Fusiones y pruebas
 
-El motor de fusión solo está disponible para pruebas aisladas. Requiere
-identidad confirmada, metadatos compatibles y cobertura explícita de
-referencias; no está conectado a la CLI de producción. No asumir identidad
-física por similitud de códigos o pertenencia a una familia. Los conflictos
-de metadatos requieren resolución antes de fusionar.
+Las fusiones no están conectadas a la CLI. El motor `ejecutarFusionesConVentana`
+admite un lote aprobado con `crearPlanFusiones` y aplica todas las fusiones en
+una única transacción o ninguna. Exige respaldo restaurado, ventana sin
+escritores, revisión de referencias, hashes y destino aprobados, y confirmación
+de identidad para cada grupo. Archiva los originales y registra sus documentos
+y movimientos modificados en auditoría. El stock mínimo se conserva por
+ubicación en las variantes del producto resultante; diferencias de metadatos
+reales siguen bloqueando la fusión, pero los valores predeterminados vacíos o
+ausentes no se consideran conflictos. Un stock mínimo distinto se admite solo
+entre ubicaciones diferentes.
+
+La revisión de referencias y la ventana son declaraciones del operador, no
+pruebas automáticas de ausencia de integraciones externas o escritores. No
+asumir identidad física por similitud de códigos o pertenencia a una familia.
+Los conflictos de metadatos requieren resolución antes de fusionar.
 
 Las pruebas de integración solo se ejecutan si `PASTILLAS_TEST_MONGODB_URI`
 apunta a una réplica local autenticada y aislada con conexión directa a

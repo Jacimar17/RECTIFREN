@@ -8,7 +8,7 @@ import {
   $,
   renderStock, setBusy,
   showToast, updateStats, showSkeleton, updateChipCounts, renderCards, renderFamilySummaries
-} from "./ui.js?v=20261124-persistedfamilies";
+} from "./ui.js?v=20261124-family-summary";
 import { createEquivalencesController } from "./equivalences.js";
 import { FAMILIAS_CATALOGO_PERSISTIDO_HABILITADAS } from "./config.js?v=20261124-persistedfamilies";
 import { createMovementController } from "./movements.js";

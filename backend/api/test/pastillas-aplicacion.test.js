@@ -6,8 +6,8 @@ const { crearInformeVerificable } = require("../src/migrations/pastillas-informe
 const { huella } = require("../src/migrations/pastillas-informe");
 const { ErrorSeguro, conLimpieza, diagnosticos } = require("../src/migrations/pastillas-errores");
 const { hashArchivo, verificarInforme, seleccionarCambios, construirActualizacion,
-  inspeccionarEnTransaccion, crearPlan, crearPlanFusion, ejecutarEnReplicaAislada,
-  ejecutarCodigosConVentana, aplicar } = require("../src/migrations/pastillas-aplicacion");
+  inspeccionarEnTransaccion, crearPlan, crearPlanFusion, crearPlanFusiones, ejecutarEnReplicaAislada,
+  ejecutarCodigosConVentana, ejecutarFusionesConVentana, aplicar } = require("../src/migrations/pastillas-aplicacion");
 
 const catalogo = { version: "v1", fichas: [{ code: "A", brand: "LITTON", substitutes: [
   { code: "FRASLE", value: "PD/528" }, { code: "LPR", value: "05P1379" },
@@ -418,6 +418,98 @@ function opcionesFusion(replica, datos, catalogoActual = catalogo) {
     hashPlan: hashArchivo(bytesPlan), fecha: new Date("2026-01-01T00:00:00Z"), plan };
 }
 
+test("valida stock mínimo por ubicación y bloquea diferencias dentro de la misma", () => {
+  const datos = datosFusion();
+  datos.productos[1].stockMinimo = 3;
+  assert.ok(opcionesFusion(replicaDePrueba(datos.productos), datos).plan.fusion);
+  datos.productos[1].ubicacion = "NEGOCIO";
+  assert.equal(opcionesFusion(replicaDePrueba(datos.productos), datos).plan.fusion, null);
+});
+
+test("lote de fusiones es atómico, preserva ubicaciones y verifica auditoría al repetir", async () => {
+  const fs = require("node:fs");
+  const os = require("node:os");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pastillas-lote-"));
+  const respaldo = path.join(dir, "respaldo.gz");
+  fs.writeFileSync(respaldo, "respaldo de prueba");
+  const datos = datosFusion();
+  const lprOrigen = datos.productos[0];
+  const lprDestino = datos.productos[1];
+  Object.assign(lprOrigen, {
+    archivado: false, camposExtra: {}, descripcion: "", equivalenciasCatalogo: [],
+    equivalentesVinculados: [], foto: "", imagenLitton: "", precio: 0,
+    schemaVersion: 1, stockMinimo: 2, titulo: "",
+  });
+  for (const campo of ["archivado", "camposExtra", "descripcion", "equivalenciasCatalogo",
+    "equivalentesVinculados", "foto", "imagenLitton", "precio", "schemaVersion", "stockMinimo", "titulo"]) {
+    delete lprDestino[campo];
+  }
+  datos.productos.push(
+    { _id: "4", codigo: "PD/60", marca: "TRW", stock: 5, ubicacion: "NEGOCIO" },
+    { _id: "5", codigo: "TRW02130", marca: "TRW", stock: 6, ubicacion: "DEPOSITO_GALPON" });
+  datos.movimientos.push({ _id: "m3", productoId: "4", codigo: "PD/60", marca: "TRW", cantidad: 1 });
+  const catalogoLote = { ...catalogo, fichas: [...catalogo.fichas, { code: "B", brand: "LITTON", substitutes: [
+    { code: "FRASLE", value: "PD/60" }, { code: "TRW", value: "RCPT02130" },
+  ] }] };
+  const confirmaciones = [datos.confirmacion,
+    { ids: ["4", "5"], destino: "5", evidencia: "Identidad confirmada" }];
+  const informe = crearInformeVerificable(datos.productos, catalogoLote);
+  const bytesInforme = Buffer.from(JSON.stringify(informe));
+  const hashAprobado = hashArchivo(bytesInforme);
+  const plan = crearPlanFusiones(informe, datos.productos, datos.movimientos, catalogoLote, hashAprobado, confirmaciones);
+  const bytesPlan = Buffer.from(JSON.stringify(plan));
+  const replica = replicaDePrueba(datos.productos, catalogoLote, datos.movimientos);
+  replica.db.admin = () => ({ command: async () => ({ isWritablePrimary: true, setName: "rs-test" }) });
+  const opciones = { ...replica, bytesInforme, hashAprobado, bytesPlan, hashPlan: hashArchivo(bytesPlan),
+    fecha: new Date("2026-01-01"), baseAprobada: replica.db.databaseName, replicaAprobada: "rs-test",
+    archivoRespaldo: respaldo, hashRespaldoAprobado: hashArchivo(fs.readFileSync(respaldo)),
+    hashInventarioRespaldo: huella(datos.productos), restauracionComprobada: true,
+    ventanaSinEscritoresConfirmada: true, referenciasExternasRevisadas: true };
+  try {
+    assert.equal(plan.fusiones.length, 2);
+    for (const cambio of [
+      { ventanaSinEscritoresConfirmada: false },
+      { referenciasExternasRevisadas: false },
+      { baseAprobada: "otra" },
+      { replicaAprobada: "otra" },
+      { hashInventarioRespaldo: "0".repeat(64) },
+      { hashRespaldoAprobado: "0".repeat(64) },
+      { hashPlan: "0".repeat(64) },
+    ]) await assert.rejects(ejecutarFusionesConVentana({ ...opciones, ...cambio }));
+    assert.throws(() => crearPlanFusiones(informe, datos.productos, datos.movimientos, catalogoLote,
+      hashAprobado, [datos.confirmacion, datos.confirmacion]), /repetidos/);
+    const antes = replica.estado();
+    replica.fallos.movimiento = true;
+    await assert.rejects(ejecutarFusionesConVentana(opciones), /movimiento/);
+    assert.deepEqual(replica.estado(), antes);
+    replica.fallos.movimiento = false;
+    const commit = replica.session.commitTransaction;
+    replica.session.commitTransaction = async () => { await commit(); throw new Error("respuesta perdida"); };
+    await assert.rejects(ejecutarFusionesConVentana(opciones), /No se pudo confirmar el commit/);
+    replica.session.commitTransaction = commit;
+    const estado = replica.estado();
+    assert.equal(estado.productos[0].archivado, true);
+    assert.equal(estado.productos[3].archivado, true);
+    assert.deepEqual(estado.productos[1].variantes.map(v => [v.ubicacion, v.cantidad]),
+      [["NEGOCIO", 5], ["DEPOSITO_GALPON", 7]]);
+    assert.deepEqual(estado.productos[1].variantes.map(v => [v.ubicacion, v.stockMinimo ?? null]),
+      [["NEGOCIO", 2], ["DEPOSITO_GALPON", null]]);
+    assert.deepEqual(estado.productos[1].camposExtra, {});
+    assert.equal(estado.productos[1].descripcion, "");
+    assert.equal(estado.productos[1].precio, 0);
+    assert.deepEqual(estado.productos[4].variantes.map(v => [v.ubicacion, v.cantidad]),
+      [["NEGOCIO", 5], ["DEPOSITO_GALPON", 6]]);
+    assert.equal(estado.movimientos[0].productoId, "2");
+    assert.equal(estado.movimientos[2].productoId, "5");
+    assert.deepEqual(await ejecutarFusionesConVentana(opciones), { estado: "ya_aplicado", fusiones: 2 });
+    replica.alterar(e => { e.movimientos[0].cantidad++; });
+    await assert.rejects(ejecutarFusionesConVentana(opciones), /estado actual/);
+  } finally {
+    fs.rmSync(respaldo);
+    fs.rmdirSync(dir);
+  }
+});
+
 test("fusión aislada conserva ubicaciones, archiva, redirige vínculos y movimientos y es idempotente", async () => {
   const datos = datosFusion();
   const replica = replicaDePrueba(datos.productos, catalogo, datos.movimientos);
@@ -469,7 +561,6 @@ test("excluye fusiones ambiguas y referencias no demostrables", async () => {
     d => { d.productos[1].codigo = d.productos[1].CODIGO = "LPRX05P1379"; },
     d => { d.productos[1].marca = "lpr"; },
     d => { d.productos[1].camposExtra = { nota: "conflicto" }; },
-    d => { d.productos[1].stockMinimo = 3; },
     d => { d.productos[2].referenciaDesconocida = { producto: "1" }; },
     d => { d.productos[2].referenciaDesconocida = { codigo: "PD 528" }; },
     d => { delete d.movimientos[0].productoId; },
@@ -526,6 +617,17 @@ test("excluye referencias en campos desconocidos al código prefijado", () => {
   const opciones = opcionesFusion(replica, datos);
   assert.equal(opciones.plan.fusion, null);
   assert.ok(opciones.plan.excluidos.includes("Hay referencias de movimiento en campos no reconocidos."));
+});
+
+test("distingue códigos históricos propios de referencias de migración a otros productos", () => {
+  const datos = datosFusion();
+  datos.productos[2].migracionPastillas = { codigoAnterior: "PD/528",
+    informeSha256: "a".repeat(64), fecha: new Date("2026-01-01") };
+  let replica = replicaDePrueba(datos.productos, catalogo, datos.movimientos);
+  assert.ok(opcionesFusion(replica, datos).plan.fusion);
+  datos.productos[2].migracionPastillas.fusionados = ["1"];
+  replica = replicaDePrueba(datos.productos, catalogo, datos.movimientos);
+  assert.equal(opcionesFusion(replica, datos).plan.fusion, null);
 });
 
 test("fusiona duplicados del mismo código sin mezclar movimientos de otra marca", async () => {

@@ -78,9 +78,24 @@ export function renderFamilySummaries(families) {
     }).join("");
     const totals = family.totales || {};
     const ficha = family.fichaLitton || {};
-    const aliases = (family.equivalenciasCatalogo || []).map((item) =>
+    const aliasItems = (family.equivalenciasCatalogo || []).filter((item) => item?.codigo);
+    const aliasMarkup = aliasItems.map((item) =>
       `<span><strong>${escapeHtml(item.codigo || "")}</strong>${item.marca ? ` · ${escapeHtml(item.marca)}` : ""}</span>`
-    ).join("");
+    );
+    const visibleAliases = aliasMarkup.slice(0, 8).join("");
+    const hiddenAliases = aliasMarkup.slice(8);
+    const aliases = aliasItems.length
+      ? `<div class="family-summary-alias-block">
+          <span class="family-summary-label">Códigos equivalentes · ${aliasItems.length}</span>
+          <div class="family-summary-aliases">
+            ${visibleAliases}
+            ${hiddenAliases.length ? `<details class="family-summary-more">
+              <summary>Ver ${hiddenAliases.length} códigos más</summary>
+              <div class="family-summary-more-list">${hiddenAliases.join("")}</div>
+            </details>` : ""}
+          </div>
+        </div>`
+      : "";
     const specifications = specificationEntries(ficha);
     const image = /^https:\/\//i.test(family.imagenLitton || "")
       ? `<img class="family-summary-image" src="${escapeHtml(family.imagenLitton)}" alt="${escapeHtml(ficha.name || family.id || "Producto Litton")}" loading="lazy">`
@@ -100,16 +115,22 @@ export function renderFamilySummaries(families) {
       : "";
     return `<article class="family-summary-card">
       <div class="family-summary-heading">
-        <h2>${ficha.code ? `Ficha Litton · ${escapeHtml(ficha.code)}` : "Familia de códigos en tu inventario"}</h2>
-        <div class="family-summary-totals">
-          <span>Negocio: <strong>${escapeHtml(String(totals.NEGOCIO ?? 0))} u.</strong></span>
-          <span>Depósito/Galpón: <strong>${escapeHtml(String(totals.DEPOSITO_GALPON ?? 0))} u.</strong></span>
-          ${totals.SIN_UBICACION ? `<span>Sin ubicación: <strong>${escapeHtml(String(totals.SIN_UBICACION))} u.</strong></span>` : ""}
-          <span>Total: <strong>${escapeHtml(String(totals.total ?? 0))} u.</strong></span>
+        <div class="family-summary-title">
+          <span class="family-summary-kicker">${ficha.code ? "Familia del catálogo Litton" : "Familia de equivalencias"}</span>
+          <h2>${ficha.code ? `Ficha ${escapeHtml(ficha.code)}` : "Códigos relacionados en inventario"}</h2>
+        </div>
+        <div class="family-summary-totals${totals.SIN_UBICACION ? " has-unlocated" : ""}" aria-label="Stock total por ubicación">
+          <span><small>Negocio</small><strong>${escapeHtml(String(totals.NEGOCIO ?? 0))} <small>u.</small></strong></span>
+          <span><small>Depósito / galpón</small><strong>${escapeHtml(String(totals.DEPOSITO_GALPON ?? 0))} <small>u.</small></strong></span>
+          ${totals.SIN_UBICACION ? `<span><small>Sin ubicación</small><strong>${escapeHtml(String(totals.SIN_UBICACION))} <small>u.</small></strong></span>` : ""}
+          <span><small>Total familia</small><strong>${escapeHtml(String(totals.total ?? 0))} <small>u.</small></strong></span>
         </div>
       </div>
       ${catalog}
-      <ul class="family-summary-rows">${rows}</ul>
+      ${rows ? `<details class="family-summary-stock-details">
+        <summary>Ver detalle de stock por código (${family.filas.length})</summary>
+        <ul class="family-summary-rows">${rows}</ul>
+      </details>` : ""}
     </article>`;
   }).join("")}`;
 }

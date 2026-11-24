@@ -53,3 +53,33 @@ test("family summary toggle reveals then hides zero-stock rows without changing 
     globalThis.document = originalDocument;
   }
 });
+
+test("family summary keeps long equivalence lists compact and stock details expandable", () => {
+  const originalDocument = globalThis.document;
+  const container = { innerHTML: "", addEventListener() {} };
+  globalThis.document = { getElementById: (id) => id === "familySummary" ? container : null };
+  const equivalenciasCatalogo = Array.from({ length: 20 }, (_, index) => ({
+    codigo: `COD-${index + 1}`,
+    marca: "LPR",
+  }));
+  const familias = [{
+    id: "44980NA",
+    filas: [{ codigo: "PD/528", marca: "FRASLE", stock: 3, ubicacion: "NEGOCIO" }],
+    totales: { NEGOCIO: 3, DEPOSITO_GALPON: 0, total: 3 },
+    fichaLitton: { code: "44980NA", name: "Pastilla delantera" },
+    equivalenciasCatalogo,
+  }];
+
+  try {
+    renderFamilySummaries(familias);
+    assert.match(container.innerHTML, /Códigos equivalentes · 20/);
+    assert.match(container.innerHTML, /Ver 12 códigos más/);
+    assert.match(container.innerHTML, /COD-1/);
+    assert.match(container.innerHTML, /COD-20/);
+    assert.match(container.innerHTML, /<details class="family-summary-stock-details">/);
+    assert.match(container.innerHTML, /Ver detalle de stock por código \(1\)/);
+    assert.doesNotMatch(container.innerHTML, /<details class="family-summary-stock-details" open/);
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});

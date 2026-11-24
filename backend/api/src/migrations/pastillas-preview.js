@@ -81,6 +81,64 @@ function resumenDocumento(producto) {
   };
 }
 
+function serializarEstable(valor) {
+  if (Array.isArray(valor)) return `[${valor.map(serializarEstable).join(",")}]`;
+  if (valor && typeof valor === "object") {
+    if (valor instanceof Date) return `Date:${valor.toISOString()}`;
+    if (Buffer.isBuffer(valor)) return `Buffer:${valor.toString("base64")}`;
+    if (typeof valor.toHexString === "function") return `ObjectId:${valor.toHexString()}`;
+    return `{${Object.keys(valor).sort().map(clave =>
+      `${JSON.stringify(clave)}:${serializarEstable(valor[clave])}`).join(",")}}`;
+  }
+  return JSON.stringify(valor);
+}
+
+function camposMetadatosEnConflicto(documentos) {
+  const predeterminados = {
+    archivado: false,
+    camposExtra: {},
+    descripcion: "",
+    equivalenciasCatalogo: [],
+    equivalentesVinculados: [],
+    foto: "",
+    imagenLitton: "",
+    precio: 0,
+    schemaVersion: 1,
+    titulo: "",
+  };
+  const variables = new Set([
+    "_id", "codigo", "CODIGO", "marca", "MARCA", "stock", "STOCK", "ubicacion",
+    "ubicacionPendiente", "createdAt", "updatedAt", "__v",
+  ]);
+  const campos = new Set(documentos.flatMap(producto => Object.keys(producto)));
+  const conflictos = [];
+  for (const campo of campos) {
+    if (variables.has(campo)) continue;
+    if (campo === "stockMinimo") {
+      const porUbicacion = new Map();
+      for (const producto of documentos) {
+        const firma = serializarEstable(producto.stockMinimo ?? null);
+        const valores = porUbicacion.get(producto.ubicacion) || new Set();
+        valores.add(firma);
+        porUbicacion.set(producto.ubicacion, valores);
+      }
+      if ([...porUbicacion.values()].some(valores => valores.size > 1)) conflictos.push(campo);
+      continue;
+    }
+    const predeterminado = Object.prototype.hasOwnProperty.call(predeterminados, campo)
+      ? predeterminados[campo] : null;
+    const firmas = new Set(documentos.map(producto => {
+      const valor = producto[campo];
+      if (valor == null || serializarEstable(valor) === serializarEstable(predeterminado)) {
+        return serializarEstable(predeterminado);
+      }
+      return serializarEstable(valor);
+    }));
+    if (firmas.size > 1) conflictos.push(campo);
+  }
+  return conflictos.sort();
+}
+
 function crearInforme(productos, catalogo) {
   if (!Array.isArray(productos) || !Array.isArray(catalogo)) {
     throw new Error("El inventario y el catálogo deben ser listas JSON.");
@@ -203,22 +261,13 @@ function crearInforme(productos, catalogo) {
     if (destinos.some(coincideTrwEspecial)) {
       motivos.push("Código TRW abreviado: confirmar que es la misma pieza.");
     }
-    const camposVariables = new Set([
-      "_id", "codigo", "CODIGO", "marca", "MARCA", "stock", "STOCK", "ubicacion",
-      "ubicacionPendiente", "createdAt", "updatedAt", "__v",
-    ]);
-    const campos = new Set(documentos.flatMap((producto) => Object.keys(producto)));
     const metadatosEnConflicto = {};
-    for (const campo of campos) {
-      if (camposVariables.has(campo)) continue;
-      const valores = new Set(documentos.map((producto) => JSON.stringify(producto[campo] ?? null)));
-      if (documentos.length > 1 && valores.size > 1) {
-        motivos.push(`Diferencias en ${campo}.`);
-        metadatosEnConflicto[campo] = documentos.map((producto) => ({
-          id: identificador(producto),
-          valor: producto[campo] ?? null,
-        }));
-      }
+    for (const campo of camposMetadatosEnConflicto(documentos)) {
+      motivos.push(`Diferencias en ${campo}.`);
+      metadatosEnConflicto[campo] = documentos.map((producto) => ({
+        id: identificador(producto),
+        valor: producto[campo] ?? null,
+      }));
     }
     const totales = { NEGOCIO: 0, DEPOSITO_GALPON: 0 };
     for (const producto of documentos) {
@@ -268,4 +317,4 @@ function crearInforme(productos, catalogo) {
   };
 }
 
-module.exports = { crearInforme };
+module.exports = { crearInforme, camposMetadatosEnConflicto };
