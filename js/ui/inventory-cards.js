@@ -1,6 +1,7 @@
 import { $, escapeHtml, getStockState, ubicacionBadge } from "./dom.js";
 import { highlight } from "./render-utils.js";
 import { icon } from "./icons.js";
+import { FAMILIAS_HABILITADAS } from "../config.js?v=20261124-familias";
 
 export function renderCards({ list, isAdmin, viewFilter, query, highlightKey, sortCol, sortDir, rangeMin, rangeMax, categoriaFilter, ubicacionFilter, familyMemberIds }) {
   const grid = document.getElementById("cardGrid");
@@ -63,7 +64,7 @@ export function renderCards({ list, isAdmin, viewFilter, query, highlightKey, so
         <button class="mini success" data-act="in"  data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}" data-s="${stockNum}">${icon("plus")} Entrada</button>
         <button class="mini danger"  data-act="out" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}" data-s="${stockNum}" ${stockNum===0?"disabled":""}>${icon("minus")} Salida</button>
         <button class="mini"         data-act="set" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${stockNum}" data-u="${escapeHtml(item.ubicacion || "")}" data-cat="${escapeHtml(item.categoria || "")}" data-v2="${item.schemaVersion === 2 ? "1" : "0"}">${icon("edit")}</button>
-        <button class="mini"         data-act="equiv"  data-id="${item._id||""}" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}">${icon("link")}</button>
+        ${FAMILIAS_HABILITADAS ? `<button class="mini" data-act="equiv" data-id="${item._id||""}" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}">${icon("link")}</button>` : ""}
         <button class="mini"         data-act="minimo" data-id="${item._id||""}" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}" data-min="${item.stockMinimo!==undefined?item.stockMinimo:2}">${icon("alert")}</button>
         <button class="mini del"     data-act="del" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}" data-id="${item._id||""}">${icon("trash")}</button>
       </div>` : "";

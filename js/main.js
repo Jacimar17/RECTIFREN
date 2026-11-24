@@ -8,10 +8,11 @@ import {
   $,
   renderStock, setBusy,
   showToast, updateStats, showSkeleton, updateChipCounts, renderCards, renderFamilySummaries
-} from "./ui.js";
+} from "./ui.js?v=20261124-familias";
 import { createEquivalencesController } from "./equivalences.js";
+import { FAMILIAS_HABILITADAS } from "./config.js?v=20261124-familias";
 import { createMovementController } from "./movements.js";
-import { bindBetaModal } from "./beta.js?v=20261102";
+import { bindBetaModal } from "./beta.js?v=20261124-familias";
 import { createProductActions } from "./product-actions.js";
 import { icon, hydrateIcons } from "./ui/icons.js";
 import {
@@ -197,8 +198,8 @@ async function loadStock(query = $("search")?.value.trim() || "", { notify = fal
       return;
     }
     cache = data.data || [];
-    inventoryFamilies = Array.isArray(data.familias) ? data.familias : [];
-    inventoryLittonError = data.littonError || "";
+    inventoryFamilies = FAMILIAS_HABILITADAS && Array.isArray(data.familias) ? data.familias : [];
+    inventoryLittonError = FAMILIAS_HABILITADAS ? data.littonError || "" : "";
     familyMemberIds = new Set([
       ...(Array.isArray(data.matchedIds) ? data.matchedIds.map(String) : []),
       ...inventoryFamilies.flatMap((family) =>

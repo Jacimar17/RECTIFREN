@@ -13,7 +13,9 @@ Disponible en [`inventario.html`](inventario.html) y requiere iniciar sesión. A
 - 📋 Stock con filtros, ventana de detalle y campos editables.
 - 🕓 Historial por producto.
 - 📤 Exportar a CSV.
-- 🧪 **Buscador de proveedores (beta)**: busca pastillas por código o por marca y modelo del vehículo, y compara equivalencias y ofertas de **Aimar** y **ATONOR** en una sola vista.
+- 🧪 **Buscador de proveedores (beta)**: busca pastillas por código o por marca y modelo del vehículo.
+
+Las familias, equivalencias y comparación de proveedores están temporalmente deshabilitadas; los datos existentes se conservan. La búsqueda directa y la búsqueda por marca y modelo siguen disponibles. Para reactivarlas, configurar `FAMILIAS_HABILITADAS=true` en la API y cambiar `FAMILIAS_HABILITADAS` a `true` en `js/config.js`, desplegando ambos componentes.
 
 ---
 

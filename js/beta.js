@@ -6,8 +6,9 @@ import {
   apiVehiculosLitton
 } from "./api.js?v=20261102";
 import { $, escapeHtml, showToast } from "./ui.js";
-import { createBetaView } from "./beta-view.js?v=20261102";
+import { createBetaView } from "./beta-view.js?v=20261124-familias";
 import { icon } from "./ui/icons.js";
+import { FAMILIAS_HABILITADAS } from "./config.js?v=20261124-familias";
 
 export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }) {
   const overlay = $("betaOverlay");
@@ -112,16 +113,17 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
           <div class="beta-name">${escapeHtml(item.nombre || "Sin descripción disponible")}</div>
           ${category}
           <div class="beta-result-badges">${semaforo(item.stockProveedor)}</div>
-          <div class="beta-family-codes" aria-live="polite"></div>
+          ${FAMILIAS_HABILITADAS ? '<div class="beta-family-codes" aria-live="polite"></div>' : ""}
         </div>
       </section>
-      ${renderInventorySection()}
+      ${FAMILIAS_HABILITADAS ? `${renderInventorySection()}
       <h2 class="beta-suppliers-title">Dónde conseguirla</h2>
       <div class="beta-suppliers-grid">
         ${renderProviderSection("ATONOR")}
         ${renderProviderSection("Aimar")}
-      </div>`;
+      </div>` : '<p class="muted">Familias y comparación de proveedores temporalmente deshabilitadas.</p>'}`;
 
+    if (!FAMILIAS_HABILITADAS) return;
     loadInventoryDetails(item, viewId);
     if (detailCache.has(code)) {
       updateProviderSections(detailCache.get(code));
@@ -293,7 +295,7 @@ export function bindBetaModal({ getIsAdmin, getAdminToken, adminLogout, isBusy }
     const button = $("btnBetaSearchVehicle");
     button.disabled = true;
     $("betaStatus").textContent = "";
-    results.innerHTML = `<div class="beta-search-loading"><div class="spinner" aria-hidden="true"></div><span>Buscando pastillas y comparando proveedores…</span></div>`;
+    results.innerHTML = `<div class="beta-search-loading"><div class="spinner" aria-hidden="true"></div><span>${FAMILIAS_HABILITADAS ? "Buscando pastillas y comparando proveedores…" : "Buscando pastillas en Litton…"}</span></div>`;
 
     try {
       const token = getAdminToken();

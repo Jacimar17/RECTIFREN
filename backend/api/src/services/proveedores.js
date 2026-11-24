@@ -1,6 +1,7 @@
 const { categorias } = require("../proveedores/registro");
 const { buscarFamiliaLitton } = require("../proveedores/busqueda-familia-litton");
 const { buscarOfertasPorVehiculo } = require("../proveedores/busqueda-vehiculo-litton");
+const { familiasHabilitadas } = require("../utils/familias");
 
 const pastillasFreno = categorias.pastillas_freno;
 
@@ -35,6 +36,7 @@ async function obtenerVehiculosLitton() {
 
 async function buscarPorVehiculoLitton({ marca, modelo, page }) {
   const resultado = await pastillasFreno.catalogo.buscarPorVehiculo({ marca, modelo, page });
+  if (!familiasHabilitadas()) return { ...resultado, familiasDeshabilitadas: true };
   const proveedores = pastillasFreno.proveedores.map(({ id, nombre }) => ({ id, nombre }));
   return buscarOfertasPorVehiculo(resultado, buscarDetalleFamilia, { proveedores });
 }

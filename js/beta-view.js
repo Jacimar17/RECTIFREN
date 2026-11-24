@@ -1,5 +1,6 @@
 import { escapeHtml, ubicacionBadge } from "./ui.js";
 import { icon } from "./ui/icons.js";
+import { FAMILIAS_HABILITADAS } from "./config.js?v=20261124-familias";
 
 export function createBetaView(results) {
   function fmtPrecio(value) {
@@ -112,7 +113,8 @@ export function createBetaView(results) {
   function renderVehicleResults(response, pageChanged) {
     const items = Array.isArray(response.data) ? response.data : [];
     const errors = Array.isArray(response.errores) ? response.errores : [];
-    const providers = Array.isArray(response.proveedores) && response.proveedores.length
+    const disabled = !FAMILIAS_HABILITADAS || response.familiasDeshabilitadas;
+    const providers = disabled ? [] : Array.isArray(response.proveedores) && response.proveedores.length
       ? response.proveedores
       : [{ id: "aimar", nombre: "Aimar" }, { id: "atonor", nombre: "ATONOR" }];
     const query = response.query || {};
@@ -126,7 +128,7 @@ export function createBetaView(results) {
     }
 
     if (items.length) {
-      html += `<p class="beta-vehicle-summary">Aplicación: <strong>${escapeHtml(query.marca || "")} ${escapeHtml(query.modelo || "")}</strong>. Se muestran todas las variantes de esta página.</p>
+      html += `<p class="beta-vehicle-summary">Aplicación: <strong>${escapeHtml(query.marca || "")} ${escapeHtml(query.modelo || "")}</strong>. Se muestran todas las variantes de esta página.${disabled ? " La comparación de proveedores está temporalmente deshabilitada." : ""}</p>
         <div class="beta-vehicle-table-wrap">
           <table class="beta-vehicle-table">
             <thead><tr><th scope="col">Pastilla Litton</th>${providers.map((provider) => `<th scope="col">${escapeHtml(provider.nombre)}</th>`).join("")}</tr></thead>

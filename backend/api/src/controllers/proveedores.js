@@ -1,5 +1,6 @@
 const proveedoresService = require("../services/proveedores");
 const httpError = require("../utils/http-error");
+const { familiasHabilitadas } = require("../utils/familias");
 
 function textoEntrada(value) {
   return typeof value === "string" ? value.trim().slice(0, 100) : "";
@@ -13,6 +14,9 @@ function exigirBeta() {
 
 async function buscarDetalle(req, res) {
   exigirBeta();
+  if (!familiasHabilitadas()) {
+    return res.status(503).json({ ok: false, error: "Las familias y equivalencias están deshabilitadas temporalmente." });
+  }
   const codigo = textoEntrada(req.body.codigo);
   if (!codigo) throw httpError(400, "Falta el código del producto.");
   try {

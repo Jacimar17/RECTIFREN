@@ -5,6 +5,7 @@ const { resolverFamiliasInventario, UBICACIONES } = require("../proveedores/fami
 const buscarLitton = require("../proveedores/litton");
 const { resolverFamiliasLittonEnVivo } = require("../proveedores/familia-litton-en-vivo");
 const httpError = require("../utils/http-error");
+const { familiasHabilitadas } = require("../utils/familias");
 const {
   validarBusqueda,
   validarCatalogoPublico,
@@ -59,9 +60,23 @@ async function buscar(value) {
   if (!query) return { data: [], familias: [], matchedIds: [] };
 
   const regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
-  const direct = await productosRepository.buscarDirectos(regex, SEARCH_LIMIT);
+  const enabled = familiasHabilitadas();
+  const direct = await productosRepository.buscarDirectos(regex, SEARCH_LIMIT, { incluirFamilias: enabled });
   const hasMoreDirect = direct.length > SEARCH_LIMIT;
   const seeds = direct.slice(0, SEARCH_LIMIT);
+  if (!enabled) {
+    const allResults = seeds.flatMap(normalizarProductos);
+    const data = allResults.slice(0, FAMILY_RESULT_LIMIT);
+    return {
+      data,
+      familias: [],
+      matchedIds: seeds.map((item) => String(item._id)),
+      total: data.length,
+      hasMore: hasMoreDirect || allResults.length > FAMILY_RESULT_LIMIT,
+      query,
+      familiasDeshabilitadas: true,
+    };
+  }
   const inventario = (await productosRepository.listarInventarioParaFamilias())
     .filter((producto) => producto.schemaVersion !== 2);
   const littonSeeds = seeds.filter((producto) => producto.schemaVersion !== 2);

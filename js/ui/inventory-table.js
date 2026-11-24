@@ -1,4 +1,5 @@
 import { $, escapeHtml, getStockState, ubicacionBadge } from "./dom.js";
+import { FAMILIAS_HABILITADAS } from "../config.js?v=20261124-familias";
 import { highlight, sortByCodigo } from "./render-utils.js";
 import { icon } from "./icons.js";
 
@@ -108,8 +109,8 @@ export function renderStock({ list, isAdmin, viewFilter, query, highlightKey, so
             data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}" data-s="${stockNum}">${icon("minus")}</button>
           <button class="mini" data-act="set" data-tooltip="Editar"
             data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-s="${stockNum}" data-u="${escapeHtml(item.ubicacion || "")}" data-cat="${escapeHtml(item.categoria || "")}" data-v2="${item.schemaVersion === 2 ? "1" : "0"}">${icon("edit")}</button>
-          <button class="mini" data-act="equiv" data-tooltip="Equivalencias"
-            data-id="${item._id||""}" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}">${icon("link")}</button>
+          ${FAMILIAS_HABILITADAS ? `<button class="mini" data-act="equiv" data-tooltip="Equivalencias"
+            data-id="${item._id||""}" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}">${icon("link")}</button>` : ""}
           <button class="mini" data-act="minimo" data-tooltip="Stock mínimo"
             data-id="${item._id||""}" data-c="${escapeHtml(item.codigo)}" data-m="${escapeHtml(item.marca)}" data-u="${escapeHtml(item.ubicacion || "")}" data-min="${item.stockMinimo!==undefined?item.stockMinimo:2}">${icon("alert")}</button>
           <button class="mini del" data-act="del" data-tooltip="Eliminar"

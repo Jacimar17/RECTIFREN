@@ -4,18 +4,20 @@ function listarOrdenados() {
   return Producto.find({ archivado: { $ne: true } }).sort({ codigo: 1, CODIGO: 1 });
 }
 
-function buscarDirectos(regex, limit) {
+function buscarDirectos(regex, limit, { incluirFamilias = true } = {}) {
   return Producto.find({
     archivado: { $ne: true },
     $or: [
       { codigo: regex }, { CODIGO: regex },
       { marca: regex }, { MARCA: regex },
-      { equivalencias: regex },
-      { "equivalenciasCatalogo.codigo": regex },
-      { "equivalenciasCatalogo.marca": regex },
       { "fichaLitton.name": regex },
-      { "fichaLitton.substitutes.value": regex },
       { "variantes.marca": regex },
+      ...(incluirFamilias ? [
+        { equivalencias: regex },
+        { "equivalenciasCatalogo.codigo": regex },
+        { "equivalenciasCatalogo.marca": regex },
+        { "fichaLitton.substitutes.value": regex },
+      ] : []),
     ]
   }).sort({ codigo: 1, CODIGO: 1 }).limit(limit + 1).lean();
 }
