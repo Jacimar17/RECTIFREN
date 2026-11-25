@@ -16,6 +16,7 @@ function buscarDirectos(regex, limit, { incluirFamilias = true } = {}) {
         { equivalencias: regex },
         { "equivalenciasCatalogo.codigo": regex },
         { "equivalenciasCatalogo.marca": regex },
+        { "equivalenciasCatalogo.productoLitton": regex },
         { "fichaLitton.substitutes.value": regex },
       ] : []),
     ]
@@ -44,6 +45,7 @@ function buscarPorCodigoMarca(codigo, marca, ubicacion) {
         { schemaVersion: 2, codigo },
         { schemaVersion: 2, codigosAnteriores: codigo },
         { schemaVersion: 2, "equivalenciasCatalogo.codigo": codigo },
+        { schemaVersion: 2, "equivalenciasCatalogo.productoLitton": codigo },
         { schemaVersion: 2, "fichaLitton.substitutes.value": codigo },
       ] },
       { $or: [
@@ -61,6 +63,7 @@ function buscarLittonPorCodigo(codigo) {
     $or: [
       { codigo },
       { "equivalenciasCatalogo.codigo": codigo },
+      { "equivalenciasCatalogo.productoLitton": codigo },
       { "fichaLitton.substitutes.value": codigo },
     ],
   }).limit(2);
@@ -74,6 +77,7 @@ function buscarCandidatos(regex) {
       { equivalencias: regex },
       { "equivalenciasCatalogo.codigo": regex },
       { "equivalenciasCatalogo.marca": regex },
+      { "equivalenciasCatalogo.productoLitton": regex },
       { "fichaLitton.name": regex },
       { "fichaLitton.substitutes.value": regex },
       { "variantes.marca": regex },
@@ -118,6 +122,7 @@ async function buscarCatalogoPublico({ query, marca, skip = 0, limit = 20 }) {
         { descripcion: regex },
         { equivalencias: regex },
         { "equivalenciasCatalogo.codigo": regex },
+        { "equivalenciasCatalogo.productoLitton": regex },
         { "fichaLitton.name": regex },
         { "fichaLitton.description": regex },
         { "fichaLitton.substitutes.value": regex },

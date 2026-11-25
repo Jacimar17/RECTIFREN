@@ -26,6 +26,27 @@ function categoriaNoPastillas(producto) {
   return categoria && !categoria.includes("PASTILL") ? categoria : "";
 }
 
+function combinarResultadosFamilia(resultados, familias) {
+  const porIdentidad = new Map();
+  for (const producto of resultados) {
+    const identidad = `${String(producto._id)}:${String(producto.varianteId || "")}`;
+    if (!porIdentidad.has(identidad)) porIdentidad.set(identidad, producto);
+  }
+  for (const familia of familias) {
+    for (const fila of familia.filas || []) {
+      const identidad = `${String(fila._id)}:${String(fila.varianteId || "")}`;
+      if (!porIdentidad.has(identidad)) porIdentidad.set(identidad, fila);
+    }
+  }
+  const todos = [...porIdentidad.values()];
+  const data = todos.slice(0, FAMILY_RESULT_LIMIT);
+  return {
+    data,
+    matchedIds: [...new Set(data.map((producto) => String(producto._id)))],
+    hasMore: todos.length > FAMILY_RESULT_LIMIT,
+  };
+}
+
 async function listar() {
   const productos = await productosRepository.listarOrdenados();
   return productos.flatMap(normalizarProductos);
@@ -35,15 +56,15 @@ async function buscar(value) {
   const query = validarBusqueda(value);
   if (!query) return { data: [], familias: [], matchedIds: [] };
 
+  const persistedEnabled = familiasCatalogoPersistidoHabilitadas();
+  const legacyEnabled = familiasHabilitadas();
   const regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
   const direct = await productosRepository.buscarDirectos(regex, SEARCH_LIMIT, {
-    incluirFamilias: familiasHabilitadas(),
+    incluirFamilias: persistedEnabled || legacyEnabled,
   });
   const hasMoreDirect = direct.length > SEARCH_LIMIT;
   const seeds = direct.slice(0, SEARCH_LIMIT);
   let allResults = seeds.flatMap(normalizarProductos);
-  const persistedEnabled = familiasCatalogoPersistidoHabilitadas();
-  const legacyEnabled = familiasHabilitadas();
   if (!persistedEnabled && !legacyEnabled) {
     const data = allResults.slice(0, FAMILY_RESULT_LIMIT);
     return {
@@ -86,10 +107,11 @@ async function buscar(value) {
     allResults = [...resultados.values()].flatMap(normalizarProductos);
   }
   if (!persistedEnabled) {
-    const data = allResults.slice(0, FAMILY_RESULT_LIMIT);
+    const combined = combinarResultadosFamilia(allResults, familias);
     return {
-      data, familias, matchedIds: seeds.map((item) => String(item._id)),
-      total: data.length, hasMore: hasMoreDirect || allResults.length > FAMILY_RESULT_LIMIT,
+      ...combined, familias,
+      total: combined.data.length,
+      hasMore: hasMoreDirect || combined.hasMore,
       query, familiasDeshabilitadas: true,
     };
   }
@@ -110,15 +132,14 @@ async function buscar(value) {
     console.error("No se pudo cargar una familia desde el catálogo local.", { name, ...(code ? { code } : {}) });
     familiasError = "No se pudo cargar la familia desde el catálogo local; se mantienen las coincidencias directas.";
   }
-  const data = allResults.slice(0, FAMILY_RESULT_LIMIT);
+  const combined = combinarResultadosFamilia(allResults, familias);
   return {
-    data,
+    ...combined,
     familias,
-    matchedIds: seeds.map((item) => String(item._id)),
     ...(catalogoVersion !== undefined ? { catalogoVersion } : {}),
     ...(familiasError ? { familiasError } : {}),
-    total: data.length,
-    hasMore: hasMoreDirect || allResults.length > FAMILY_RESULT_LIMIT,
+    total: combined.data.length,
+    hasMore: hasMoreDirect || combined.hasMore,
     query,
   };
 }

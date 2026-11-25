@@ -51,6 +51,8 @@ Products explicitly marked as pending location can omit `ubicacion` in inventory
 
 For products with a matching recorded brand, exact brand-prefixed catalog codes and exact TRW abbreviations are also recognized. This associates search results only; it does not confirm duplicates or merge products.
 
+When a query matches a brake-pad family, `/api/productos/search` includes the inventory rows from that family in `data`, even when only one family code was entered. The `familias` field keeps the grouped catalog summary; duplicate rows are returned only once.
+
 This flag does not enable `FAMILIAS_HABILITADAS`, manual equivalence routes, or external provider offers. Those remain disabled unless the original flag is explicitly enabled. When enabled, legacy local families remain available for explicitly categorized non-pad products within the same category; uncategorized products cannot safely be classified as non-pad. Provider detail requires both flags and `BETA_PROVEEDORES=true`, otherwise it returns `503` (or `404` when beta is disabled).
 
 ## Stock and movements

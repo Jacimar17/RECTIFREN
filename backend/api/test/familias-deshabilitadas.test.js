@@ -16,7 +16,7 @@ test("la búsqueda directa conserva resultados si falta el catálogo local y no 
   catalogoPastillas.obtenerCatalogoLocal = async () => { throw new Error("Archivo no disponible"); };
   productosRepository.buscarDirectos = async (regex, limit, options) => {
     assert.equal(regex.test("PD/528"), true);
-    assert.deepEqual(options, { incluirFamilias: false });
+    assert.deepEqual(options, { incluirFamilias: true });
     return [{ _id: "1", codigo: "PD/528", marca: "FRASLE", stock: 3, ubicacion: "NEGOCIO" }];
   };
   try {

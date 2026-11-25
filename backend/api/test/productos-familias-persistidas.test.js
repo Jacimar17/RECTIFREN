@@ -64,7 +64,7 @@ test("family searches use the active persisted catalog without live web calls or
   process.env.FAMILIAS_HABILITADAS = "false";
   global.fetch = async () => { webCalls++; throw new Error("unexpected web request"); };
   productosRepository.buscarDirectos = async (_regex, _limit, options) => {
-    assert.deepEqual(options, { incluirFamilias: false });
+    assert.deepEqual(options, { incluirFamilias: true });
     return [{
       _id: "direct", codigo: "PD/528", marca: "FRASLE", stock: 3, ubicacion: "NEGOCIO",
       equivalentesVinculados: ["linked"],
@@ -82,7 +82,8 @@ test("family searches use the active persisted catalog without live web calls or
   try {
     const result = await productosService.buscar("PD/528");
     assert.equal(result.catalogoVersion, "v1");
-    assert.deepEqual(result.data.map((item) => item._id), ["direct"]);
+    assert.deepEqual(result.data.map((item) => item._id), ["direct", "linked"]);
+    assert.deepEqual(new Set(result.matchedIds), new Set(["direct", "linked"]));
     assert.deepEqual(result.familias[0].filas.map((item) => item._id), ["linked", "direct"].sort());
     assert.equal(webCalls, 0);
   } finally {
