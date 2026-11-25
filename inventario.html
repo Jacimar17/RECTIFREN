@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="css/controls.css?v=20261102-2">
   <link rel="stylesheet" href="css/inventory-table.css?v=20261102-2">
   <link rel="stylesheet" href="css/overlays.css?v=20261020">
-  <link rel="stylesheet" href="css/responsive.css?v=20261020">
+  <link rel="stylesheet" href="css/responsive.css?v=20261125-mobile-search">
   <link rel="stylesheet" href="css/effects.css?v=20261019">
   <link rel="stylesheet" href="css/beta-layout.css?v=20261102">
   <link rel="stylesheet" href="css/beta-cards.css?v=20261019">
@@ -118,7 +118,7 @@
         <div class="search">
           <div class="searchWrap">
             <span class="searchIcon" data-icon="search"></span>
-            <input id="search" placeholder="Buscar por CODIGO o MARCA..." />
+            <input id="search" type="text" inputmode="search" enterkeyhint="search" autocomplete="off" spellcheck="false" aria-label="Buscar pastilla por código o marca" placeholder="Código, marca o pastilla..." />
             <button id="btnClearSearch" class="clearSearch" title="Limpiar" aria-label="Limpiar búsqueda" style="display:none"><span data-icon="close"></span></button>
           </div>
           <div class="muted tiny" id="lastUpdated">Última actualización: — <span class="refresh-dot" title="Auto-refresh activo cada 5 min"></span></div>
